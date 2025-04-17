@@ -1,0 +1,15 @@
+*.bak
+*.un~
+*.*~
+*.scvd
+*.o
+*.d
+*.pyc
+*.ini
+*.old
+*.dblite
+*.i
+*.uvoptx
+*.html
+*.axf
+CompileBurnUser.ini

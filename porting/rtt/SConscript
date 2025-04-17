@@ -1,0 +1,19 @@
+# for module compiling
+import os
+from building import *
+import rtconfig
+
+cwd = GetCurrentDir()
+objs = []
+list = os.listdir(cwd)
+
+if GetDepend('BSP_USING_RTTHREAD'):
+    src = Glob('*.c')
+    objs = DefineGroup('rw_rtt', src, depend = [''])
+    for d in list:
+        path = os.path.join(cwd, d)
+        if os.path.isfile(os.path.join(path, 'SConscript')):
+            objs = objs + SConscript(os.path.join(d, 'SConscript'))    
+
+Return('objs')
+
