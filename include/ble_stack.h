@@ -144,8 +144,8 @@ typedef struct
 } rom_em_default_attr_t;
 
 
-typedef int (*sifli_msg_func_t)(uint16_t const msgid, void const *param,
-                                uint16_t const dest_id, uint16_t const src_id);
+typedef int32_t (*sifli_msg_func_t)(uint16_t const msgid, void const *param,
+                                    uint16_t const dest_id, uint16_t const src_id);
 
 typedef int (*tl_data_callback_t)(uint8_t *bufptr, uint32_t size);
 
