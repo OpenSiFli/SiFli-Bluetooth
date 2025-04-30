@@ -1,0 +1,12 @@
+[int|rel][bug|new|opt][module_name] one line description
+
+Project: Bluetooth
+
+redmine: #id, REDMINE-id
+
+ext-redmine: bug|feat#id
+
+[Description in detail]
+
+Affected branch: [master]
+

@@ -1,0 +1,35 @@
+#!/bin/sh
+
+set -e
+git config --local core.autocrlf false
+
+REPO_ROOT_DIR="$(git rev-parse --show-toplevel)"
+
+if [ -f "${REPO_ROOT_DIR}/tools/autotest/commitEnvScripts/update_scripts.bat" ]; then
+    ${REPO_ROOT_DIR}/tools/autotest/commitEnvScripts/update_scripts.bat
+else
+    echo "scripts not exist"
+fi
+
+
+files=$((git diff --cached --name-only --diff-filter=ACMR | grep -Ei '\.(c|cpp|h|hpp)$' | grep -Ev '^(external|tools)') || true)
+if [ ! -z "${files}" ]; then
+    #for i in ${files} do "${REPO_ROOT_DIR}/tools/astyle" --style=allman --indent=spaces=4 --indent-preproc-block --pad-oper --pad-header --unpad-paren --suffix=none --align-pointer=name --lineend=linux --convert-tabs --verbose "$i" done
+    for i in ${files} 
+    do
+        "${REPO_ROOT_DIR}/tools/astyle" \
+            --style=allman \
+            --indent=spaces=4 \
+            --indent-preproc-block \
+            --pad-oper \
+            --pad-header \
+            --unpad-paren \
+            --suffix=none \
+            --align-pointer=name \
+            --lineend=linux \
+            --convert-tabs \
+            --verbose \
+            "$i" 
+        git add ${files}
+    done
+fi

@@ -1106,8 +1106,8 @@ uint8_t bt_avsnk_hdl_start_ind(bts2s_av_inst_data *inst, BTS2S_AV_START_IND *msg
             }
             BT_OOM_ASSERT(inst->snk_data.decode_buf);
         }
-#endif
         list_all_free(&(inst->snk_data.playlist));
+#endif
         inst->snk_data.reveive_start = 1;
 
 #ifdef CFG_AVRCP
