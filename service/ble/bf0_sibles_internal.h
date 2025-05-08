@@ -639,6 +639,9 @@ enum sibles_msg_id
     SIBLES_UPDATE_ATT_PERM_REQ,
     SIBLES_UPDATE_ATT_PERM_RSP,
 
+    SIBLES_SET_ATT_VISIBILITY_REQ,
+    SIBLES_SET_ATT_VISIBILITY_RSP,
+
     //  Sibles ready
     SIBLES_SVC_READY_IND = 0xFF,                            //!< SIBLES_SVC_READY_IND
 };
@@ -1016,6 +1019,18 @@ struct sibles_update_att_perm_req
 };
 
 struct sibles_update_att_perm_rsp
+{
+    uint16_t handle;
+    uint8_t status;
+};
+
+struct sibles_set_att_visibility_req
+{
+    uint16_t handle;
+    uint8_t hide;
+};
+
+struct sibles_set_att_visibility_rsp
 {
     uint16_t handle;
     uint8_t status;

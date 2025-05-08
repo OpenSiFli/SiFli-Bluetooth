@@ -122,6 +122,7 @@ enum bf0_sifli_event_t
     SIBLES_REMOTE_SVC_CHANGE_IND,
     SIBLES_ATT_UPDATE_PERM_IND,
     SIBLES_DIS_SET_VAL_RSP,
+    SIBLES_ATT_SET_VISIBILITY_IND,
 };
 
 /**
@@ -462,6 +463,12 @@ typedef struct
 
 typedef struct
 {
+    uint16_t handle;
+    uint8_t status;
+} sibles_att_set_visibility_ind_t;
+
+typedef struct
+{
     uint8_t state;
     uint8_t uuid[ATT_UUID_128_LEN];
     uint8_t uuid_len;
@@ -627,6 +634,7 @@ uint16_t sibles_get_uuid_by_attr(uint8_t attr);
 sibles_hdl sibles_get_sible_handle_and_index_by_attr(uint8_t attr, uint8_t *write_index);
 void sibles_get_all_gatt_handle(sibles_local_svc_t *svc);
 void sibles_update_att_permission(uint16_t handle, uint16_t access_mask, uint16_t perm);
+void sibles_set_att_visibility(uint16_t handle, uint8_t hide);
 
 /**
   * @brief  User implmentation function. Stack will call this function to get max mtu.

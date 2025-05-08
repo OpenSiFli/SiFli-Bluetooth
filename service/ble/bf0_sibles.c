@@ -1028,6 +1028,16 @@ void sifli_mbox_process(sibles_msg_para_t *header, uint8_t *data_ptr, uint16_t p
         ble_event_publish(SIBLES_ATT_UPDATE_PERM_IND, &ind, sizeof(sibles_att_update_perm_ind_t));
         break;
     }
+    case SIBLES_SET_ATT_VISIBILITY_RSP:
+    {
+        struct sibles_set_att_visibility_rsp *rsp = (struct sibles_set_att_visibility_rsp *)data_ptr;
+
+        sibles_att_set_visibility_ind_t ind;
+        ind.handle = rsp->handle;
+        ind.status = rsp->status;
+        ble_event_publish(SIBLES_ATT_SET_VISIBILITY_IND, &ind, sizeof(sibles_att_set_visibility_ind_t));
+        break;
+    }
     case DISS_APP_SET_VALUE_RSP:
     {
         app_dis_set_rsp_t *app_rsp = (app_dis_set_rsp_t *)data_ptr;
@@ -1162,6 +1172,19 @@ void sibles_update_att_permission(uint16_t handle, uint16_t access_mask, uint16_
     req->handle = handle;
     req->access_mask = access_mask;
     req->perm = perm;
+
+    sifli_msg_send((void const *)req);
+}
+
+void sibles_set_att_visibility(uint16_t handle, uint8_t hide)
+{
+    struct sibles_set_att_visibility_req *req;
+    uint16_t len = sizeof(struct sibles_set_att_visibility_req);
+    sifli_task_id_t task_id = g_sibles.app_task_id;
+    req = (struct sibles_set_att_visibility_req *)sifli_msg_alloc(SIBLES_SET_ATT_VISIBILITY_REQ,
+            task_id, sifli_get_stack_id(), len);
+    req->handle = handle;
+    req->hide = hide;
 
     sifli_msg_send((void const *)req);
 }
