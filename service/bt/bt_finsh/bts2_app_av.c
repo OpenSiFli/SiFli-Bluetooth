@@ -227,7 +227,7 @@ static uint8_t bt_av_get_local_seid(bts2s_av_inst_data *inst, uint16_t cfg, uint
 
 #ifdef CFG_AV_SRC
     if (cfg == AV_AUDIO_SRC)
-        for (i = MAX_NUM_LOCAL_SNK_SEIDS; i < MAX_NUM_LOCAL_SNK_SEIDS + MAX_NUM_LOCAL_SNK_SEIDS; i++)
+        for (i = MAX_NUM_LOCAL_SNK_SEIDS; i < MAX_NUM_LOCAL_SNK_SEIDS + MAX_NUM_LOCAL_SRC_SEIDS; i++)
             if (inst->local_seid_info[i].is_enbd && !inst->local_seid_info[i].local_seid.in_use
                     && (inst->local_seid_info[i].local_seid.codec == codec))
             {
