@@ -1321,6 +1321,11 @@ void ble_gap_event_process(sibles_msg_para_t *header, uint8_t *data_ptr, uint16_
         {
             // Except start stop cmd, others are all happened when init action completed. No need to notify upper layer
             act_info->init_info.state = BLE_GAP_ACTV_STARTED;
+
+            ble_gap_create_connection_stop_ind_t evt;
+            evt.actv_idx = ind->actv_idx;
+            evt.reason = ind->reason;
+            ble_event_publish(BLE_GAP_CREATE_CONNECTION_STOP_IND, &evt, sizeof(ble_gap_create_connection_stop_ind_t));
         }
         else if (ind->actv_type == GAPM_ACTV_TYPE_PER_SYNC)
         {

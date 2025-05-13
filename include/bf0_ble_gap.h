@@ -185,6 +185,7 @@ enum ble_gap_event_t
     BLE_GAP_PERIODIC_ADV_SYNC_CREATED_IND,   /**< This event indicates periodic advertising sync created. */
     BLE_GAP_PERIODIC_ADV_SYNC_STOPPED_IND,   /**< This event indicates periodic advertising sync stopped. */
     BLE_GAP_PERIODIC_ADV_SYNC_ESTABLISHED_IND, /**< This event indicates periodic advertising sync established. */
+    BLE_GAP_CREATE_CONNECTION_STOP_IND,      /**< This event indicates create connection stopped. */
 };
 
 /**
@@ -1499,6 +1500,16 @@ typedef struct
     uint8_t reason;
 } ble_gap_scan_stopped_ind_t;
 
+/**
+ * @brief The structure of #BLE_GAP_CREATE_CONNECTION_STOP_IND
+ */
+typedef struct
+{
+    /// Activity identifier
+    uint8_t actv_idx;
+    /// Stopped reason
+    uint8_t reason;
+} ble_gap_create_connection_stop_ind_t;
 
 
 typedef struct
