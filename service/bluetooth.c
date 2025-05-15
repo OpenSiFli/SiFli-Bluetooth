@@ -195,7 +195,7 @@ int32_t ble_event_process(uint16_t const msgid, void const *param,
 }
 #endif
 
-#if !defined(SOC_SF32LB55X) && (defined(SOC_BF0_LCPU)) && (!defined(BSP_USING_PC_SIMULATOR)) && (!FPGA)
+#if !defined(SOC_SF32LB55X) && (defined(SOC_BF0_LCPU)) && (!defined(BSP_USING_PC_SIMULATOR)) && (!FPGA) && (!defined(LCPU_CONFIG_V2))
 
 extern void ble_isr_rom(void);
 extern void bt_isr_rom(void);
