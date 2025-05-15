@@ -559,6 +559,14 @@ void sibles_stop_svc(sibles_hdl hdl);
 int8_t sibles_search_service(uint8_t conn_idx, uint8_t uuid_len, uint8_t *uuid);
 
 /**
+ * @brief  Find expect descriptor in characteristic.
+  * @param[in]  char characteristic content for search.
+  * @param[in]  descriptor descriptor want to find.
+  * @retval result.
+ */
+uint16_t sibles_descriptor_handle_find(sibles_svc_search_char_t *chara, uint16_t descriptor);
+
+/**
   * @brief  Register callback for a specified service of peer device.
   * @param[in]  conn_idx connection index.
   * @param[in]  start_hdl service start handle.

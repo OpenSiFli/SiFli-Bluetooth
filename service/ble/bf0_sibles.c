@@ -510,6 +510,30 @@ static void sifli_add_remote_char(struct sibles_remote_svc *svc, struct sibles_d
     svc->svc.char_count++;
 }
 
+static uint8_t sifli_check_repeate_char(struct sibles_remote_svc *svc, struct sibles_disc_char_ind *disc_char)
+{
+    uint8_t ret = 0;
+    uint16_t offset = 0;
+    uint32_t i;
+    sibles_svc_search_char_t *chara = (sibles_svc_search_char_t *)svc->svc.att_db;
+
+    if (svc->svc.char_count == 0)
+        return ret;
+    for (i = 0; i < svc->svc.char_count; i++)
+    {
+        if (disc_char->attr_hdl == chara->attr_hdl &&
+                disc_char->pointer_hdl == chara->pointer_hdl)
+        {
+            ret = 1;
+            LOG_I("find repeat handle");
+            return ret;
+        }
+        offset = sizeof(sibles_svc_search_char_t) + chara->desc_count * sizeof(struct sibles_disc_char_desc_ind);
+        chara = (sibles_svc_search_char_t *)((uint8_t *)chara + offset);
+    }
+
+    return ret;
+}
 
 static void sifli_add_remote_char_desc(struct sibles_remote_svc *svc, struct sibles_disc_char_desc_ind *disc_char_desc)
 {
@@ -823,6 +847,11 @@ void sifli_mbox_process(sibles_msg_para_t *header, uint8_t *data_ptr, uint16_t p
         BT_OOM_ASSERT(svc);
         struct sibles_disc_char_ind *ind = (struct sibles_disc_char_ind *)data_ptr;
         LOG_I("char found hdl %d, %d", ind->attr_hdl, ind->pointer_hdl);
+
+        if (sifli_check_repeate_char(svc, ind) == 1)
+        {
+            break;
+        }
 
         if (svc->svc.hdl_end < ind->pointer_hdl)
         {
@@ -1519,7 +1548,29 @@ int8_t sibles_search_service(uint8_t conn_idx, uint8_t uuid_len, uint8_t *uuid)
     return 0;
 }
 
+uint16_t sibles_descriptor_handle_find(sibles_svc_search_char_t *chara, uint16_t descriptor)
+{
+    uint16_t handle = 0;
+    for (int i = 0; i < chara->desc_count; i++)
+    {
+        if ((chara->desc[i].uuid_len == ATT_UUID_16_LEN) &&
+                (memcmp(&descriptor, chara->desc[i].uuid, ATT_UUID_16_LEN) == 0))
+        {
+            handle = chara->desc[i].attr_hdl;
+            break;
+        }
+    }
 
+    if (handle == 0)
+    {
+        LOG_I("fail to find descriptor 0x%x", descriptor);
+        for (int i = 0; i < chara->desc_count; i++)
+        {
+            LOG_HEX("desc uuid", 16, chara->desc[i].uuid, chara->desc[i].uuid_len);
+        }
+    }
+    return handle;
+}
 
 uint16_t sibles_register_remote_svc(uint8_t conn_idx, uint16_t start_hdl, uint16_t end_hdl, sibles_remote_svc_cbk callback)
 {
