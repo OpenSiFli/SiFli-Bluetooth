@@ -424,14 +424,14 @@ static void decode_playback_thread(void *args)
         {
             if (debug_tx_cnt == 0)
             {
-                USER_TRACE("a2dp get data,total:%d,full:%d,empty:%d, curr %d\r\n", inst_data->snk_data.playlist.total_num,
-                           inst_data->snk_data.playlist.full_num, inst_data->snk_data.playlist.empty_num, inst_data->snk_data.playlist.cnt);
+                //USER_TRACE("a2dp get data,total:%d,full:%d,empty:%d, curr %d\r\n", inst_data->snk_data.playlist.total_num,
+                //           inst_data->snk_data.playlist.full_num, inst_data->snk_data.playlist.empty_num, inst_data->snk_data.playlist.cnt);
             }
             debug_tx_cnt++;
 
             if (is_stopped == 1 || inst_data->snk_data.play_state == FALSE || inst_data->snk_data.audio_client == NULL)
             {
-                USER_TRACE("snk: stop %d %d %x\r\n", is_stopped, inst_data->snk_data.play_state, inst_data->snk_data.audio_client);
+                //USER_TRACE("snk: stop %d %d %x\r\n", is_stopped, inst_data->snk_data.play_state, inst_data->snk_data.audio_client);
                 continue;
             }
         }
@@ -481,7 +481,11 @@ static void decode_playback_thread(void *args)
 #ifdef CFG_AV_AAC
     #define DEPLAYBACK_STACK_SIZE   (1024 * 16)
 #else
-    #define DEPLAYBACK_STACK_SIZE   1024
+    #if defined(__GNUC__)
+        #define DEPLAYBACK_STACK_SIZE   2048
+    #else
+        #define DEPLAYBACK_STACK_SIZE   1024
+    #endif
 #endif
 
 #if defined(SF32LB52X)
