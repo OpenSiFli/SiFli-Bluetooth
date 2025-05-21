@@ -96,10 +96,9 @@ bt_err_t bt_sifli_control_spp(struct rt_bt_device *bt_handle, int cmd, void *arg
 
         p_args = (spp_sdp_req_t *)args;
 
-        BTS2S_BD_ADDR bd_addr;
         bt_mac_t *mac_addr = p_args->mac_addr;
-        bt_addr_convert_to_bts((bd_addr_t *)mac_addr, &bd_addr);
-        ret = bt_interface_spp_client_sdp_search_req(&bd_addr, p_args->uuid, p_args->uuid_len);
+
+        ret = bt_interface_spp_client_sdp_search_req((bt_notify_device_mac_t *)mac_addr, p_args->uuid, p_args->uuid_len);
     }
     break;
 
@@ -109,10 +108,9 @@ bt_err_t bt_sifli_control_spp(struct rt_bt_device *bt_handle, int cmd, void *arg
 
         p_args = (spp_conn_req_t *)args;
 
-        BTS2S_BD_ADDR bd_addr;
         bt_mac_t *mac_addr = p_args->mac_addr;
-        bt_addr_convert_to_bts((bd_addr_t *)mac_addr, &bd_addr);
-        ret = bt_interface_spp_client_conn_req(&bd_addr, p_args->uuid, p_args->uuid_len);
+
+        ret = bt_interface_spp_client_conn_req((bt_notify_device_mac_t *)mac_addr, p_args->uuid, p_args->uuid_len);
     }
     break;
 #endif

@@ -1154,9 +1154,10 @@ bt_err_t bt_interface_spp_srv_send_file(bt_notify_device_mac_t *rmt_addr, U8 srv
 #endif
 
 #ifdef CFG_SPP_CLT
-bt_err_t bt_interface_spp_client_conn_req(BTS2S_BD_ADDR *bd_addr, U8 *uuid, U8 uuid_len)
+bt_err_t bt_interface_spp_client_conn_req(bt_notify_device_mac_t *rmt_addr, U8 *uuid, U8 uuid_len)
 {
     bt_err_t ret = BT_EOK;
+    BTS2S_BD_ADDR bd_addr;
 
     if (uuid == NULL)
     {
@@ -1172,14 +1173,16 @@ bt_err_t bt_interface_spp_client_conn_req(BTS2S_BD_ADDR *bd_addr, U8 *uuid, U8 u
         return ret;
     }
 
-    bt_spp_client_start_w4conn(bd_addr, uuid, uuid_len);
+    bt_addr_convert_to_bts((bd_addr_t *)rmt_addr, &bd_addr);
+    bt_spp_client_start_w4conn(&bd_addr, uuid, uuid_len);
 
     return ret;
 }
 
-bt_err_t bt_interface_spp_client_sdp_search_req(BTS2S_BD_ADDR *bd_addr, U8 *uuid, U8 uuid_len)
+bt_err_t bt_interface_spp_client_sdp_search_req(bt_notify_device_mac_t *rmt_addr, U8 *uuid, U8 uuid_len)
 {
     bt_err_t ret = BT_EOK;
+    BTS2S_BD_ADDR bd_addr;
 
     if (uuid == NULL)
     {
@@ -1195,7 +1198,8 @@ bt_err_t bt_interface_spp_client_sdp_search_req(BTS2S_BD_ADDR *bd_addr, U8 *uuid
         return ret;
     }
 
-    bt_spp_client_start_sdp_search(bd_addr, uuid, uuid_len);
+    bt_addr_convert_to_bts((bd_addr_t *)rmt_addr, &bd_addr);
+    bt_spp_client_start_sdp_search(&bd_addr, uuid, uuid_len);
 
     return ret;
 }

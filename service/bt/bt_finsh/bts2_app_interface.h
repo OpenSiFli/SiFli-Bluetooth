@@ -146,9 +146,9 @@ int8_t bt_interface_disconnect_req(unsigned char *mac);
  *                          device for the Simple pairing process
  * @param[in] mac           Remote device address
  * @param[in] io_capability    IO capability
- *             IO_CAPABILITY_DISPLAY_ONLY         Display Only 
+ *             IO_CAPABILITY_DISPLAY_ONLY         Display Only
  *             IO_CAPABILITY_DISPLAY_YES_NO,      Display Yes/No
- *             IO_CAPABILITY_KEYBOARD_ONLY,       Keyboard Only 
+ *             IO_CAPABILITY_KEYBOARD_ONLY,       Keyboard Only
  *             IO_CAPABILITY_NO_INPUT_NO_OUTPUT,  No Input/Output
  *             IO_CAPABILITY_REJECT_REQ           Use this to reject the IO capability request
  * @param[in] mitm          true, if MITM protection is required.
@@ -694,7 +694,7 @@ bt_err_t bt_interface_spp_srv_send_file(bt_notify_device_mac_t *rmt_addr, U8 srv
  * @return           The results of connect spp
  *
  **/
-bt_err_t bt_interface_spp_client_conn_req(BTS2S_BD_ADDR *bd_addr, U8 *uuid, U8 uuid_len);
+bt_err_t bt_interface_spp_client_conn_req(bt_notify_device_mac_t *rmt_addr, U8 *uuid, U8 uuid_len);
 
 /**
  * @brief            sdp inquiry spp by uuid and bd address
@@ -704,7 +704,7 @@ bt_err_t bt_interface_spp_client_conn_req(BTS2S_BD_ADDR *bd_addr, U8 *uuid, U8 u
  * @return           The results of sdp inquiry spp
  *
  **/
-bt_err_t bt_interface_spp_client_sdp_search_req(BTS2S_BD_ADDR *bd_addr, U8 *uuid, U8 uuid_len);
+bt_err_t bt_interface_spp_client_sdp_search_req(bt_notify_device_mac_t *rmt_addr, U8 *uuid, U8 uuid_len);
 #endif
 #endif
 /// @}  BT_SPP_SRV
