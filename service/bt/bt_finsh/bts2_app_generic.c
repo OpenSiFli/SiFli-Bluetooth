@@ -1340,9 +1340,11 @@ void bt_hdl_gap_msg(bts2_app_stru *bts2_app_data)
     {
         BTS2S_DEV_NAME d_name;
         BTS2S_DEV_NAME tmp;
+        BTS2S_EIR_DATA eir_data;
         BTS2S_GAP_DISCOV_RES_IND *msg;
         memset(d_name, 0, sizeof(d_name));
         memset(tmp, 0, sizeof(tmp));
+        memset(eir_data, 0, sizeof(eir_data));
 
         msg = (BTS2S_GAP_DISCOV_RES_IND *)bts2_app_data->recv_msg;
 
@@ -1354,12 +1356,16 @@ void bt_hdl_gap_msg(bts2_app_stru *bts2_app_data)
 #else
         strcpy((char *)tmp, (const char *)msg->dev_disp_name);
 #endif
+
+        bmemcpy((U8 *)eir_data, (const U8 *)msg->eir_data, sizeof(eir_data));
+
         bt_notify_remote_device_info_t remote_info;
         bmemset(&remote_info, 0, sizeof(bt_notify_remote_device_info_t));
         bt_addr_convert(&msg->bd, remote_info.mac.addr);
         strcpy((char *)remote_info.bt_name, (const char *)msg->dev_disp_name);
         remote_info.name_size = sizeof(remote_info.bt_name);
         remote_info.dev_cls = msg->dev_cls;
+        bmemcpy((U8 *)remote_info.eir_data, (const U8 *)msg->eir_data, sizeof(remote_info.eir_data));
         bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_DISCOVER_IND, &remote_info, sizeof(bt_notify_remote_device_info_t));
 
         if (bts2_app_data->inquiry_flag == TRUE)
@@ -1534,6 +1540,100 @@ void bt_hdl_gap_msg(bts2_app_stru *bts2_app_data)
         {
             USER_TRACE("<< Failed to write class of device!\n");
         }
+        break;
+    }
+    case BTS2MU_GAP_RD_RMT_EXT_FEATR_CFM:
+    {
+        BTS2S_GAP_RD_RMT_EXT_FEATR_CFM *msg;
+
+        msg = (BTS2S_GAP_RD_RMT_EXT_FEATR_CFM *)bts2_app_data->recv_msg;
+        USER_TRACE("res = %d,page_num = %d,max_page_num = %d\n", msg->res, msg->page_num, msg->max_page_num);
+        USER_TRACE("ext_lmp_featr[0] = 0x%x,ext_lmp_featr[1] = 0x%x,ext_lmp_featr[2] = 0x%x,ext_lmp_featr[3] = 0x%x\n",
+                   msg->ext_lmp_featr[0], msg->ext_lmp_featr[1], msg->ext_lmp_featr[2], msg->ext_lmp_featr[3]);
+        break;
+    }
+    case BTS2MU_GAP_RD_INQUIRY_RESP_CFM:
+    {
+        BTS2S_GAP_RD_EXT_INQUIRE_RESP_CFM *msg;
+
+        msg = (BTS2S_GAP_RD_EXT_INQUIRE_RESP_CFM *)bts2_app_data->recv_msg;
+
+        if (msg->res == BTS2_SUCC)
+        {
+            USER_TRACE("<< Read eir data success!\n");
+        }
+        else
+        {
+            USER_TRACE("<< Read eir data fail!\n");
+        }
+
+        bt_notify_rd_inquiry_resp_t inquiry_resp_info;
+        bmemset(&inquiry_resp_info, 0, sizeof(bt_notify_rd_inquiry_resp_t));
+        inquiry_resp_info.res = msg->res;
+        inquiry_resp_info.fec_required = msg->fec_required;
+        bmemcpy((U8 *)inquiry_resp_info.eir_data, (const U8 *)msg->eir_data, sizeof(inquiry_resp_info.eir_data));
+        bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_RD_INQUIRY_RESP_RSP, &inquiry_resp_info, sizeof(bt_notify_rd_inquiry_resp_t));
+        break;
+    }
+    case BTS2MU_GAP_WR_INQUIRY_RESP_CFM:
+    {
+        BTS2S_GAP_WR_EXT_INQUIRE_RESP_CFM *msg;
+
+        msg = (BTS2S_GAP_WR_EXT_INQUIRE_RESP_CFM *)bts2_app_data->recv_msg;
+
+        if (msg->res == BTS2_SUCC)
+        {
+            USER_TRACE("<< Write eir data success!\n");
+        }
+        else
+        {
+            USER_TRACE("<< Write eir data fail!\n");
+        }
+
+        bt_notify_common_res_info_t wr_inquiry_resp_info;
+        wr_inquiry_resp_info.res = msg->res;
+        bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_WR_INQUIRY_RESP_RSP, &wr_inquiry_resp_info, sizeof(bt_notify_common_res_info_t));
+        break;
+    }
+    case BTS2MU_GAP_WR_INQUIRY_MODE_CFM:
+    {
+        BTS2S_GAP_WR_INQUIRY_MODE_RESP_CFM *msg;
+
+        msg = (BTS2S_GAP_WR_INQUIRY_MODE_RESP_CFM *)bts2_app_data->recv_msg;
+
+        if (msg->res == BTS2_SUCC)
+        {
+            USER_TRACE("<< Write inquiry mode success!\n");
+        }
+        else
+        {
+            USER_TRACE("<< Write inquiry mode fail!\n");
+        }
+
+        bt_notify_common_res_info_t wr_inquiry_mode_info;
+        wr_inquiry_mode_info.res = msg->res;
+        bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_WR_INQUIRY_MODE_RSP, &wr_inquiry_mode_info, sizeof(bt_notify_common_res_info_t));
+        break;
+    }
+    case BTS2MU_GAP_RD_INQUIRY_MODE_CFM:
+    {
+        BTS2S_GAP_RD_INQUIRY_MODE_RESP_CFM *msg;
+
+        msg = (BTS2S_GAP_RD_INQUIRY_MODE_RESP_CFM *)bts2_app_data->recv_msg;
+
+        if (msg->res == BTS2_SUCC)
+        {
+            USER_TRACE("<< Read inquiry mode success %d!\n", msg->mode);
+        }
+        else
+        {
+            USER_TRACE("<< Read inquiry mode fail!\n");
+        }
+
+        bt_notify_rd_inquiry_mode_resp_t rd_inquiry_mode_info;
+        rd_inquiry_mode_info.res = msg->res;
+        rd_inquiry_mode_info.mode = msg->mode;
+        bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_RD_INQUIRY_MODE_RSP, &rd_inquiry_mode_info, sizeof(bt_notify_rd_inquiry_mode_resp_t));
         break;
     }
     case BTS2MU_GAP_RD_COD_CFM:

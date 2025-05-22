@@ -123,6 +123,8 @@ extern "C" {
 
 #define EXTERN_INQUIRY_RSP_LEN              0xF0
 
+#define MAX_EIR_DATA_LENGTH                 (240)
+
 #ifndef MAX_FRIENDLY_NAME_LEN
 //#define MAX_FRIENDLY_NAME_LEN               (247)
 #define MAX_FRIENDLY_NAME_LEN               (60)
@@ -134,6 +136,7 @@ typedef U16 BTS2_UUID;
 typedef U8 BTS2S_UUID_128[16];
 typedef U8 BTS2_LINKKEY[LINK_KEY_SIZE];
 typedef S8 BTS2S_DEV_NAME[MAX_FRIENDLY_NAME_LEN + 1];
+typedef U8 BTS2S_EIR_DATA[MAX_EIR_DATA_LENGTH];
 typedef U8 BTS2S_DB_FILE_PATH[DB_FILE_PATH];
 
 /* Major Service Classes */

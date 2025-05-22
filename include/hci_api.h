@@ -2745,6 +2745,7 @@ void hcia_hci_io_capability_request_reply(BTS2S_BD_ADDR *bd,
  * NOTE:
  *     none.
  *----------------------------------------------------------------------------*/
+void hcicm_send_hci_rd_ext_inpuire_resp(void);
 void hcia_wr_ext_inpuire_resp(U8 uflag, U8 *eir_data, U32 len);
 
 void hcia_hci_io_capability_req_neg_reply(BTS2S_BD_ADDR *bd, U8 reason, BTS2U_HCI_MSG **pmsg);

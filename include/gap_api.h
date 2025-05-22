@@ -84,6 +84,10 @@ enum
     BTS2MU_GAP_WR_LINK_POLICY_ERR_IND,
     BTS2MU_GAP_SDC_SVC_RECORD,
     BTS2MU_GAP_APP_INIT_CFM,
+    BTS2MU_GAP_RD_INQUIRY_RESP_CFM,
+    BTS2MU_GAP_WR_INQUIRY_RESP_CFM,
+    BTS2MU_GAP_WR_INQUIRY_MODE_CFM,
+    BTS2MU_GAP_RD_INQUIRY_MODE_CFM,
     GAP_MSG_NUM, // 0x8015
 
     BTS2MU_GAP_DISCOV_RES_IND = GAP_MSG_NUM,
@@ -153,6 +157,7 @@ typedef struct
     BTS2S_DEV_NAME    dev_disp_name;
     U8                device_service_len;
     U8                device_service[100];
+    U8                eir_data[240];
 } BTS2S_GAP_DISCOV_RES_IND;
 
 typedef struct
@@ -247,6 +252,16 @@ typedef struct
 {
     U16                 type;
     U8                  res;
+    U8                  page_num;
+    U8                  max_page_num;
+    U16                 ext_lmp_featr[4];
+    BTS2S_BD_ADDR       bd;
+} BTS2S_GAP_RD_RMT_EXT_FEATR_CFM;
+
+typedef struct
+{
+    U16                 type;
+    U8                  res;
 } BTS2S_GAP_WR_COD_CFM;
 
 typedef struct
@@ -255,6 +270,33 @@ typedef struct
     U8              res;
     U24             dev_cls;
 } BTS2S_GAP_RD_COD_CFM;
+
+typedef struct
+{
+    U16             type;
+    U8              res;
+    U8              fec_required;
+    U8              eir_data[240];
+} BTS2S_GAP_RD_EXT_INQUIRE_RESP_CFM;
+
+typedef struct
+{
+    U16             type;
+    U8              res;
+} BTS2S_GAP_WR_EXT_INQUIRE_RESP_CFM;
+
+typedef struct
+{
+    U16             type;
+    U8              res;
+    U8              mode;
+} BTS2S_GAP_RD_INQUIRY_MODE_RESP_CFM;
+
+typedef struct
+{
+    U16             type;
+    U8              res;
+} BTS2S_GAP_WR_INQUIRY_MODE_RESP_CFM;
 
 typedef struct
 {
@@ -909,6 +951,9 @@ void gap_rd_link_policy_req(U16 app_hdl, BTS2S_BD_ADDR bd);
 void gap_user_passkey_request_reply(U8 bFlag, BTS2S_BD_ADDR *bd, U32 passky_val);
 void gap_rmt_oob_data_request_reply(U8 bFlag, BTS2S_BD_ADDR *bd, U8 *hash_c, U8 *rand_r);
 void gap_wr_eir_req(U8 uflag, U8 *eir_data, U32 len);
+void gap_rd_eir_req(void);
+void gap_wr_inquiry_mode_req(U8 mode);
+void gap_rd_inquiry_mode_req(void);
 
 
 /*----------------------------------------------------------------------------*

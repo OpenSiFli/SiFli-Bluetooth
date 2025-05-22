@@ -133,6 +133,14 @@ typedef enum
     BT_NOTIFY_COMMON_USER_CONFIRM_IND,
     ///  receive io capability request event
     BT_NOTIFY_COMMON_IO_CAPABILITY_IND,
+    /// read local device inquiry response event
+    BT_NOTIFY_COMMON_RD_INQUIRY_RESP_RSP,
+    /// write local device inquiry response event
+    BT_NOTIFY_COMMON_WR_INQUIRY_RESP_RSP,
+    /// write inquiry mode response event
+    BT_NOTIFY_COMMON_WR_INQUIRY_MODE_RSP,
+    /// write inquiry mode response event
+    BT_NOTIFY_COMMON_RD_INQUIRY_MODE_RSP,
 } bt_notify_common_event_id_t;
 
 ///  these type are BT_NOTIFY_HFP_HF event id
@@ -385,6 +393,8 @@ typedef struct
     uint8_t name_size;
     ///  remote device name,utf8
     char bt_name[BT_NOTIFY_MAX_FRIENDLY_NAME_LEN + 1];
+    /// remote device EIR data
+    uint8_t eir_data[240];
 } bt_notify_remote_device_info_t;
 
 ///  bt read remote device name information
@@ -397,6 +407,33 @@ typedef struct
     /// remote device name
     char bt_name[BT_NOTIFY_MAX_FRIENDLY_NAME_LEN + 1];
 } bt_notify_rmt_name_t;
+
+///  bt read local device EIR data
+typedef struct
+{
+    ///  read local device EIR data result
+    uint8_t res;
+    ///  fec_required
+    uint8_t fec_required;
+    /// local device EIR data
+    uint8_t eir_data[240];
+} bt_notify_rd_inquiry_resp_t;
+
+///  bt read inquiry mode response event
+typedef struct
+{
+    ///  reason
+    uint8_t res;
+    ///  inquiry mode
+    uint8_t mode;
+} bt_notify_rd_inquiry_mode_resp_t;
+
+///  bt common response event
+typedef struct
+{
+    ///  reason
+    uint8_t res;
+} bt_notify_common_res_info_t;
 
 ///  bt remote device acl connection state base information
 typedef struct

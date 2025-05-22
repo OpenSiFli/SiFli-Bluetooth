@@ -3974,6 +3974,8 @@ typedef struct
 
     U8 device_service_len;
     U8 device_service[100];
+
+    U8 eir_data[240];
 } BTS2S_HCI_EV_EXT_INQ_RESPONSE;
 
 typedef struct
@@ -4857,6 +4859,8 @@ typedef enum BTS2E_DM_MSG_TAG
     ENUM_DM_HCI_WR_PAGE_SCAN_TYPE_COMP,
     ENUM_DM_HCI_RD_AFH_CHNL_CLS_M_COMP,
     ENUM_DM_HCI_WR_AFH_CHNL_CLS_M_COMP,
+    ENUM_DM_HCI_WR_EXT_INQUIRE_RESP_M_COMP,
+    ENUM_DM_HCI_RD_EXT_INQUIRE_RESP_M_COMP,
 
     ENUM_DM_HCI_RD_LOCAL_EXT_FEATR_COMP,
     ENUM_DM_HCI_RD_AFH_CHNL_MAP_COMP,
@@ -8182,6 +8186,23 @@ typedef struct
     U8 st; /* succ or fail */
 } BTS2S_DM_HCI_WR_AFH_CHNL_CLS_M_COMP;
 
+#define DM_HCI_WR_EXT_INQUIRE_RESP_M_COMP ((U16)(ENUM_DM_HCI_WR_EXT_INQUIRE_RESP_M_COMP))
+typedef struct
+{
+    U16 type; /* BTS2S_DM_HCI_WR_EXT_INQUIRE_RESP_M_COMP */
+    U16 phdl; /* dest phdl */
+    U8 st; /* succ or fail */
+} BTS2S_DM_HCI_WR_EXT_INQUIRE_RESP_M_COMP;
+
+#define DM_HCI_RD_EXT_INQUIRE_RESP_M_COMP ((U16)(ENUM_DM_HCI_RD_EXT_INQUIRE_RESP_M_COMP))
+typedef struct
+{
+    U16 type; /* BTS2S_DM_HCI_WR_EXT_INQUIRE_RESP_M_COMP */
+    U16 phdl; /* dest phdl */
+    U8 st; /* succ or fail */
+    U8 fec_req_flag;
+    U8 ext_inquiry_resp[240];
+} BTS2S_DM_HCI_RD_EXT_INQUIRE_RESP_M_COMP;
 
 typedef BTS2S_HCI_RD_LOCAL_EXT_FEATR DMHCI_RD_LOCAL_EXT_FEATR;
 #define DM_HCI_RD_LOCAL_EXT_FEATR ((U16)(ENUM_DM_HCI_RD_LOCAL_EXT_FEATR))

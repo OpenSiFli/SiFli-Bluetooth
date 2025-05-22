@@ -85,6 +85,34 @@ void bt_interface_close_bt(void);
 void bt_interface_start_inquiry(void);
 
 /**
+ * @brief           Read local device EIR data
+ *
+ **/
+void bt_interface_read_eir_data(void);
+
+/**
+ * @brief           Write inquiry mode request
+ * @param[in] mode  Inquiry mode
+ *
+ **/
+void bt_interface_wr_inquiry_mode(U8 mode);
+
+/**
+ * @brief           Read inquiry mode request
+ *
+ **/
+void bt_interface_rd_inquiry_mode(void);
+
+/**
+ * @brief           Read local device EIR data
+ * @param[in] fec_required  fec_required mode
+ * @param[in] size_eir_data  the size of EIR data
+ * @param[in] eir_data  EIR data
+ *
+ **/
+void bt_interface_set_eir_data(U8 fec_required, U8 size_eir_data, U8 *eir_data);
+
+/**
  * @brief           Start device discovery/inquiry with more parameters
  * @param[in] param Parameters for inquiry condition
  *

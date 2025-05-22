@@ -341,6 +341,34 @@ void bt_interface_set_local_name(int len, void *data)
     }
 }
 
+void bt_interface_read_eir_data(void)
+{
+    gap_rd_eir_req();
+}
+
+void bt_interface_set_eir_data(U8 fec_required, U8 size_eir_data, U8 *eir_data)
+{
+    if (size_eir_data <= MAX_EIR_DATA_LENGTH)
+    {
+        USER_TRACE("set eir data len %d\n", size_eir_data);
+        gap_wr_eir_req(fec_required, eir_data, size_eir_data);
+    }
+    else
+    {
+        USER_TRACE("eir data too long\n");
+    }
+}
+
+void bt_interface_wr_inquiry_mode(U8 mode)
+{
+    gap_wr_inquiry_mode_req(mode);
+}
+
+void bt_interface_rd_inquiry_mode(void)
+{
+    gap_rd_inquiry_mode_req();
+}
+
 int8_t bt_interface_cancel_connect_req(unsigned char *mac)
 {
     BTS2S_BD_ADDR bd_addr;
