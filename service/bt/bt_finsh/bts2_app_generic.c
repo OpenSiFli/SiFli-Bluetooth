@@ -659,99 +659,26 @@ void bt_get_rssi(bts2_app_stru *bts2_app_data)
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_wr_link_policy(bts2_app_stru *bts2_app_data)
+void bt_wr_link_policy(BTS2S_BD_ADDR *bd, uint16_t link_policy_mode)
 {
-    char *delim = " ";
-    char *p;
-    char c;
 
-    U16 the_link_policy_setting;
-    BTS2S_SNIFF_SETTINGS the_bts2s_sniff_setting;
-
-    U8 setup_link_policy_setting;
-
-#ifdef BTS2_APP_MENU
-    memset(&the_bts2s_sniff_setting, 0, sizeof(BTS2S_PARK_SETTINGS));
-
-    if (bts2_app_data->input_str_len < 8)
-    {
-        INFO_TRACE(" -- please input more pars!\n");
-        bts2_app_data->menu_id = menu_gen_8;
-        bt_disply_menu(bts2_app_data);
-    }
-    else
-    {
-        p = strtok((char *)bts2_app_data->input_str, delim);
-        the_link_policy_setting = (U16)strtol(p, NULL, 16);
-
-
-        p = strtok(NULL, delim);
-        the_bts2s_sniff_setting.max_intvl = (U16)strtol(p, NULL, 16);
-        p = strtok(NULL, delim);
-        the_bts2s_sniff_setting.min_intvl = (U16)strtol(p, NULL, 16);
-        p = strtok(NULL, delim);
-        the_bts2s_sniff_setting.attmpt = (U16)strtol(p, NULL, 16);
-        p = strtok(NULL, delim);
-        the_bts2s_sniff_setting.timeout = (U16)strtol(p, NULL, 16);
-
-
-        p = strtok(NULL, delim);
-        c = p[0];
-
-        switch (c)
-        {
-        case 'y':
-        case 'Y':
-            setup_link_policy_setting = TRUE;
-            break;
-        case 'N':
-        case 'n':
-            setup_link_policy_setting = FALSE;
-            break;
-        default:
-            setup_link_policy_setting = TRUE;
-            break;
-        }
-        gap_wr_link_policy_req(bts2_app_data->phdl,
-                               bts2_app_data->pair_bd,
-                               the_link_policy_setting,
-                               setup_link_policy_setting,
-                               NULL,
-                               NULL);
-        bts2_app_data->menu_id = menu_gen_8;
-    }
-#endif //BTS2_APP_MENU
+    // gap_wr_link_policy_req(bts2_task_get_app_task_id(),
+    //                    *bd,
+    //                    link_policy_mode,
+    //                    TRUE,
+    //                    NULL,
+    //                    NULL);
+    hcia_wr_lp_settings(bd, link_policy_mode, NULL);
 }
 
-
-
-void bt_etner_sniff_mode(bts2_app_stru *bts2_app_data)
+void bt_etner_sniff_mode(BTS2S_BD_ADDR *bd, uint16_t interval, uint16_t attmpt)
 {
-    // char *delim = "_";
-    // char *p;
-
-    // p = strtok((char *)bts2_app_data->input_str, delim);
-    // U16 max_intvl = (U16)strtol(p, NULL, 16);
-    // p = strtok(NULL, delim);
-    // U16 min_intvl = (U16)strtol(p, NULL, 16);
-    // p = strtok(NULL, delim);
-    // U16 attmpt = (U16)strtol(p, NULL, 16);
-    // p = strtok(NULL, delim);
-    // U16 timeout = (U16)strtol(p, NULL, 16);
-
-    // USER_TRACE("mx inv %d, min inv %d, attmpt %d, timeout %d\n", max_intvl, min_intvl, attmpt, timeout);
-    // USER_TRACE("sniff addr %x-%x-%x\n", bts2_app_data->last_conn_bd.lap, bts2_app_data->last_conn_bd.uap, bts2_app_data->last_conn_bd.nap);
-    // hcia_sniff_mode(&bts2_app_data->last_conn_bd, max_intvl, min_intvl, attmpt, timeout, NULL);
-
-    // bts2_app_data->menu_id = menu_gen_8;
-
-    hcia_sniff_mode(&bts2_app_data->last_conn_bd, 800, 800, 1, 1, NULL);
+    hcia_sniff_mode(bd, interval, interval, attmpt, 1, NULL);
 }
 
-void bt_exit_sniff_mode(bts2_app_stru *bts2_app_data)
+void bt_exit_sniff_mode(BTS2S_BD_ADDR *bd)
 {
-    hcia_exit_sniff_mode(&bts2_app_data->last_conn_bd, NULL);
-    // bts2_app_data->menu_id = menu_gen_8;
+    hcia_exit_sniff_mode(bd, NULL);
 }
 
 /*----------------------------------------------------------------------------*

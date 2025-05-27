@@ -136,7 +136,7 @@ U8 bts2s_sds_hid_device_svc_record_mid_keyboard[] =
     0x05, 0x01,      // USAGE_PAGE (Generic Desktop)
     0x09, 0x06,      //# USAGE (Keyboard)
     0xa1, 0x01,      //# COLLECTION (Application)
-    0x85, 0x01,      //#     REPORT_ID (1)
+    0x85, HID_KEYBOARD_REPORT_ID,      //#     REPORT_ID (1)
     0x75, 0x01,      //#     Report Size (1)
     0x95, 0x08,      //#     Report Count (8)
     0x05, 0x07,      //#     Usage Page (Key Codes)
@@ -166,6 +166,69 @@ U8 bts2s_sds_hid_device_svc_record_mid_keyboard[] =
     0x29, 0x65,      //#     Usage Maximum (101)
     0x81, 0x00,      //#     Input (Data, Array); Key array (6 bytes)
     0xc0             //# END_COLLECTION
+};
+
+U8 bts2s_sds_hid_device_svc_record_mid_controller[] =
+{
+    /* HIDDescriptorList */
+    0x09, 0x02, 0x06, /* HIDDescriptorList */
+    0x35, 0x69,
+    0x35, 0x67,
+    0x08, 0x22,
+    0x25, 0x63,
+
+    0x05, 0x01,      // USAGE_PAGE (Generic Desktop)
+    0x09, 0x06,      //# USAGE (Keyboard)
+    0xa1, 0x01,      //# COLLECTION (Application)
+    0x85, HID_CONTROLLER_REPORT_ID,      //#     REPORT_ID (4)
+    0x05, 0x07,      //#     Usage Page (Key Codes)
+    0x19, 0xE0,      //#     Usage Minimum (224)
+    0x29, 0xE7,      //#     Usage Maximum (231)
+    0x15, 0x00,      //#     Logical Minimum (0)
+    0x25, 0x01,      //#     Logical Maximum (1)
+    0x75, 0x01,      //#     Report Size (1)
+    0x95, 0x08,      //#     Report Count (8)
+    0x81, 0x02,      //#     Input (Data, Variable, Absolute); Modifier byte
+    0x95, 0x06,      //#     Report Count (6)
+    0x75, 0x08,      //#     Report Size (8)
+    0x15, 0x00,      //#     Logical Minimum (0)
+    0x25, 0x65,      //#     Logical Maximum (101)
+    0x05, 0x07,      //#     Usage Page (Key Codes)
+    0x19, 0x00,      //#     Usage Minimum (0)
+    0x29, 0x65,      //#     Usage Maximum (101)
+    0x81, 0x00,      //#     Input (Data, Array,Absolute); Modifier byte
+    0xc0,            //# END_COLLECTION
+
+    0x05, 0x0C,       // Usage Page (Consumer)
+    0x09, 0x01,       //Usage (Consumer Control)
+    0xA1, 0x01,       //Collection (Application)
+    0x85, HID_CONSUMER_REPORT_ID,       //    Report Id (3)
+    0x15, 0x00,       //    Logical minimum (0)
+    0x26, 0xff, 0x03,       //    Logical maximum (1023)
+    0x19, 0x00,      //#     Usage Minimum (0)
+    0x2a, 0xff, 0x03,     //#     Usage Maximum (1023)
+    0x75, 0x10,      //#     Report Size (16)
+    0x95, 0x03,      //#     Report Count (3)
+    0x81, 0x00,      //#     Input (Data, Array,Absolute); Modifier byte
+    0xc0,            //# END_COLLECTION
+
+    0x05, 0x01,      // USAGE_PAGE (Generic Desktop)
+    0x09, 0x80,       //Usage (System Control)
+    0xA1, 0x01,       //Collection (Application)
+    0x85, HID_SYSTEM_CONTROL_REPORT_ID,       //    Report Id (5)
+    0x05, 0x0C,       // Usage Page (Consumer)
+    0x09, 0x81,       //Usage (Assign Selection)
+    0x09, 0x83,       //Usage (Recall Last)
+    0x09, 0x82,       //Usage (Mode Step)
+    0x15, 0x00,      //#     Logical Minimum (0)
+    0x25, 0x01,      //#     Logical Maximum (1)
+    0x75, 0x01,      //#     Report Size (1)
+    0x95, 0x03,      //#     Report Count (3)
+    0x81, 0x02,      //#     Input (Data, Variable,Absolute); Modifier byte
+    0x75, 0x01,      //#     Report Size (1)
+    0x95, 0x05,      //#     Report Count (5)
+    0x81, 0x03,      //#     Input (Constant, Variable,Absolute); Modifier byte
+    0xc0,            //# END_COLLECTION
 };
 
 
@@ -263,6 +326,7 @@ __WEAK void bt_hid_cmpose_hid_descriptor(void)
 {
     //!The sdk provides hid descriptors for mouse, keyboard, consumer and touch by default, and customers can call bt_hid_add_descriptor to add an hid descriptor as needed
     bt_hid_add_descriptor(bts2s_sds_hid_device_svc_record_mid_mouse, sizeof(bts2s_sds_hid_device_svc_record_mid_mouse));
+    // bt_hid_add_descriptor(bts2s_sds_hid_device_svc_record_mid_controller, sizeof(bts2s_sds_hid_device_svc_record_mid_controller));
     // bt_hid_add_descriptor(bts2s_sds_hid_device_svc_record_mid_keyboard, sizeof(bts2s_sds_hid_device_svc_record_mid_keyboard));
     bt_hid_add_descriptor(bts2s_sds_hid_device_svc_record_mid_consumer, sizeof(bts2s_sds_hid_device_svc_record_mid_consumer));
     // bt_hid_add_descriptor(bts2s_sds_hid_device_svc_record_mid_touch,sizeof(bts2s_sds_hid_device_svc_record_mid_touch));
@@ -1850,6 +1914,12 @@ void bt_hid_consumer_report_reset(bts2_app_stru *bts2_app_data)
 void bt_hid_consumer_report_play_status(bts2_app_stru *bts2_app_data)
 {
     //todo
+    hid_msg_consumer_t consumer_msg = {0};
+
+    consumer_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
+    consumer_msg.report_id = HID_CONSUMER_REPORT_ID;
+    consumer_msg.consumer = 0x01;
+    hid_send_report_req(bts2_app_data->phdl, sizeof(consumer_msg), (U8 *)&consumer_msg, TRUE);
 }
 
 
@@ -1939,6 +2009,80 @@ void bt_hid_consumer_report_back_track(bts2_app_stru *bts2_app_data)
     consumer_msg.report_id = HID_CONSUMER_REPORT_ID;
     consumer_msg.consumer = 0x08;
     hid_send_report_req(bts2_app_data->phdl, sizeof(consumer_msg), (U8 *)&consumer_msg, TRUE);
+}
+
+void bt_hid_controller_report_right_arrow(bts2_app_stru *bts2_app_data)
+{
+    if (bts2_app_data->hid_inst.mode == SNIFF_MODE)
+    {
+        USER_TRACE("[U-L]hid exit sniff mode before send report\n");
+        hcia_exit_sniff_mode(&bts2_app_data->hid_inst.rmt_bd, NULL);
+    }
+
+    hid_msg_controller_t controller_msg = {0};
+
+    controller_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
+    controller_msg.report_id = HID_CONTROLLER_REPORT_ID;
+    controller_msg.standardkey1 = 0x4f;
+    hid_send_report_req(bts2_app_data->phdl, sizeof(controller_msg), (U8 *)&controller_msg, TRUE);
+}
+
+void bt_hid_controller_report_left_arrow(bts2_app_stru *bts2_app_data)
+{
+    if (bts2_app_data->hid_inst.mode == SNIFF_MODE)
+    {
+        USER_TRACE("[U-L]hid exit sniff mode before send report\n");
+        hcia_exit_sniff_mode(&bts2_app_data->hid_inst.rmt_bd, NULL);
+    }
+
+    hid_msg_controller_t controller_msg = {0};
+
+    controller_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
+    controller_msg.report_id = HID_CONTROLLER_REPORT_ID;
+    controller_msg.standardkey1 = 0x50;
+    hid_send_report_req(bts2_app_data->phdl, sizeof(controller_msg), (U8 *)&controller_msg, TRUE);
+}
+
+void bt_hid_controller_report_up_arrow(bts2_app_stru *bts2_app_data)
+{
+    if (bts2_app_data->hid_inst.mode == SNIFF_MODE)
+    {
+        USER_TRACE("[U-L]hid exit sniff mode before send report\n");
+        hcia_exit_sniff_mode(&bts2_app_data->hid_inst.rmt_bd, NULL);
+    }
+
+    hid_msg_controller_t controller_msg = {0};
+
+    controller_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
+    controller_msg.report_id = HID_CONTROLLER_REPORT_ID;
+    controller_msg.standardkey1 = 0x52;
+    hid_send_report_req(bts2_app_data->phdl, sizeof(controller_msg), (U8 *)&controller_msg, TRUE);
+}
+
+void bt_hid_controller_report_down_arrow(bts2_app_stru *bts2_app_data)
+{
+    if (bts2_app_data->hid_inst.mode == SNIFF_MODE)
+    {
+        USER_TRACE("[U-L]hid exit sniff mode before send report\n");
+        hcia_exit_sniff_mode(&bts2_app_data->hid_inst.rmt_bd, NULL);
+    }
+
+    hid_msg_controller_t controller_msg = {0};
+
+    controller_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
+    controller_msg.report_id = HID_CONTROLLER_REPORT_ID;
+    controller_msg.standardkey1 = 0x51;
+    hid_send_report_req(bts2_app_data->phdl, sizeof(controller_msg), (U8 *)&controller_msg, TRUE);
+}
+
+
+void bt_hid_controller_report_reset(bts2_app_stru *bts2_app_data)
+{
+    hid_msg_controller_t controller_msg = {0};
+
+    controller_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
+    controller_msg.report_id = HID_CONTROLLER_REPORT_ID;
+    hid_send_report_req(bts2_app_data->phdl, sizeof(controller_msg), (U8 *)&controller_msg, TRUE);
 }
 
 

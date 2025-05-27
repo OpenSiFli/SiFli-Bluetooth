@@ -346,11 +346,10 @@ int ble_hrpc_ble_event_handler(uint16_t event_id, uint8_t *data, uint16_t len, u
             if (!memcmp(chara->uuid, &heart_rate_char_uuid, chara->uuid_len))
             {
                 LOG_I("heart_rate received, att handle(%x), des handle(%x)", chara->attr_hdl, chara->desc[0].attr_hdl);
-                RT_ASSERT(chara->desc_count == 1);
                 env->heart_rate_char.attr_hdl = chara->attr_hdl;
                 env->heart_rate_char.value_hdl = chara->pointer_hdl;
                 env->heart_rate_char.prop = chara->prop;
-                env->heart_rate_char.cccd_hdl = chara->desc[0].attr_hdl;
+                env->heart_rate_char.cccd_hdl = sibles_descriptor_handle_find(chara, ATT_DESC_CLIENT_CHAR_CFG);
                 env->heart_rate_char.enabled = 1;
             }
             else if (!memcmp(chara->uuid, &body_char_uuid, chara->uuid_len))

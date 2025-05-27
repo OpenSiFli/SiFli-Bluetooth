@@ -1,39 +1,48 @@
+/**
+  ******************************************************************************
+  * @file   bt_lwip.h
+  * @author Sifli software development team
+  ******************************************************************************
+*/
 /*
- * Copyright (c) 2006-2018, RT-Thread Development Team
+ * @attention
+ * Copyright (c) 2023 - 2025,  Sifli Technology
  *
- * SPDX-License-Identifier: Apache-2.0
+ * All rights reserved.
  *
- * Change Logs:
- * Date           Author       Notes
- * 2018-08-14     tyx          the first version
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form, except as embedded into a Sifli integrated circuit
+ *    in a product or a software update for such product, must reproduce the above
+ *    copyright notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of Sifli nor the names of its contributors may be used to endorse
+ *    or promote products derived from this software without specific prior written permission.
+ *
+ * 4. This software, with or without modification, must only be used with a
+ *    Sifli integrated circuit.
+ *
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ *
+ * THIS SOFTWARE IS PROVIDED BY SIFLI TECHNOLOGY "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL SIFLI TECHNOLOGY OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
-
 #ifndef __BT_LWIP_H__
 #define __BT_LWIP_H__
-
-//#include "bt_prot.h"
-/*
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-static void rt_bt_lwip_event_handle(struct rt_bt_prot *port, struct rt_bt_pan_instance* bt_instance, int event);
-BTS2S_ETHER_ADDR bt_pan_get_remote_mac_address(struct rt_bt_pan_instance* bt_instance);
-BTS2S_ETHER_ADDR bt_pan_get_mac_address(struct rt_bt_pan_instance* bt_instance, void*args);
-static rt_err_t rt_bt_lwip_protocol_control(rt_device_t device, int cmd,void* args);
-static rt_err_t rt_bt_lwip_protocol_recv(struct rt_bt_pan_instance* bt_instance, void *buff, int len);
-static rt_err_t rt_bt_lwip_protocol_send(rt_device_t device, struct pbuf *p);
-static struct rt_bt_prot *rt_bt_lwip_protocol_register(struct rt_bt_prot *prot, struct rt_bt_pan_instance* bt_instance);
-static void rt_bt_lwip_protocol_unregister(struct rt_bt_prot *prot);
-int rt_bt_lwip_init(void);
-extern BTS2S_ETHER_ADDR bd2etheraddr (const BTS2S_BD_ADDR *bd);
-
-
-*/
-
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

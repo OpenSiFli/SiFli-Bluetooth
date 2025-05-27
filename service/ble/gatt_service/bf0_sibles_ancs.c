@@ -668,13 +668,15 @@ int ble_ancs_ble_event_handler(uint16_t event_id, uint8_t *data, uint16_t len, u
             if (!memcmp(chara->uuid, ancs_noti_src_uuid, chara->uuid_len))
             {
                 LOG_I("noti_uuid received, att handle(%x), des handle(%x)", chara->attr_hdl, chara->desc[0].attr_hdl);
-                if (chara->desc_count != 1)
-                    break;
                 env->noti_src_char.attr_hdl = chara->attr_hdl;
                 env->noti_src_char.value_hdl = chara->pointer_hdl;
                 env->noti_src_char.prop = chara->prop;
-                env->noti_src_char.cccd_hdl = chara->desc[0].attr_hdl;
-                noti_src_check = 1;
+                env->noti_src_char.cccd_hdl = sibles_descriptor_handle_find(chara, ATT_DESC_CLIENT_CHAR_CFG);
+
+                if (env->noti_src_char.cccd_hdl != 0)
+                {
+                    noti_src_check = 1;
+                }
             }
             else if (!memcmp(chara->uuid, ancs_controlp_uuid, chara->uuid_len))
             {
@@ -686,13 +688,15 @@ int ble_ancs_ble_event_handler(uint16_t event_id, uint8_t *data, uint16_t len, u
             else if (!memcmp(chara->uuid, ancs_data_src_uuid, chara->uuid_len))
             {
                 LOG_I("data src received, att handle(%x), des handle(%x)", chara->attr_hdl, chara->desc[0].attr_hdl);
-                if (chara->desc_count != 1)
-                    break;
                 env->data_src_char.attr_hdl = chara->attr_hdl;
                 env->data_src_char.value_hdl = chara->pointer_hdl;
                 env->data_src_char.prop = chara->prop;
-                env->data_src_char.cccd_hdl = chara->desc[0].attr_hdl;
-                data_src_check = 1;
+                env->data_src_char.cccd_hdl = sibles_descriptor_handle_find(chara, ATT_DESC_CLIENT_CHAR_CFG);
+
+                if (env->data_src_char.cccd_hdl != 0)
+                {
+                    data_src_check = 1;
+                }
             }
             offset = sizeof(sibles_svc_search_char_t) + chara->desc_count * sizeof(struct sibles_disc_char_desc_ind);
             chara = (sibles_svc_search_char_t *)((uint8_t *)chara + offset);

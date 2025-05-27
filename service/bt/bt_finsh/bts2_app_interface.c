@@ -386,10 +386,18 @@ void bt_interface_rd_local_bd_addr(void)
     gap_rd_local_bd_req(bts2_app_data->phdl);
 }
 
-void bt_interface_exit_sniff_mode(void)
+void bt_interface_exit_sniff_mode(unsigned char *mac)
 {
-    bts2_app_stru *bts2_app_data = bts2g_app_p;
-    bt_exit_sniff_mode(bts2_app_data);
+    BTS2S_BD_ADDR bd_addr;
+    bt_addr_convert_to_bts((bd_addr_t *)mac, &bd_addr);
+    bt_exit_sniff_mode(&bd_addr);
+}
+
+void bt_interface_wr_link_policy_setting(unsigned char *mac, uint16_t link_policy_mode)
+{
+    BTS2S_BD_ADDR bd_addr;
+    bt_addr_convert_to_bts((bd_addr_t *)mac, &bd_addr);
+    bt_wr_link_policy(&bd_addr, link_policy_mode);
 }
 
 void bt_interface_rd_local_rssi(unsigned char *mac)
@@ -853,40 +861,98 @@ void bt_interface_set_hid_device(U8 is_ios)
     bt_hid_set_ios_device(is_ios);
 }
 
-void bt_interface_phone_drag_up(void)
+void bt_interface_hid_mouse_move(S16 dx, S16 dy)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    bt_hid_mouse_move(bts2_app_data, dx, dy);
+}
+
+void bt_interface_hid_mouse_drag_up(void)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
     bt_hid_mouse_drag_page_up(bts2_app_data);
 }
 
-void bt_interface_phone_drag_down(void)
+void bt_interface_hid_mouse_drag_down(void)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
     bt_hid_mouse_drag_page_down(bts2_app_data);
 }
 
-void bt_interface_phone_once_click(void)
+void bt_interface_hid_mouse_once_left_click(void)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
     bt_hid_mouse_left_click(bts2_app_data);
 }
 
-void bt_interface_phone_double_click(void)
+void bt_interface_hid_mouse_double_left_click(void)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
     bt_hid_mouse_left_double_click(bts2_app_data);
 }
 
-void bt_interface_phone_take_picture(void)
+void bt_interface_hid_consumer_take_picture(void)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
     bt_hid_consumer_report_volume_up(bts2_app_data);
 }
 
-void bt_interface_phone_volume_down(void)
+void bt_interface_hid_consumer_volume_up(void)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    bt_hid_consumer_report_volume_up(bts2_app_data);
+}
+
+void bt_interface_hid_consumer_volume_down(void)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
     bt_hid_consumer_report_volume_down(bts2_app_data);
+}
+
+void bt_interface_hid_consumer_play_status_change(void)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    bt_hid_consumer_report_play_status(bts2_app_data);
+}
+
+void bt_interface_hid_consumer_next_track(void)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    bt_hid_consumer_report_next_track(bts2_app_data);
+}
+
+void bt_interface_hid_consumer_prev_track(void)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    bt_hid_consumer_report_back_track(bts2_app_data);
+}
+
+void bt_interface_controller_report_right_arrow(void)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    bt_hid_controller_report_right_arrow(bts2_app_data);
+    bt_hid_controller_report_reset(bts2_app_data);
+}
+
+void bt_interface_controller_report_left_arrow(void)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    bt_hid_controller_report_left_arrow(bts2_app_data);
+    bt_hid_controller_report_reset(bts2_app_data);
+}
+
+void bt_interface_controller_report_up_arrow(void)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    bt_hid_controller_report_up_arrow(bts2_app_data);
+    bt_hid_controller_report_reset(bts2_app_data);
+}
+
+void bt_interface_controller_report_down_arrow(void)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    bt_hid_controller_report_down_arrow(bts2_app_data);
+    bt_hid_controller_report_reset(bts2_app_data);
 }
 
 void bt_interface_add_hid_descriptor(U8 *data, U8 len)
@@ -1174,6 +1240,7 @@ bt_err_t bt_interface_spp_client_conn_req(bt_notify_device_mac_t *rmt_addr, U8 *
     }
 
     bt_addr_convert_to_bts((bd_addr_t *)rmt_addr, &bd_addr);
+
     bt_spp_client_start_w4conn(&bd_addr, uuid, uuid_len);
 
     return ret;

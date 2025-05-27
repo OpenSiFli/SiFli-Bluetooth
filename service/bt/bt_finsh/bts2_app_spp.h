@@ -407,6 +407,11 @@ void bt_spp_srv_esc_file_transfer(bts2_app_stru *bts2_app_data, U8 spp_id);
  *      none.
  *
  *----------------------------------------------------------------------------*/
+#ifdef CFG_SPP_LOOPBACK
+void bt_spp_set_spp_data_loopback_enable(BOOL enable);
+BOOL bt_spp_get_spp_data_loopback_enable(void);
+#endif
+
 void bt_spp_data_ind_hdl(bts2_app_stru *bts2_app_data);
 
 

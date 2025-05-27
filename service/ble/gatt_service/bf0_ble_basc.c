@@ -247,10 +247,7 @@ int ble_basc_ble_event_handler(uint16_t event_id, uint8_t *data, uint16_t len, u
                 env->bat_lev.attr_hdl = chara->attr_hdl;
                 env->bat_lev.value_hdl = chara->pointer_hdl;
                 env->bat_lev.prop = chara->prop;
-                if (chara->desc_count == 1)
-                {
-                    env->bat_lev.cccd_hdl = chara->desc[0].attr_hdl;
-                }
+                env->bat_lev.cccd_hdl = sibles_descriptor_handle_find(chara, ATT_DESC_CLIENT_CHAR_CFG);
                 env->bat_lev.enabled = 1;
             }
 

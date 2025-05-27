@@ -190,7 +190,14 @@ void bt_interface_rd_local_bd_addr(void);
  * @brief            exit sniff mode
  *
  **/
-void bt_interface_exit_sniff_mode(void);
+void bt_interface_exit_sniff_mode(unsigned char *mac);
+
+/**
+ * @brief            write link policy setting mode
+ * @param[in] mac    Remote device address
+ * @param[in] link_policy_mode   want to enable link policy mode
+ **/
+void bt_interface_wr_link_policy_setting(unsigned char *mac, uint16_t link_policy_mode);
 
 /**
  * @brief            Read rssi with the specified device
@@ -527,40 +534,96 @@ void bt_interface_close_hid(void);
 void bt_interface_set_hid_device(U8 is_ios);
 
 /**
+ * @brief            hid mouse move once
+ * @param[in] dx     X direction offset
+ * @param[in] dx     y direction offset
+ *
+ **/
+void bt_interface_hid_mouse_move(S16 dx, S16 dy);
+
+/**
  * @brief            Control the mobile phone to page up
  *
  **/
-void bt_interface_phone_drag_up(void);
+void bt_interface_hid_mouse_drag_up(void);
 
 /**
  * @brief            Control the mobile phone to page down
  *
  **/
-void bt_interface_phone_drag_down(void);
+void bt_interface_hid_mouse_drag_down(void);
 
 /**
  * @brief            Control mobile phone click once
  *
  **/
-void bt_interface_phone_once_click(void);
+void bt_interface_hid_mouse_once_left_click(void);
 
 /**
  * @brief            Control mobile phone click twice
  *
  **/
-void bt_interface_phone_double_click(void);
+void bt_interface_hid_mouse_double_left_click(void);
 
 /**
  * @brief            Control mobile phone take a picture
  *
  **/
-void bt_interface_phone_take_picture(void);
+void bt_interface_hid_consumer_take_picture(void);
+
+/**
+ * @brief            Control the phone to increase the volume
+ *
+ **/
+void bt_interface_hid_consumer_volume_up(void);
 
 /**
  * @brief            Control the phone to lower the volume
  *
  **/
-void bt_interface_phone_volume_down(void);
+void bt_interface_hid_consumer_volume_down(void);
+
+/**
+ * @brief            Control the phone to change the play status
+ *
+ **/
+void bt_interface_hid_consumer_play_status_change(void);
+
+/**
+ * @brief            Control the phone to switch to next track
+ *
+ **/
+void bt_interface_hid_consumer_next_track(void);
+
+/**
+ * @brief            Control the phone to switch to previous track
+ *
+ **/
+void bt_interface_hid_consumer_prev_track(void);
+
+/**
+ * @brief            Control the cursor to move right once
+ *
+ **/
+void bt_interface_controller_report_right_arrow(void);
+
+/**
+ * @brief            Control the cursor to move left once
+ *
+ **/
+void bt_interface_controller_report_left_arrow(void);
+
+/**
+ * @brief            Control the cursor to move up once
+ *
+ **/
+void bt_interface_controller_report_up_arrow(void);
+
+/**
+ * @brief            Control the cursor to move down once
+ *
+ **/
+void bt_interface_controller_report_down_arrow(void);
 
 /**
  * @brief            Add hid descriptor

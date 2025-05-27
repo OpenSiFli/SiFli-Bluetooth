@@ -850,12 +850,10 @@ int ble_cppc_ble_event_handler(uint16_t event_id, uint8_t *data, uint16_t len, u
             {
                 LOG_I("cpm received, att handle(%x), des handle(%x)", chara->attr_hdl, chara->desc[0].attr_hdl);
 
-                RT_ASSERT(chara->desc_count == 1);
-
                 env->cpm_char.attr_hdl = chara->attr_hdl;
                 env->cpm_char.value_hdl = chara->pointer_hdl;
                 env->cpm_char.prop = chara->prop;
-                env->cpm_char.cccd_hdl = chara->desc[0].attr_hdl;
+                env->cpm_char.cccd_hdl = sibles_descriptor_handle_find(chara, ATT_DESC_CLIENT_CHAR_CFG);
                 env->cpm_char.enabled = 1;
 
 
@@ -879,25 +877,23 @@ int ble_cppc_ble_event_handler(uint16_t event_id, uint8_t *data, uint16_t len, u
             else if (!memcmp(chara->uuid, &cpv_char_uuid, chara->uuid_len))
             {
                 LOG_I("cpv received, att handle(%x), des handle(%x)", chara->attr_hdl, chara->desc[0].attr_hdl);
-                RT_ASSERT(chara->desc_count == 1);
 
                 env->cpv_char.attr_hdl = chara->attr_hdl;
                 env->cpv_char.value_hdl = chara->pointer_hdl;
                 env->cpv_char.prop = chara->prop;
-                env->cpv_char.cccd_hdl = chara->desc[0].attr_hdl;
+                env->cpv_char.cccd_hdl = sibles_descriptor_handle_find(chara, ATT_DESC_CLIENT_CHAR_CFG);
                 env->cpv_char.enabled = 1;
 
             }
             else if (!memcmp(chara->uuid, &cpcp_char_uuid, chara->uuid_len))
             {
                 LOG_I("cpcp received,att handle(%x),des handle(%x)", chara->attr_hdl, chara->desc[0].attr_hdl);
-                RT_ASSERT(chara->desc_count == 2);
 
                 env->cpcp_char.attr_hdl = chara->attr_hdl;
                 env->cpcp_char.value_hdl = chara->pointer_hdl;
                 env->cpcp_char.prop = chara->prop;
-                env->cpcp_char.cccd_hdl = chara->desc[0].attr_hdl;
-                env->cpcp_char.cepd_hdl = chara->desc[1].attr_hdl;
+                env->cpcp_char.cccd_hdl = sibles_descriptor_handle_find(chara, ATT_DESC_CLIENT_CHAR_CFG);
+                env->cpcp_char.cepd_hdl = sibles_descriptor_handle_find(chara, ATT_DESC_CHAR_EXT_PROPERTIES);
                 env->cpcp_char.enabled = 1;
             }
 

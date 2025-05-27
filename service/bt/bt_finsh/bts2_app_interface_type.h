@@ -235,6 +235,16 @@ typedef enum
     BT_NOTIFY_AVRCP_MEDIA_ATTRIBUTE_CFM,
 } bt_notify_avrcp_event_id_t;
 
+///  these type are BT_NOTIFY_AVRCP event id
+typedef enum
+{
+    BT_NOTIFY_LINK_POLICY_NO_SETTING    = 0x0000,
+    BT_NOTIFY_LINK_POLICY_ROLE_SWITCH   = 0x0001,
+    BT_NOTIFY_LINK_POLICY_HOLD_MODE     = 0x0002,
+    BT_NOTIFY_LINK_POLICY_SNIFF_MODE    = 0x0004,
+    BT_NOTIFY_LINK_POLICY_PARK_SETTING    = 0x0008,
+} bt_notify_link_policy_settings_t;
+
 #ifdef  CFG_AVRCP
 typedef struct
 {

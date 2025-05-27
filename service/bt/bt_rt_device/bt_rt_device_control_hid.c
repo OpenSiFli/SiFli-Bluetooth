@@ -109,38 +109,38 @@ bt_err_t bt_sifli_control_hid(struct rt_bt_device *bt_handle, int cmd, void *arg
 
     case BT_CONTROL_PHONE_DRAG_UP:
     {
-        bt_interface_phone_drag_up();
+        bt_interface_hid_mouse_drag_up();
     }
     break;
 
     case BT_CONTROL_PHONE_DRAG_DOWN:
     {
-        bt_interface_phone_drag_down();
+        bt_interface_hid_mouse_drag_down();
     }
     break;
 
     case BT_CONTROL_PHONE_ONCE_CLICK:
     {
-        bt_interface_phone_once_click();
+        bt_interface_hid_mouse_once_left_click();
     }
     break;
 
     case BT_CONTROL_PHONE_DOUBLE_CLICK:
     {
-        bt_interface_phone_double_click();
+        bt_interface_hid_mouse_double_left_click();
     }
     break;
 
     case BT_CONTROL_PHONE_VOLUME_UP:
     case BT_CONTROL_PHONE_TAKE_PICTURE:
     {
-        bt_interface_phone_take_picture();
+        bt_interface_hid_consumer_take_picture();
     }
     break;
 
     case BT_CONTROL_PHONE_VOLUME_DOWN:
     {
-        bt_interface_phone_volume_down();
+        bt_interface_hid_consumer_volume_down();
     }
     break;
 

@@ -724,7 +724,6 @@ int ble_ams_event_handler(uint16_t event_id, uint8_t *data, uint16_t len, uint32
         uint8_t attr_count = 0; // This char is madatory
         uint16_t offset = 0;
         sibles_svc_search_char_t *chara = (sibles_svc_search_char_t *)rsp->svc->att_db;
-        uint8_t cccd_uuid[ATT_UUID_16_LEN] = {0x02, 0x29};
         LOG_I("char cont %d", rsp->svc->char_count);
         for (i = 0; i < rsp->svc->char_count; i++)
         {
@@ -736,16 +735,7 @@ int ble_ams_event_handler(uint16_t event_id, uint8_t *data, uint16_t len, uint32
                 env->cmd_char.attr_hdl = chara->attr_hdl;
                 env->cmd_char.value_hdl = chara->pointer_hdl;
                 env->cmd_char.prop = chara->prop;
-                for (uint32_t j = 0; j < chara->desc_count; j++)
-                {
-                    LOG_I("desc %x", chara->desc[j].uuid[0]);
-                    if (chara->desc[j].uuid_len == ATT_UUID_16_LEN &&
-                            memcmp(chara->desc[j].uuid, cccd_uuid, ATT_UUID_16_LEN) == 0)
-                    {
-                        LOG_I("remote handle %d", chara->desc[j].attr_hdl);
-                        env->cmd_char.cccd_hdl = chara->desc[j].attr_hdl;
-                    }
-                }
+                env->cmd_char.cccd_hdl = sibles_descriptor_handle_find(chara, ATT_DESC_CLIENT_CHAR_CFG);
                 attr_count++;
             }
             else if (!memcmp(chara->uuid, ams_entity_up_uuid, chara->uuid_len))
@@ -754,16 +744,7 @@ int ble_ams_event_handler(uint16_t event_id, uint8_t *data, uint16_t len, uint32
                 env->entity_up_char.attr_hdl = chara->attr_hdl;
                 env->entity_up_char.value_hdl = chara->pointer_hdl;
                 env->entity_up_char.prop = chara->prop;
-                for (uint32_t j = 0; j < chara->desc_count; j++)
-                {
-                    LOG_I("desc1 %x", chara->desc[j].uuid[0]);
-                    if (chara->desc[j].uuid_len == ATT_UUID_16_LEN &&
-                            memcmp(chara->desc[j].uuid, cccd_uuid, ATT_UUID_16_LEN) == 0)
-                    {
-                        LOG_I("Entity handle %d", chara->desc[j].attr_hdl);
-                        env->entity_up_char.cccd_hdl = chara->desc[j].attr_hdl;
-                    }
-                }
+                env->entity_up_char.cccd_hdl = sibles_descriptor_handle_find(chara, ATT_DESC_CLIENT_CHAR_CFG);
                 attr_count++;
             }
             else if (!memcmp(chara->uuid, ams_entity_att_uuid, chara->uuid_len))

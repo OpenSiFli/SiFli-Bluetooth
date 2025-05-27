@@ -1084,7 +1084,7 @@ int ble_eq_event_handler(uint16_t event_id, uint8_t *data, uint16_t len, uint32_
             {
                 LOG_W("char found");
                 env->val_hdl = chara->pointer_hdl;
-                env->cccd_hdl = chara->desc[0].attr_hdl;
+                env->cccd_hdl = sibles_descriptor_handle_find(chara, ATT_DESC_CLIENT_CHAR_CFG);
                 data_check = 1;
                 break;
             }

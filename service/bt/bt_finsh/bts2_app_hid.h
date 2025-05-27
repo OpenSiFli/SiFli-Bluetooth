@@ -36,6 +36,19 @@ typedef struct
 
 typedef struct
 {
+    U8 header;
+    U8 report_id;
+    U8 modifierKeys;
+    U8 standardkey1;
+    U8 standardkey2;
+    U8 standardkey3;
+    U8 standardkey4;
+    U8 standardkey5;
+    U8 standardkey6;
+} __packed hid_msg_controller_t;
+
+typedef struct
+{
     U8 report_id;
     U8 data[9];
 } hid_msg_touch_t;
@@ -98,6 +111,11 @@ void bt_hid_consumer_report_volume_down(bts2_app_stru *bts2_app_data);
 void bt_hid_consumer_report_volume_up(bts2_app_stru *bts2_app_data);
 void bt_hid_consumer_report_forward(bts2_app_stru *bts2_app_data);
 void bt_hid_consumer_report_go_back(bts2_app_stru *bts2_app_data);
+void bt_hid_controller_report_right_arrow(bts2_app_stru *bts2_app_data);
+void bt_hid_controller_report_left_arrow(bts2_app_stru *bts2_app_data);
+void bt_hid_controller_report_up_arrow(bts2_app_stru *bts2_app_data);
+void bt_hid_controller_report_down_arrow(bts2_app_stru *bts2_app_data);
+void bt_hid_controller_report_reset(bts2_app_stru *bts2_app_data);
 
 
 void bt_hid_receive_contro_handle(bts2_app_stru *bts2_app_data);

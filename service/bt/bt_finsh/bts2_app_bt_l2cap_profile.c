@@ -136,7 +136,7 @@ static void bt_l2cap_profile_app_update_reg_state(BTS2S_L2CAP_PROFILE_REG_RES *s
 {
     bts2_bt_l2cap_inst_data_t *l2cap_profile_info = bt_l2cap_profile_app_get_context();
 
-    LOG_I("bt_l2cap_profile_app_update_reg_state status_info:0x%2x psm:0x%2x\n", status_info->reg_state,l2cap_profile_info->local_psm);
+    LOG_I("bt_l2cap_profile_app_update_reg_state status_info:0x%2x psm:0x%2x reg_status%d\n", status_info->reg_state,l2cap_profile_info->local_psm, l2cap_profile_info->reg_status);
 
     if ((status_info->local_psm == l2cap_profile_info->local_psm) && (status_info->reg_state == (U8)BT_L2CAP_PROFILE_REG_STATE))
     {
@@ -214,9 +214,17 @@ void bt_l2cap_profile_app_msg_hdl(bts2_app_stru *bts2_app_data)
 
     switch (msg_type)
     {
-    case BTS2MU_BT_L2CAP_PROFILE_REG_RES:
+    case BTS2MU_BT_L2CAP_PROFILE_REG_CFM:
     {
         BTS2S_L2CAP_PROFILE_REG_RES *msg = (BTS2S_L2CAP_PROFILE_REG_RES *)bts2_app_data->recv_msg;
+        LOG_I("BTS2MU_BT_L2CAP_PROFILE_REG_CFM reg_state 0x%2x\n", msg->reg_state);
+        bt_l2cap_profile_app_update_reg_state(msg);
+        break;
+    }
+    case BTS2MU_BT_L2CAP_PROFILE_UNREG_CFM:
+    {
+        BTS2S_L2CAP_PROFILE_REG_RES *msg = (BTS2S_L2CAP_PROFILE_REG_RES *)bts2_app_data->recv_msg;
+        LOG_I("BTS2MU_BT_L2CAP_PROFILE_UNREG_CFM reg_state 0x%2x\n", msg->reg_state);
         bt_l2cap_profile_app_update_reg_state(msg);
         break;
     }
@@ -225,15 +233,31 @@ void bt_l2cap_profile_app_msg_hdl(bts2_app_stru *bts2_app_data)
         BTS2S_BT_L2CAP_MTU_RES *msg = (BTS2S_BT_L2CAP_MTU_RES *)bts2_app_data->recv_msg;
         break;
     }
-    case BTS2MU_BT_L2CAP_PROFILE_CONN_STATE:
+    case BTS2MU_BT_L2CAP_PROFILE_CONN_CFM:
     {
         BTS2S_BT_L2CAP_CONN_RES *msg = (BTS2S_BT_L2CAP_CONN_RES *)bts2_app_data->recv_msg;
+        bt_l2cap_profile_app_update_device_state(msg);
+        LOG_I("BTS2MU_BT_L2CAP_PROFILE_CONN_CFM reg_state 0x%2x\n", msg->device_state);
+        break;
+    }
+    case BTS2MU_BT_L2CAP_PROFILE_DISC_IND:
+    {
+        BTS2S_BT_L2CAP_CONN_RES *msg = (BTS2S_BT_L2CAP_CONN_RES *)bts2_app_data->recv_msg;
+        LOG_I("BTS2MU_BT_L2CAP_PROFILE_DISC_IND reg_state 0x%2x\n", msg->device_state);
+        bt_l2cap_profile_app_update_device_state(msg);
+        break;
+    }
+    case BTS2MU_BT_L2CAP_PROFILE_DISC_CFM:
+    {
+        BTS2S_BT_L2CAP_CONN_RES *msg = (BTS2S_BT_L2CAP_CONN_RES *)bts2_app_data->recv_msg;
+        LOG_I("BTS2MU_BT_L2CAP_PROFILE_DISC_CFM reg_state 0x%2x\n", msg->device_state);
         bt_l2cap_profile_app_update_device_state(msg);
         break;
     }
     case BTS2MU_BT_L2CAP_PROFILE_CONN_IND:
     {
         BTS2S_BT_L2CAP_CONN_IND *msg = (BTS2S_BT_L2CAP_CONN_IND *)bts2_app_data->recv_msg;
+        LOG_I("BTS2MU_BT_L2CAP_PROFILE_CONN_IND\n");
         bt_l2cap_profile_app_conn_ind(msg);
         break;
     }

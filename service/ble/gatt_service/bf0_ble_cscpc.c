@@ -457,11 +457,10 @@ int ble_cscpc_ble_event_handler(uint16_t event_id, uint8_t *data, uint16_t len, 
             if (!memcmp(chara->uuid, &csc_meas_char_uuid, chara->uuid_len))
             {
                 LOG_I("csc measurement received, att handle(%x), des handle(%x)", chara->attr_hdl, chara->desc[0].attr_hdl);
-                RT_ASSERT(chara->desc_count == 1);
                 env->csc_meas_char.attr_hdl = chara->attr_hdl;
                 env->csc_meas_char.value_hdl = chara->pointer_hdl;
                 env->csc_meas_char.prop = chara->prop;
-                env->csc_meas_char.cccd_hdl = chara->desc[0].attr_hdl;
+                env->csc_meas_char.cccd_hdl = sibles_descriptor_handle_find(chara, ATT_DESC_CLIENT_CHAR_CFG);
                 env->csc_meas_char.enabled = 1;
             }
             else if (!memcmp(chara->uuid, &csc_feat_info_uuid, chara->uuid_len))
@@ -484,12 +483,11 @@ int ble_cscpc_ble_event_handler(uint16_t event_id, uint8_t *data, uint16_t len, 
             {
                 LOG_I("sensor control point received, att handle(%x)", chara->attr_hdl);
                 LOG_I("sc_pt desc_count is %x,", chara->desc_count);
-                //RT_ASSERT(chara->desc_count == 2);
                 env->sc_ctnl_pt_info.attr_hdl = chara->attr_hdl;
                 env->sc_ctnl_pt_info.value_hdl = chara->pointer_hdl;
                 env->sc_ctnl_pt_info.prop = chara->prop;
-                env->sc_ctnl_pt_info.cccd_hdl = chara->desc[1].attr_hdl;     //desc_count==3,0 is cepd;1 is cccd;2 is cepd
-                env->sc_ctnl_pt_info.cepd_hdl = chara->desc[0].attr_hdl;
+                env->sc_ctnl_pt_info.cccd_hdl = sibles_descriptor_handle_find(chara, ATT_DESC_CLIENT_CHAR_CFG);     //desc_count==3,0 is cepd;1 is cccd;2 is cepd
+                env->sc_ctnl_pt_info.cepd_hdl = sibles_descriptor_handle_find(chara, ATT_DESC_CHAR_EXT_PROPERTIES);
                 env->sc_ctnl_pt_info.enabled = 1;
             }
 

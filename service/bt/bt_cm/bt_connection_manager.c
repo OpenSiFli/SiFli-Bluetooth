@@ -447,8 +447,7 @@ static bt_cm_err_t bt_cm_profile_connect(uint32_t profile_bit, bt_cm_conned_dev_
                 if (profile_bit == BT_CM_PAN)
                 {
 #ifdef BT_FINSH_PAN
-                    extern int bt_pan_conn_by_addr(BTS2S_BD_ADDR * remote_addr);
-                    err = bt_pan_conn_by_addr(&(conn->info.bd_addr));
+                    err = bt_pan_conn(&(conn->info.bd_addr));
 #endif
                 }
                 else
@@ -1332,7 +1331,7 @@ int bt_cm_hci_event_handler(uint16_t event_id, uint8_t *msg)
     {
         BTS2S_DM_EN_ACL_OPENED_IND *ind = (BTS2S_DM_EN_ACL_OPENED_IND *)msg;
 
-        LOG_I("link connected COD:%d Incoming:%d res %d\r\n", ind->dev_cls, ind->incoming, ind->st);
+        LOG_I("link connected COD:%d Incoming:%d hdl %d res %d\r\n", ind->dev_cls, ind->incoming, ind->phdl, ind->st);
         LOG_I("bd addr %x-%x-%x\r\n", ind->bd.nap, ind->bd.uap, ind->bd.lap);
 
 
@@ -1477,6 +1476,7 @@ int bt_cm_hci_event_handler(uint16_t event_id, uint8_t *msg)
     {
         BTS2S_DM_ACL_DISC_IND *ind = (BTS2S_DM_ACL_DISC_IND *)msg;
         LOG_I("link dis-connected %x %d process:%d\r\n", ind->hdl, ind->reason, env->close_process);
+        LOG_I("bd addr %x-%x-%x\r\n", ind->cur_bd.nap, ind->cur_bd.uap, ind->cur_bd.lap);
 
         bt_cm_conned_dev_t *conn = bt_cm_find_conn_by_hdl(env, ind->hdl);
         //conn->rmt_smc = 0;
@@ -1911,6 +1911,13 @@ void bt_cm(uint8_t argc, char **argv)
         else if (strcmp(argv[1], "release_a2dp") == 0)
         {
             bt_av_release_stream(0);
+        }
+#endif
+#ifdef CFG_SPP_LOOPBACK
+        else if (strcmp(argv[1], "spp_loopback") == 0)
+        {
+            LOG_I("set loopback: %d", atoi(argv[2]));
+            bt_spp_set_spp_data_loopback_enable(atoi(argv[2]));
         }
 #endif
     }

@@ -274,11 +274,10 @@ int ble_tipc_ble_event_handler(uint16_t event_id, uint8_t *data, uint16_t len, u
             if (!memcmp(chara->uuid, &ct_char_uuid, chara->uuid_len))
             {
                 LOG_I("ct time received, att handle(%x), des handle(%x)", chara->attr_hdl, chara->desc[0].attr_hdl);
-                RT_ASSERT(chara->desc_count == 1);
                 env->ct_char.attr_hdl = chara->attr_hdl;
                 env->ct_char.value_hdl = chara->pointer_hdl;
                 env->ct_char.prop = chara->prop;
-                env->ct_char.cccd_hdl = chara->desc[0].attr_hdl;
+                env->ct_char.cccd_hdl = sibles_descriptor_handle_find(chara, ATT_DESC_CLIENT_CHAR_CFG);
                 env->ct_char.enabled = 1;
             }
             else if (!memcmp(chara->uuid, &loc_char_uuid, chara->uuid_len))

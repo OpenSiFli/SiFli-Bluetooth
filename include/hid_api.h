@@ -85,8 +85,11 @@ extern "C" {
 #define HID_BOOT_PROTOCOL_KEYBOARD_REPORT_ID  0x01 // 9-octets, 1-octet report id + standard 8-octet keyboard boot report
 #define HID_BOOT_PROTOCOL_MOUSE_REPORT_ID     0x02 // 4-octets, 1-octet report id + standard 3-octet mouse boot report
 
+#define HID_KEYBOARD_REPORT_ID 0x01
 #define HID_MOUSE_REPORT_ID 0x02
 #define HID_CONSUMER_REPORT_ID 0x03
+#define HID_CONTROLLER_REPORT_ID 0x04
+#define HID_SYSTEM_CONTROL_REPORT_ID 0x05
 
 
 typedef struct

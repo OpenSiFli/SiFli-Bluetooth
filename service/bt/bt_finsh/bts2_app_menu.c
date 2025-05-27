@@ -1553,7 +1553,7 @@ static void  bt_disply_menu_gen_8_7(void)
  *----------------------------------------------------------------------------*/
 static void bt_hdl_menu_gen_8_7(bts2_app_stru *bts2_app_data)
 {
-    bt_wr_link_policy(bts2_app_data);
+    bt_wr_link_policy(&bts2_app_data->last_conn_bd, 0x0001);
 }
 
 static void  bt_disply_menu_gen_8_8(void)
@@ -1563,7 +1563,7 @@ static void  bt_disply_menu_gen_8_8(void)
 
 static void bt_hdl_menu_gen_8_8(bts2_app_stru *bts2_app_data)
 {
-    bt_etner_sniff_mode(bts2_app_data);
+    bt_etner_sniff_mode(&bts2_app_data->last_conn_bd, 400,5);
 }
 
 static void  bt_disply_menu_gen_8_9(void)
@@ -1573,7 +1573,7 @@ static void  bt_disply_menu_gen_8_9(void)
 
 static void bt_hdl_menu_gen_8_9(bts2_app_stru *bts2_app_data)
 {
-    bt_exit_sniff_mode(bts2_app_data);
+    bt_exit_sniff_mode(&bts2_app_data->last_conn_bd);
 }
 
 
@@ -2831,30 +2831,35 @@ static void bt_hdl_menu_hfp_ag(bts2_app_stru *bts2_app_data)
     case 'b':
     {
         int value = (U8)atoi((const char *)bts2_app_data->input_str + 1);
+        bt_hfp_ag_app_cind_status_change(HFP_AG_CIND_SERVICE_TYPE, value);
         bt_hfp_ag_ind_status_update(HFP_AG_CIND_SERVICE_TYPE, value);
         break;
     }
     case 'c':
     {
         int value = (U8)atoi((const char *)bts2_app_data->input_str + 1);
+        bt_hfp_ag_app_cind_status_change(HFP_AG_CIND_CALL_TYPE, value);
         bt_hfp_ag_ind_status_update(HFP_AG_CIND_CALL_TYPE, value);
         break;
     }
     case 'd':
     {
         int value = (U8)atoi((const char *)bts2_app_data->input_str + 1);
+        bt_hfp_ag_app_cind_status_change(HFP_AG_CIND_CALLSETUP_TYPE, value);
         bt_hfp_ag_ind_status_update(HFP_AG_CIND_CALLSETUP_TYPE, value);
         break;
     }
     case 'e':
     {
         U8 value = (U8)atoi((const char *)bts2_app_data->input_str + 1);
+        bt_hfp_ag_app_cind_status_change(HFP_AG_CIND_BATT_TYPE, value);
         bt_hfp_ag_ind_status_update(HFP_AG_CIND_BATT_TYPE, value);
         break;
     }
     case 'f':
     {
         int value = (U8)atoi((const char *)bts2_app_data->input_str + 1);
+        bt_hfp_ag_app_cind_status_change(HFP_AG_CIND_SIGNAL_TYPE, value);
         bt_hfp_ag_ind_status_update(HFP_AG_CIND_SIGNAL_TYPE, value);
         break;
     }
@@ -2862,12 +2867,14 @@ static void bt_hdl_menu_hfp_ag(bts2_app_stru *bts2_app_data)
     case 'g':
     {
         U8 value = (U8)atoi((const char *)bts2_app_data->input_str + 1);
+        bt_hfp_ag_app_cind_status_change(HFP_AG_CIND_ROAM_TYPE, value);
         bt_hfp_ag_ind_status_update(HFP_AG_CIND_ROAM_TYPE, value);
         break;
     }
     case 'h':
     {
         int value = (U8)atoi((const char *)bts2_app_data->input_str + 1);
+        bt_hfp_ag_app_cind_status_change(HFP_AG_CIND_CALLHELD_TYPE, value);
         bt_hfp_ag_ind_status_update(HFP_AG_CIND_CALLHELD_TYPE, value);
         break;
     }
@@ -2882,72 +2889,34 @@ static void bt_hdl_menu_hfp_ag(bts2_app_stru *bts2_app_data)
     }
     case 'j':
     {
-        HFP_CALL_INFO_T call_info;
-        call_info.num_active = 0;
-        call_info.num_held = 0;
-        call_info.callsetup_state = 1;
         char *str = "18182307981";
-        bmemcpy(&call_info.phone_number, str, strlen(str) + 1);
-        call_info.phone_type = 0x81;
-        call_info.phone_len = strlen(str) + 1;
-        bt_hfp_ag_app_call_status_change((char *)&call_info.phone_number, call_info.phone_len, call_info.num_active, call_info.callsetup_state);
-        bt_hfp_ag_call_state_update_listener(&call_info);
+        bt_hfp_ag_app_call_status_change((char *)str, strlen(str) + 1, 0, 1, PHONE_CALL_DIR_INCOMING);
         break;
     }
     case 'k':
     {
-        HFP_CALL_INFO_T call_info;
-        call_info.num_active = 1;
-        call_info.num_held = 0;
-        call_info.callsetup_state = 0;
-        char *str = "18182307981";
-        bmemcpy(&call_info.phone_number, str, strlen(str) + 1);
-        call_info.phone_type = 0x81;
-        call_info.phone_len = strlen(str) + 1;
-        bt_hfp_ag_app_call_status_change((char *)&call_info.phone_number, call_info.phone_len, call_info.num_active, call_info.callsetup_state);
-        bt_hfp_ag_call_state_update_listener(&call_info);
+        hfp_phone_call_info_t * call_info = bt_hfp_ag_app_get_remote_call_info();
+        bt_hfp_ag_app_call_status_change((char *)&call_info->phone_info.phone_number, strlen(call_info->phone_info.phone_number) + 1, 
+                                        1, 0, call_info->call_dir);
         break;
     }
     case 'l':
     {
-        HFP_CALL_INFO_T call_info;
-        call_info.num_active = 0;
-        call_info.num_held = 0;
-        call_info.callsetup_state = 0;
-        char *str = "18182307981";
-        bmemcpy(&call_info.phone_number, str, strlen(str) + 1);
-        call_info.phone_type = 0x81;
-        call_info.phone_len = strlen(str) + 1;
-        bt_hfp_ag_app_call_status_change((char *)&call_info.phone_number, call_info.phone_len, call_info.num_active, call_info.callsetup_state);
-        bt_hfp_ag_call_state_update_listener(&call_info);
+        hfp_phone_call_info_t * call_info = bt_hfp_ag_app_get_remote_call_info();
+        bt_hfp_ag_app_call_status_change((char *)&call_info->phone_info.phone_number, strlen(call_info->phone_info.phone_number) + 1, 
+                                        0, 0, call_info->call_dir);
         break;
     }
     case 'm':
     {
-        HFP_CALL_INFO_T call_info;
-        call_info.num_active = 0;
-        call_info.num_held = 0;
-        call_info.callsetup_state = 2;
         char *str = "18182307981";
-        bmemcpy(&call_info.phone_number, str, strlen(str) + 1);
-        call_info.phone_type = 0x81;
-        call_info.phone_len = strlen(str) + 1;
-        bt_hfp_ag_app_call_status_change((char *)&call_info.phone_number, call_info.phone_len, call_info.num_active, call_info.callsetup_state);
-        bt_hfp_ag_call_state_update_listener(&call_info);
+        bt_hfp_ag_app_call_status_change(str, strlen(str) + 1, 0, 2, PHONE_CALL_DIR_OUTGOING);
         break;
     }
     case 'n':
     {
-        HFP_CALL_INFO_T call_info;
-        call_info.num_active = 0;
-        call_info.num_held = 0;
-        call_info.callsetup_state = 3;
         char *str = "18182307981";
-        bmemcpy(&call_info.phone_number, str, strlen(str) + 1);
-        call_info.phone_type = 0x81;
-        call_info.phone_len = strlen(str) + 1;
-        bt_hfp_ag_app_call_status_change((char *)&call_info.phone_number, call_info.phone_len, call_info.num_active, call_info.callsetup_state);
-        bt_hfp_ag_call_state_update_listener(&call_info);
+        bt_hfp_ag_app_call_status_change(str, strlen(str) + 1, 0, 3, PHONE_CALL_DIR_OUTGOING);
         break;
     }
     case 'o':
@@ -3919,10 +3888,10 @@ static void bt_hdl_menu_hid(bts2_app_stru *bts2_app_data)
         bt_hid_mouse_test9(bts2_app_data);
         break;
     case 'e':
-        bt_exit_sniff_mode(bts2_app_data);
+        bt_exit_sniff_mode(&bts2_app_data->last_conn_bd);
         break;
     case 'b':
-        bt_etner_sniff_mode(bts2_app_data);
+        bt_etner_sniff_mode(&bts2_app_data->last_conn_bd, 400, 5);
         break;
     default:
         break;

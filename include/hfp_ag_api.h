@@ -87,14 +87,17 @@ typedef enum
 
 enum
 {
-    BTS2MU_AG_ENB_CFM = BTS2MU_START,
-    BTS2MU_AG_DISB_CFM,
-    BTS2MU_AG_CONN_RES,
+    BTS2MU_AG_REG_CFM = BTS2MU_START,
+    BTS2MU_AG_UNREG_CFM,
+    BTS2MU_AG_CONN_CFM,
     BTS2MU_AG_CONN_IND,
-    BTS2MU_AG_DISC_RES,
-    BTS2MU_AG_CONN_STATE,
+    BTS2MU_AG_DISC_CFM,
+    BTS2MU_AG_DISC_IND,
     BTS2MU_AG_AUDIO_CFM,
-    BTS2MU_AG_AUDIO_IND,
+    BTS2MU_AG_AUDIO_CONN_CFM,
+    BTS2MU_AG_AUDIO_CONN_IND,
+    BTS2MU_AG_AUDIO_DISC_CFM,
+    BTS2MU_AG_AUDIO_DISC_IND,
     BTS2MU_AG_SCO_RENEGOTIATE_IND,
     BTS2MU_AG_SCO_RENEGOTIATE_CFM,
     BTS2MU_AG_AT_CMD_EVENT,
@@ -163,6 +166,12 @@ typedef struct
     U8 res;
 } BTS2S_AG_CONN_IND_RES;
 
+typedef struct
+{
+    U16 type;
+    BTS2S_BD_ADDR bd;
+    U8  code_id;
+} BTS2S_AG_AUDIO_CONN_IND;
 /****************************************func define*************************************************/
 /*******************************************************************************
  *

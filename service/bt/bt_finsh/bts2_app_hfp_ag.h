@@ -66,8 +66,9 @@ void bt_hfp_connect_audio(BTS2S_BD_ADDR *bd);
 void bt_hfp_disconnect_audio(BTS2S_BD_ADDR *bd);
 void bt_hfp_ag_call_state_update_listener(HFP_CALL_INFO_T *call_info);
 void bt_hfp_ag_remote_calls_res_hdl(hfp_remote_calls_info_t *call_info);
-void bt_hfp_ag_app_call_status_change(char *phone_num, uint8_t phone_len, uint8_t active, uint8_t callsetup_state);
-
+void bt_hfp_ag_app_call_status_change(char *phone_num, uint8_t phone_len, uint8_t active, uint8_t callsetup_state, uint8_t call_dir);
+void bt_hfp_ag_app_cind_status_change(uint8_t type, uint8_t val);
+hfp_phone_call_info_t *bt_hfp_ag_app_get_remote_call_info();
 
 
 

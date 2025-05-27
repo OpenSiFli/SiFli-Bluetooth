@@ -2221,7 +2221,7 @@ int ble_connection_manager_handler(uint16_t event_id, uint8_t *data, uint16_t le
                 if (memcmp(chara->uuid, svc_changed_uuid, chara->uuid_len) == 0)
                 {
                     LOG_I("noti_uuid received, att handle(%x), des handle(%x)", chara->attr_hdl, chara->desc[0].attr_hdl);
-                    env->svc_change.cccd_hdl = chara->desc[0].attr_hdl;
+                    env->svc_change.cccd_hdl = sibles_descriptor_handle_find(chara, ATT_DESC_CLIENT_CHAR_CFG);
                     find = 1;
                     break;
                 }

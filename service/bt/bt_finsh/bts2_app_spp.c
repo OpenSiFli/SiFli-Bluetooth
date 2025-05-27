@@ -403,6 +403,21 @@ void bt_spp_time_out(U16 spp_id, bts2_app_stru *bts2_app_data)
  *      none.
  *
  *----------------------------------------------------------------------------*/
+#ifdef CFG_SPP_LOOPBACK
+static BOOL spp_data_loopback;
+
+void bt_spp_set_spp_data_loopback_enable(BOOL enable)
+{
+    spp_data_loopback = enable;
+}
+
+BOOL bt_spp_get_spp_data_loopback_enable(void)
+{
+    return spp_data_loopback;
+}
+#endif
+
+
 void bt_spp_data_ind_hdl(bts2_app_stru *bts2_app_data)
 {
     BTS2S_SPP_DATA_IND *my_msg;
@@ -442,6 +457,7 @@ void bt_spp_data_ind_hdl(bts2_app_stru *bts2_app_data)
                 bts2_timer_ev_cancel(spp_service_list->time_id, 0, NULL);
                 spp_service_list->counter = my_msg->payload_len + spp_service_list->counter;
                 spp_service_list->timer_flag = TRUE;
+                spp_service_list->last_time = BTS2_GET_TIME();
                 spp_service_list->time_id = bts2_timer_ev_add(TIME_WITH_NO_DATA, (void (*)(U16, void *)) bt_spp_time_out, 0, (void *) bts2_app_data);
                 fwrite(my_msg->payload, sizeof(U8), my_msg->payload_len, spp_service_list->wr_file_hdl);
             }
@@ -468,7 +484,15 @@ void bt_spp_data_ind_hdl(bts2_app_stru *bts2_app_data)
                 spp_service_list->last_time = BTS2_GET_TIME();
                 spp_service_list->time_id = bts2_timer_ev_add(TIME_WITH_NO_DATA, (void (*)(U16, void *)) bt_spp_time_out, 0, (void *) bts2_app_data);
             }
-            // bt_spp_srv_sending_data_by_device_id_and_srv_chnl(bts2_app_data, my_msg->device_id, my_msg->srv_chl, my_msg->payload, my_msg->payload_len);
+
+#ifdef CFG_SPP_LOOPBACK
+            if (bt_spp_get_spp_data_loopback_enable())
+            {
+                U8 *data = bmalloc(my_msg->payload_len);
+                bmemcpy(data, my_msg->payload, my_msg->payload_len);
+                bt_spp_sending_data_by_device_id_and_srv_chnl(bts2_app_data, my_msg->device_id, my_msg->srv_chl, data, my_msg->payload_len);
+            }
+#endif
         }
 #endif
     }
@@ -1407,16 +1431,16 @@ U8 bt_spp_get_srv_chl_by_uuid(U8 *uuid, U8 uuid_len)
  *----------------------------------------------------------------------------*/
 void bt_spp_dump_all_spp_connect_information(bts2_app_stru *bts2_app_data)
 {
-    INFO_TRACE("[spp_debug]*****************spp connect info***************************\n");
+    INFO_TRACE("[SPP_DEBUG]*****************spp connect info***************************\n");
 
     for (int i = 0; i < CFG_MAX_ACL_CONN_NUM; i++)
     {
         bts2_spp_srv_inst_data *sub_inst = &bts2_app_data->spp_srv_inst[i];
-        INFO_TRACE("[spp_debug]device_id = %d,bd = %04X:%02X:%06X,connect server channel = %x\n",
+        INFO_TRACE("[SPP_DEBUG]device_id = %d,bd = %04X:%02X:%06X,connect server channel = %x\n",
                    sub_inst->device_id, sub_inst->bd_addr.nap, sub_inst->bd_addr.uap, sub_inst->bd_addr.lap, sub_inst->service_list);
     }
 
-    INFO_TRACE("[spp_debug]************************************************************\n");
+    INFO_TRACE("[SPP_DEBUG]************************************************************\n");
 }
 /*----------------------------------------------------------------------------*/
 

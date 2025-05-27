@@ -20,17 +20,15 @@
     #include "bt_rt_device_urc.h"
 #endif
 
-static int running_flag = 0;
-struct rt_bt_pan_instance  bt_pan_instance[MAX_PAN_INSTANCE_NUM];
-
 #ifdef BT_FINSH_PAN
 
 #define LOG_TAG         "btapp_pan"
 #include "log.h"
 
-
-
 #include "bt_prot.h"
+
+static int running_flag = 0;
+
 #ifdef CFG_GNU
 #define FIFO "/data/myfifo"
 static void bt_pan_wr_data(char *string)
@@ -186,6 +184,13 @@ void bt_pan_set_nap_route(char *string)
 }
 #endif
 
+static int bt_pan_notify_connection_state(bt_notify_profile_state_info_t *info, uint16_t event_id)
+{
+    bt_pan_connect_event_handle(event_id);
+    bt_interface_bt_event_notify(BT_NOTIFY_PAN, event_id, info, sizeof(bt_notify_profile_state_info_t));
+    return 0;
+}
+
 static U8 bt_pan_get_idx(bts2_app_stru *bts2_app_data)
 {
     U8 i = 0xff;
@@ -274,6 +279,7 @@ void bt_pan_enable(bts2_app_stru *bts2_app_data)
         //modified the pan role,local is panu
         pan_enb_req(FALSE, PAN_PANU_ROLE, PAN_NAP_ROLE);
         ptr->pan_st = PAN_IDLE_ST;
+        // bt_lwip_pan_attach_tcpip();
         USER_TRACE(">> PAN enable\n");
     }
     else
@@ -282,61 +288,8 @@ void bt_pan_enable(bts2_app_stru *bts2_app_data)
     }
 }
 
-void bt_pan_conn(BTS2S_BD_ADDR *bd)
-{
-    bts2_app_stru *bts2_app_data = getApp();
-    bts2_pan_inst_data *ptr = NULL;
-    U8 idx, idx2;
-
-    ptr = bts2_app_data->pan_inst_ptr;
-
-    USER_TRACE(" pan st %x\n", ptr->pan_st);
-
-    if (ptr->pan_st == PAN_IDLE_ST)
-    {
-        /*Before send connection,send service search requst*/
-        //modified for product type
-
-        idx = bt_pan_get_idx_by_bd(bts2_app_data, bd);
-        if (idx != PAN_MAX_NUM)
-        {
-            if (ptr->pan_sdp[idx].gn_sdp_pending == TRUE)
-            {
-                USER_TRACE("SDP is in progress,connect pan later\n");
-            }
-            else
-            {
-                ptr->pan_sdp[idx].gn_sdp_pending = TRUE;
-                pan_svc_srch_req(bts2_task_get_app_task_id(), bd, PAN_NAP_ROLE);
-                USER_TRACE(">> PAN connect\n");
-            }
-        }
-        else
-        {
-            idx2 = bt_pan_get_idx(bts2_app_data);
-
-            if (idx2 != PAN_MAX_NUM)
-            {
-                bd_copy(&(ptr->pan_sdp[idx2].bd_addr), bd);
-                ptr->pan_sdp[idx2].gn_sdp_pending = TRUE;
-                pan_svc_srch_req(bts2_task_get_app_task_id(), bd, PAN_NAP_ROLE);
-                USER_TRACE(">> PAN connect\n");
-            }
-            else
-            {
-                USER_TRACE("No pan resources are available\n");
-            }
-        }
-    }
-    else
-    {
-        USER_TRACE(">> PAN connect fail\n");
-    }
-}
-
-
 extern bts2_app_stru *bts2g_app_p;
-int bt_pan_conn_by_addr(BTS2S_BD_ADDR *remote_addr)
+int bt_pan_conn(BTS2S_BD_ADDR *remote_addr)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
     bts2_pan_inst_data *ptr = NULL;
@@ -428,17 +381,17 @@ void bt_pan_disc(BTS2S_BD_ADDR *bd)
     }
 }
 
-void bt_lwip_pan_send(struct rt_bt_pan_instance *bt_instance, void *buff, int len)
+void bt_pan_send_data(void *buff, int len)
 {
     bts2_pan_inst_data *ptr = NULL;
     void  *p;
     U8   *eth_header;
-    ptr = bt_instance->bts2_app_data->pan_inst_ptr;
+    ptr = getApp()->pan_inst_ptr;
 
     if (ptr->pan_st == PAN_BUSY_ST)
     {
         if (ptr->mode == SNIFF_MODE)
-            bt_exit_sniff_mode(bt_instance->bts2_app_data);
+            bt_exit_sniff_mode(&ptr->bd_addr);
 
         BTS2S_PAN_DATA_REQ *msg;
         msg = (BTS2S_PAN_DATA_REQ *)bmalloc(sizeof(BTS2S_PAN_DATA_REQ));
@@ -451,11 +404,11 @@ void bt_lwip_pan_send(struct rt_bt_pan_instance *bt_instance, void *buff, int le
             msg->len = len - 14;
             buff = eth_header + 14;
 
-            //msg->dst_addr = bt_pan_get_remote_mac_address(bt_instance);
+            //msg->dst_addr = bt_pan_get_remote_mac_address(bt_dev);
             msg->dst_addr.w[0] = (((U16)eth_header[0]) << 8) | (U16)eth_header[1];
             msg->dst_addr.w[1] = (((U16)eth_header[2]) << 8) | (U16)eth_header[3];
             msg->dst_addr.w[2] = (((U16)eth_header[4]) << 8) | (U16)eth_header[5];
-            msg->src_addr = bt_pan_get_mac_address(bt_instance);
+            msg->src_addr = bt_pan_get_mac_address();
             p = bmalloc(msg->len);
             BT_OOM_ASSERT(p);
             if (p == NULL)
@@ -466,41 +419,13 @@ void bt_lwip_pan_send(struct rt_bt_pan_instance *bt_instance, void *buff, int le
             memcpy(p, buff, msg->len);
             msg->payload = p;
             bts2_msg_put(bts2_task_get_pan_task_id(), BTS2M_PAN, msg);
-            //USER_TRACE("bt_lwip_pan_send\n");
+            //USER_TRACE("bt_pan_send_data\n");
         }
     }
     else
     {
         USER_TRACE(">> PAN data send fail\n");
     }
-}
-void rt_lwip_instance_register_event_handler(struct rt_bt_pan_instance *bt_instance, rt_bt_instance_event_t event, rt_bt_instance_event_handler handler)
-{
-    int i = 0;
-    for (i = 0; i < MAX_PAN_INSTANCE_NUM; i++)
-    {
-        bt_instance->handler_table[event][i] = handler;
-    }
-}
-struct rt_bt_instance_ops instance_ops =
-{
-    RT_NULL,
-    RT_NULL,
-    bt_lwip_pan_send
-};
-
-void bt_lwip_pan_control_tcpip(bts2_app_stru *bts2_app_data)
-{
-    bt_pan_instance[0].bts2_app_data =  bts2_app_data;
-    bt_pan_instance[0].ops =  &instance_ops;
-    rt_bt_prot_attach_pan_instance(&bt_pan_instance[0]);
-}
-
-void bt_lwip_pan_detach_tcpip(bts2_app_stru *bts2_app_data)
-{
-    bt_pan_instance[0].bts2_app_data =  bts2_app_data;
-    bt_pan_instance[0].ops =  &instance_ops;
-    rt_bt_prot_detach_pan_instance(&bt_pan_instance[0]);
 }
 
 
@@ -528,7 +453,7 @@ void bt_hdl_pan_msg(bts2_app_stru *bts2_app_data)
         }
 
         USER_TRACE(">> PAN enable success\n");
-        //bt_lwip_pan_control_tcpip(bts2_app_data);
+        bt_lwip_pan_attach_tcpip();
         break;
     }
     case BTS2MU_PAN_CONN_IND:
@@ -560,6 +485,7 @@ void bt_hdl_pan_msg(bts2_app_stru *bts2_app_data)
             ptr->bd_addr = msg->bd_addr;
             ptr->local_role = msg->local_role;
             ptr->rmt_role = msg->rmt_role;
+            ptr->pan_st = PAN_BUSY_ST;
 #ifdef CFG_BNEP_DBG
             INFO_TRACE(">> Remote device bd_addr: %04X:%02X:%06X\n", msg->bd_addr.nap, msg->bd_addr.uap, msg->bd_addr.lap);
             INFO_TRACE("\n>> enable finish,now regeist a network card\n");
@@ -569,9 +495,7 @@ void bt_hdl_pan_msg(bts2_app_stru *bts2_app_data)
             bt_addr_convert(&msg->bd_addr, profile_state.mac.addr);
             profile_state.profile_type = BT_NOTIFY_PAN;
             profile_state.res = BTS2_SUCC;
-            bt_interface_bt_event_notify(BT_NOTIFY_PAN, BT_NOTIFY_PAN_PROFILE_CONNECTED,
-                                         &profile_state, sizeof(bt_notify_profile_state_info_t));
-
+            bt_pan_notify_connection_state(&profile_state, BT_NOTIFY_PAN_PROFILE_CONNECTED);
 #ifdef CFG_GNU
             if (0 == running_flag)
             {
@@ -585,12 +509,7 @@ void bt_hdl_pan_msg(bts2_app_stru *bts2_app_data)
 
             running_flag ++ ;
 #endif
-            ptr->pan_st = PAN_BUSY_ST;
-
-            // bts2_remote_ether_addr = bd2etheraddr(&(msg->bd_addr));
             INFO_TRACE(">> PAN connect successfully, running_flag = %d\n", running_flag);
-            lwip_sys_init();
-            bt_lwip_pan_control_tcpip(bts2_app_data);
         }
         else
         {
@@ -599,27 +518,24 @@ void bt_hdl_pan_msg(bts2_app_stru *bts2_app_data)
             ptr->local_role = PAN_NO_ROLE;
             ptr->rmt_role = PAN_NO_ROLE;
             bd_set_empty(&(ptr->bd_addr));
-            bt_lwip_pan_detach_tcpip(bts2_app_data);
-            lwip_system_uninit();
 
             bt_notify_profile_state_info_t profile_state;
             bt_addr_convert(&msg->bd_addr, profile_state.mac.addr);
             profile_state.profile_type = BT_NOTIFY_PAN;
             profile_state.res = msg->res;
-            bt_interface_bt_event_notify(BT_NOTIFY_PAN, BT_NOTIFY_PAN_PROFILE_DISCONNECTED,
-                                         &profile_state, sizeof(bt_notify_profile_state_info_t));
+            bt_pan_notify_connection_state(&profile_state, BT_NOTIFY_PAN_PROFILE_DISCONNECTED);
 
         }
         USER_TRACE(" BTS2MU_PAN_CONN_IND\n");
 
 #ifdef CFG_BQB
 #ifdef TP_BNEP_BV_20_C
-        struct rt_bt_pan_instance *bt_instance;
+        struct rt_bt_lwip_pan_dev *bt_dev;
         U8 buff[50];
         int len = 50;
-        bt_instance = &bt_pan_instance[0];
-        bt_instance->bts2_app_data = bts2_app_data;
-        bt_instance->bts2_app_data->pan_inst_ptr =  ptr;
+        bt_dev = &bt_lwip_pan_dev[0];
+        bt_dev->bts2_app_data = bts2_app_data;
+        bt_dev->bts2_app_data->pan_inst_ptr =  ptr;
         memset(buff, 0xbb, 50);
         buff[12] = 0x08;
         buff[13] = 0x00;//ether_type ipv4
@@ -627,10 +543,10 @@ void bt_hdl_pan_msg(bts2_app_stru *bts2_app_data)
         bts2_local_ether_addr.w[0] = 0xaaaa;
         bts2_local_ether_addr.w[1] = 0xaaaa;
         bts2_local_ether_addr.w[2] = 0xaaaa;
-        bt_lwip_pan_send(bt_instance, buff, len);
+        bt_pan_send_data(bt_dev, buff, len);
 #endif
 #ifdef TP_PANU_AUTONET_BV_01_I
-        struct rt_bt_pan_instance *bt_instance;
+        struct rt_bt_lwip_pan_dev *bt_dev;
         //raw data:28byte
         //header 14byte;
         U8 buff[42] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00\
@@ -638,16 +554,16 @@ void bt_hdl_pan_msg(bts2_app_stru *bts2_app_data)
                        , 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc0, 0xa8, 0x01, 0x1e
                       };
         int len = 42;
-        bt_instance = &bt_pan_instance[0];
-        bt_instance->bts2_app_data = bts2_app_data;
-        bt_instance->bts2_app_data->pan_inst_ptr =  ptr;
+        bt_dev = &bt_lwip_pan_dev[0];
+        bt_dev->bts2_app_data = bts2_app_data;
+        bt_dev->bts2_app_data->pan_inst_ptr =  ptr;
         buff[12] = 0x08;
         buff[13] = 0x06;//ether_type ETHER_TYPE_ARP
         extern BTS2S_ETHER_ADDR   bts2_local_ether_addr;
         bts2_local_ether_addr.w[0] = 0xab89;
         bts2_local_ether_addr.w[1] = 0x5634;
         bts2_local_ether_addr.w[2] = 0x1200;
-        bt_lwip_pan_send(bt_instance, buff, len);
+        bt_pan_send_data(bt_dev, buff, len);
 #endif
 #endif
 
@@ -659,7 +575,7 @@ void bt_hdl_pan_msg(bts2_app_stru *bts2_app_data)
         msg = (BTS2S_PAN_DATA_IND *)bts2_app_data->recv_msg;
 
         if (ptr->mode == SNIFF_MODE)
-            bt_exit_sniff_mode(bts2_app_data);
+            bt_exit_sniff_mode(&ptr->bd_addr);
 
 #ifdef CFG_GNU
         tx_data(msg);
@@ -675,7 +591,8 @@ void bt_hdl_pan_msg(bts2_app_stru *bts2_app_data)
             bfree(msg->payload);
             break;
         }
-        rt_bt_instance_transfer_prot(&bt_pan_instance[0], (void *)msg->payload, msg->len);
+
+        bt_lwip_pan_dev_recv_data((void *)msg->payload, msg->len);
         bfree(msg->payload);
         break;
     }
@@ -688,16 +605,14 @@ void bt_hdl_pan_msg(bts2_app_stru *bts2_app_data)
         ptr->local_role = PAN_NO_ROLE;
         ptr->rmt_role = PAN_NO_ROLE;
         bd_set_empty(&(ptr->bd_addr));
-        bt_lwip_pan_detach_tcpip(bts2_app_data);
 
         bt_notify_profile_state_info_t profile_state;
         bt_addr_convert(&msg->bd, profile_state.mac.addr);
         profile_state.profile_type = BT_NOTIFY_PAN;
         profile_state.res = msg->res;
-        bt_interface_bt_event_notify(BT_NOTIFY_PAN, BT_NOTIFY_PAN_PROFILE_DISCONNECTED,
-                                     &profile_state, sizeof(bt_notify_profile_state_info_t));
+        bt_pan_notify_connection_state(&profile_state, BT_NOTIFY_PAN_PROFILE_DISCONNECTED);
 
-        lwip_system_uninit();
+
         INFO_TRACE(" BTS2MU_PAN_DISC_IND\n");
         break;
     }
@@ -738,8 +653,6 @@ void bt_hdl_pan_msg(bts2_app_stru *bts2_app_data)
                 ptr->local_role = PAN_NO_ROLE;
                 ptr->rmt_role = PAN_NO_ROLE;
                 bd_set_empty(&(bts2_app_data->pan_inst.pan_sdp[idx].bd_addr));
-                bt_lwip_pan_detach_tcpip(bts2_app_data);
-                lwip_system_uninit();
 
                 bts2_app_data->pan_inst.pan_sdp[idx].gn_sdp_pending = FALSE;
                 bts2_app_data->pan_inst.pan_sdp[idx].gn_sdp_fail = FALSE;
@@ -750,8 +663,7 @@ void bt_hdl_pan_msg(bts2_app_stru *bts2_app_data)
                 bt_addr_convert(&rem_addr, profile_state.mac.addr);
                 profile_state.profile_type = BT_NOTIFY_PAN;
                 profile_state.res = msg->res;
-                bt_interface_bt_event_notify(BT_NOTIFY_PAN, BT_NOTIFY_PAN_PROFILE_DISCONNECTED,
-                                             &profile_state, sizeof(bt_notify_profile_state_info_t));
+                bt_pan_notify_connection_state(&profile_state, BT_NOTIFY_PAN_PROFILE_DISCONNECTED);
             }
             else
             {
