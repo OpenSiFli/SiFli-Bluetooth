@@ -802,10 +802,10 @@ BOOL bt_interface_check_avrcp_role_valid(U8 role)
 // @deprecated - please use bt_interface_set_avrcp_role_ext
 bt_err_t bt_interface_set_avrcp_role(BTS2S_BD_ADDR *bd_addr, U8 role)
 {
-    bt_notify_device_mac_t *bd_addr_c;
-    bt_addr_convert_to_general(bd_addr, (bd_addr_t *)bd_addr_c);
+    bt_notify_device_mac_t bd_addr_c;
+    bt_addr_convert_to_general(bd_addr, (bd_addr_t *)&bd_addr_c);
     LOG_E("deprecated - please use bt_interface_set_avrcp_role_ext");
-    return bt_interface_set_avrcp_role_ext(bd_addr_c, role);
+    return bt_interface_set_avrcp_role_ext(&bd_addr_c, role);
 }
 
 bt_err_t bt_interface_set_avrcp_role_ext(bt_notify_device_mac_t *rmt_addr, U8 role)
@@ -972,10 +972,10 @@ void bt_interface_add_hid_descriptor(U8 *data, U8 len)
 // @deprecated - please use bt_interface_spp_send_data_ext
 bt_err_t bt_interface_spp_send_data(U8 *data, U16 len, BTS2S_BD_ADDR *bd_addr, U8 srv_chl)
 {
-    bt_notify_device_mac_t *bd_addr_c;
-    bt_addr_convert_to_general(bd_addr, (bd_addr_t *)bd_addr_c);
+    bt_notify_device_mac_t bd_addr_c;
+    bt_addr_convert_to_general(bd_addr, (bd_addr_t *)&bd_addr_c);
     LOG_E("deprecated - please use bt_interface_spp_send_data_ext");
-    return bt_interface_spp_send_data_ext(data, len, bd_addr_c, srv_chl);
+    return bt_interface_spp_send_data_ext(data, len, &bd_addr_c, srv_chl);
 }
 
 bt_err_t bt_interface_spp_send_data_ext(U8 *data, U16 len, bt_notify_device_mac_t *rmt_addr, U8 srv_chl)
@@ -1075,10 +1075,10 @@ bt_err_t bt_interface_add_spp_uuid(U8 *uuid, U8 uuid_len, char *srv_name)
 // @deprecated - please use bt_interface_spp_srv_data_rsp_ext
 bt_err_t bt_interface_spp_srv_data_rsp(BTS2S_BD_ADDR *bd_addr, U8 srv_chl)
 {
-    bt_notify_device_mac_t *bd_addr_c;
-    bt_addr_convert_to_general(bd_addr, (bd_addr_t *)bd_addr_c);
+    bt_notify_device_mac_t bd_addr_c;
+    bt_addr_convert_to_general(bd_addr, (bd_addr_t *)&bd_addr_c);
     LOG_E("deprecated - please use bt_interface_spp_srv_data_rsp_ext");
-    return bt_interface_spp_srv_data_rsp_ext(bd_addr_c, srv_chl);
+    return bt_interface_spp_srv_data_rsp_ext(&bd_addr_c, srv_chl);
 }
 
 bt_err_t bt_interface_spp_srv_data_rsp_ext(bt_notify_device_mac_t *rmt_addr, U8 srv_chl)
@@ -1117,10 +1117,10 @@ bt_err_t bt_interface_spp_srv_data_rsp_ext(bt_notify_device_mac_t *rmt_addr, U8 
 // @deprecated - please use bt_interface_dis_spp_by_addr_and_chl_ext
 bt_err_t bt_interface_dis_spp_by_addr_and_chl(BTS2S_BD_ADDR *bd_addr, U8 srv_chl)
 {
-    bt_notify_device_mac_t *bd_addr_c;
-    bt_addr_convert_to_general(bd_addr, (bd_addr_t *)bd_addr_c);
+    bt_notify_device_mac_t bd_addr_c;
+    bt_addr_convert_to_general(bd_addr, (bd_addr_t *)&bd_addr_c);
     LOG_E("deprecated - please use bt_interface_dis_spp_by_addr_and_chl_ext");
-    return bt_interface_dis_spp_by_addr_and_chl_ext(bd_addr_c, srv_chl);
+    return bt_interface_dis_spp_by_addr_and_chl_ext(&bd_addr_c, srv_chl);
 }
 
 bt_err_t bt_interface_dis_spp_by_addr_and_chl_ext(bt_notify_device_mac_t *rmt_addr, U8 srv_chl)
