@@ -340,7 +340,10 @@ uint8_t ble_serial_tran_set_cbk(uint8_t conn_idx, sibles_set_cbk_t *para)
                 }
             }
         }
-        ble_serial_callback_data_notify(conn_idx, cate_id, para->len - 4, para->value + 4);
+        if(para->len > 4)
+        {
+            ble_serial_callback_data_notify(conn_idx, cate_id, para->len - 4, para->value + 4);
+        }
         break;
     }
     }
