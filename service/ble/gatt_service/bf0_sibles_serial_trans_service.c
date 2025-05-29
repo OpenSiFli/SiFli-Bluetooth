@@ -242,6 +242,13 @@ uint8_t ble_serial_tran_set_cbk(uint8_t conn_idx, sibles_set_cbk_t *para)
     }
     case BLE_SERIAL_TRAN_DATA_VALUE:
     {
+        // Data length check
+        if(para->len <=  4)
+        {
+            ble_serial_callback_error_notify(conn_idx, env->assemable.id, BLE_SERIAL_TRAN_ERROR_ASSEMBLE_UNDER_LEN);
+            ble_serial_clean_assemble();
+            break;
+        }
         // should get the conn_idx from parameter
         // notify upper layer
         uint8_t frag_flag = *(para->value + 1);
