@@ -1563,7 +1563,7 @@ static void  bt_disply_menu_gen_8_8(void)
 
 static void bt_hdl_menu_gen_8_8(bts2_app_stru *bts2_app_data)
 {
-    bt_etner_sniff_mode(&bts2_app_data->last_conn_bd, 400,5);
+    bt_etner_sniff_mode(&bts2_app_data->last_conn_bd, 400, 5);
 }
 
 static void  bt_disply_menu_gen_8_9(void)
@@ -2895,16 +2895,16 @@ static void bt_hdl_menu_hfp_ag(bts2_app_stru *bts2_app_data)
     }
     case 'k':
     {
-        hfp_phone_call_info_t * call_info = bt_hfp_ag_app_get_remote_call_info();
-        bt_hfp_ag_app_call_status_change((char *)&call_info->phone_info.phone_number, strlen(call_info->phone_info.phone_number) + 1, 
-                                        1, 0, call_info->call_dir);
+        hfp_phone_call_info_t *call_info = bt_hfp_ag_app_get_remote_call_info();
+        bt_hfp_ag_app_call_status_change((char *)&call_info->phone_info.phone_number, strlen(call_info->phone_info.phone_number) + 1,
+                                         1, 0, call_info->call_dir);
         break;
     }
     case 'l':
     {
-        hfp_phone_call_info_t * call_info = bt_hfp_ag_app_get_remote_call_info();
-        bt_hfp_ag_app_call_status_change((char *)&call_info->phone_info.phone_number, strlen(call_info->phone_info.phone_number) + 1, 
-                                        0, 0, call_info->call_dir);
+        hfp_phone_call_info_t *call_info = bt_hfp_ag_app_get_remote_call_info();
+        bt_hfp_ag_app_call_status_change((char *)&call_info->phone_info.phone_number, strlen(call_info->phone_info.phone_number) + 1,
+                                         0, 0, call_info->call_dir);
         break;
     }
     case 'm':
@@ -5108,7 +5108,7 @@ static void bt_hdl_menu_bt_l2cap_profile(bts2_app_stru *bts2_app_data)
     {
     case '1':
     {
-        bt_l2cap_profile_app_reg_service(0xffee, 1);
+        bt_l2cap_profile_app_reg_service(0xffee, 0, 0x41);
         break;
     }
     case '2':

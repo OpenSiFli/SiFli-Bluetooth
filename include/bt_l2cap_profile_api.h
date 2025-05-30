@@ -113,6 +113,7 @@ typedef struct
     U16 hdl_id;
     U16 psm;
     U16 flag;
+    U16 flush_timeout;
 } BTS2S_L2CAP_PROFILE_REG_INFO;
 
 typedef struct
@@ -182,7 +183,7 @@ typedef struct
     U8  res;
 } BTS2S_BT_L2CAP_DATA_CFM;
 
-void bt_l2cap_profile_reg_req(U16 hdl, U16 psm, U16 flag);
+void bt_l2cap_profile_reg_req(U16 hdl, U16 psm, U16 flag, U16 flush_timeout);
 void bt_l2cap_profile_unreg_req(U16 hdl, U16 psm);
 void bt_l2cap_profile_conn_req(BTS2S_BD_ADDR *bd, U16 local_psm, U16 remote_psm);
 void bt_l2cap_profile_send_conn_res(U8 accept, BTS2S_BT_L2CAP_CONN_IND *msg);

@@ -136,7 +136,7 @@ static void bt_l2cap_profile_app_update_reg_state(BTS2S_L2CAP_PROFILE_REG_RES *s
 {
     bts2_bt_l2cap_inst_data_t *l2cap_profile_info = bt_l2cap_profile_app_get_context();
 
-    LOG_I("bt_l2cap_profile_app_update_reg_state status_info:0x%2x psm:0x%2x reg_status%d\n", status_info->reg_state,l2cap_profile_info->local_psm, l2cap_profile_info->reg_status);
+    LOG_I("bt_l2cap_profile_app_update_reg_state status_info:0x%2x psm:0x%2x reg_status%d\n", status_info->reg_state, l2cap_profile_info->local_psm, l2cap_profile_info->reg_status);
 
     if ((status_info->local_psm == l2cap_profile_info->local_psm) && (status_info->reg_state == (U8)BT_L2CAP_PROFILE_REG_STATE))
     {
@@ -284,14 +284,14 @@ void bt_l2cap_profile_app_init_data(bts2_app_stru *bts2_app_data)
 }
 
 /*************************************BT_L2CAP PROFILE CMD *************************************/
-U8 bt_l2cap_profile_app_reg_service(U16 psm, U16 flag)
+U8 bt_l2cap_profile_app_reg_service(U16 psm, U16 flag, U16 flush_timeout)
 {
     bts2_bt_l2cap_inst_data_t *l2cap_profile_info = bt_l2cap_profile_app_get_context();
     if (!l2cap_profile_info->reg_status)
     {
         l2cap_profile_info->local_psm = psm;
         hcia_sync_reg_req(bts2_task_get_app_task_id(), 0);
-        bt_l2cap_profile_reg_req(bts2_task_get_app_task_id(), psm, flag);
+        bt_l2cap_profile_reg_req(bts2_task_get_app_task_id(), psm, flag, flush_timeout);
     }
     else
     {

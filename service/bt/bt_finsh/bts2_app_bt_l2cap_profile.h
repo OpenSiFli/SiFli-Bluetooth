@@ -64,7 +64,7 @@ void bt_l2cap_profile_app_init_data(bts2_app_stru *bts2_app_data);
 void bt_l2cap_profile_app_msg_hdl(bts2_app_stru *bts2_app_data);
 void bt_l2cap_profile_hci_msg_hdl(bts2_app_stru *bts2_app_data);
 /*************************************BT_L2CAP PROFILE CMD *************************************/
-U8 bt_l2cap_profile_app_reg_service(U16 psm, U16 flag);
+U8 bt_l2cap_profile_app_reg_service(U16 psm, U16 flag, U16 flush_timeout);
 U8 bt_l2cap_profile_app_unreg_service(U16 psm);
 U8 bt_l2cap_profile_app_connect_req(BTS2S_BD_ADDR *bd, U16 local_psm, U16 remote_psm);
 void bt_l2cap_profile_app_conn_ind(BTS2S_BT_L2CAP_CONN_IND *conn_info);
