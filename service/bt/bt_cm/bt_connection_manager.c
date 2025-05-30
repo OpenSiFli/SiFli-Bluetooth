@@ -435,12 +435,6 @@ static bt_cm_err_t bt_cm_profile_connect(uint32_t profile_bit, bt_cm_conned_dev_
                     RT_ASSERT(0);
                 avrcp_conn_req(bts2_task_get_app_task_id(), conn->info.bd_addr, rmt_role, role);
             }
-// #ifdef CFG_HID
-//     else if (profile_bit == BT_CM_HID)
-//     {
-//         hid_conn_req(bts2_task_get_app_task_id(), conn->info.bd_addr, HID_Host, HID_Device);
-//     }
-// #endif
             else
 #endif
 #ifdef CFG_PAN
@@ -450,6 +444,12 @@ static bt_cm_err_t bt_cm_profile_connect(uint32_t profile_bit, bt_cm_conned_dev_
                     err = bt_pan_conn(&(conn->info.bd_addr));
 #endif
                 }
+#ifdef CFG_HID
+                else if (profile_bit == BT_CM_HID)
+                {
+                    hid_conn_req(bts2_task_get_app_task_id(), conn->info.bd_addr, HID_Host, HID_Device);
+                }
+#endif
                 else
 #endif
 
@@ -1667,6 +1667,7 @@ bt_cm_err_t bt_cm_connect_req(BTS2S_BD_ADDR *bd_addr, bt_cm_conn_role_t role)
             {
                 err = BT_CM_ERR_INVALID_PARA;
                 bt_cm_conn_destory(env, conn);
+                gap_wr_scan_enb_req(bts2_task_get_app_task_id(), 1, 1);
                 break;
             }
 
@@ -1676,6 +1677,7 @@ bt_cm_err_t bt_cm_connect_req(BTS2S_BD_ADDR *bd_addr, bt_cm_conn_role_t role)
         else
         {
             bt_cm_conn_destory(env, conn);
+            gap_wr_scan_enb_req(bts2_task_get_app_task_id(), 1, 1);
         }
         err = BT_CM_ERR_NO_ERR;
 
