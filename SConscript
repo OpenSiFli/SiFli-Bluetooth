@@ -18,14 +18,12 @@ if GetDepend('BLUETOOTH'):
     path = os.path.join(cwd, d)
     objs = objs + SConscript(os.path.join(d, 'SConscript'))    
 
-    if GetDepend('CFG_BT_HOST') or  GetDepend('CFG_BLE_HOST') or GetDepend('ZBT'):
-        d='stack'
-        path = os.path.join(cwd, d)
-        objs = objs + SConscript(os.path.join(d, 'SConscript'))    
-        if GetDepend('ZBT'):
-            d='lib'
-            path = os.path.join(cwd, d)
-            objs = objs + SConscript(os.path.join(d, 'SConscript'))            
+    d='zephyr_bt'
+    path = os.path.join(cwd, d)
+    objs = objs + SConscript(os.path.join(d, 'SConscript'))    
+
+    if GetDepend('CFG_BT_HOST') or  GetDepend('CFG_BLE_HOST'):
+        print("Do nothing")         
     else:
         d='lib'
         path = os.path.join(cwd, d)
