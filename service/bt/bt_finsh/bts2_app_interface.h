@@ -849,59 +849,66 @@ void bt_interface_phone_state_changed(HFP_CALL_INFO_T *call_info);
 
 /**
  * @brief                        Send subscriber number response for AT+CNUM
+ * @param[in] profile_channel    Local mux_id from profile connected information
  * @param[in] local_phone_num    Local phone number information
  *
  * @return                       void
  **/
-void bt_interface_local_phone_info_res(hfp_phone_number_t *local_phone_num);
+void bt_interface_local_phone_info_res(uint16_t profile_channel, hfp_phone_number_t *local_phone_num);
 
 /**
  * @brief                        Response for all call info request(AT+CLCC)
+ * @param[in] profile_channel    Local mux_id from profile connected information
  * @param[in] calls_info         All call information
  *
  * @return                       void
  **/
-void bt_interface_remote_call_info_res(hfp_remote_calls_info_t *calls_info);
+void bt_interface_remote_call_info_res(uint16_t profile_channel, hfp_remote_calls_info_t *calls_info);
 
 /**
  * @brief                        Response all indicators information for remote device
+ * @param[in] profile_channel    Local mux_id from profile connected information
  * @param[in] cind_status        All indicators information
  *
  * @return                       void
  **/
-void bt_interface_get_all_indicator_info_res(hfp_cind_status_t *cind_status);
+void bt_interface_get_all_indicator_info_res(uint16_t profile_channel, hfp_cind_status_t *cind_status);
 
 /**
  * @brief                        Update indicator status
+ * @param[in] profile_channel    Local mux_id from profile connected information
  * @param[in] ind_info           indicator information
  *
  * @return                       void
  **/
-void bt_interface_indicator_status_changed(HFP_IND_INFO_T *ind_info);
+void bt_interface_indicator_status_changed(uint16_t profile_channel, HFP_IND_INFO_T *ind_info);
 
 /**
  * @brief                        Update speaker volume
+ * @param[in] profile_channel    Local mux_id from profile connected information
  * @param[in] vol                Volume value
  *
  * @return                       void
  **/
-void bt_interface_spk_vol_change_req(U8 vol);
+void bt_interface_spk_vol_change_req(uint16_t profile_channel, uint8_t vol);
 
 /**
  * @brief                        Update microphone volume
+ * @param[in] profile_channel    Local mux_id from profile connected information
  * @param[in] vol                Volume value
  *
  * @return                       void
  **/
-void bt_interface_mic_vol_change_req(U8 vol);
+void bt_interface_mic_vol_change_req(uint16_t profile_channel, uint8_t vol);
 
 /**
  * @brief                        The response of make_call request
+ * @param[in] profile_channel    Local mux_id from profile connected information
  * @param[in] res                OK (0)/ERROR (1)
  *
  * @return                       void
  **/
-void bt_interface_make_call_res(U8 res);
+void bt_interface_make_call_res(uint16_t profile_channel, uint8_t res);
 
 /**
  * @brief                       Create/Close an audio connection

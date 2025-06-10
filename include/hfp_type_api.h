@@ -141,6 +141,8 @@ typedef enum
 {
     HFP_DEVICE_DISCONNECTED = 0,
     HFP_DEVICE_CONNECTING,
+    /** Session in config state, HFP configuration */
+    HFP_DEVICE_CONFIG,
     HFP_DEVICE_CONNECTED,
     HFP_DEVICE_DISCONNECTING,
     HFP_DEVICE_AUDIO_DISCONNECTED,
@@ -226,6 +228,8 @@ typedef enum
 typedef struct
 {
     U16 type;
+    U8 mux_id;
+    BTS2S_BD_ADDR bd;
     BOOL audio_on;
     U16 sco_hdl;
     /*
@@ -278,6 +282,7 @@ typedef struct
 typedef struct
 {
     U16 type;
+    U8  mux_id;
     U8 num_active;
     U8 num_held;
     U8 callsetup_state;

@@ -2796,26 +2796,30 @@ static void bt_hdl_menu_hfp_ag(bts2_app_stru *bts2_app_data)
     }
     case '5':
     {
-        int value = atoi((const char *)bts2_app_data->input_str + 1);
-        bt_hfp_ag_spk_vol_control(value);
+        uint8_t mux_id = bts2_app_data->input_str[1] - '0';
+        uint8_t value = bts2_app_data->input_str[2] - '0';
+        bt_hfp_ag_spk_vol_control(mux_id, value);
         break;
     }
     case '6':
     {
-        int value = atoi((const char *)bts2_app_data->input_str + 1);
-        bt_hfp_ag_mic_vol_control(value);
+        uint8_t mux_id = bts2_app_data->input_str[1] - '0';
+        uint8_t value = bts2_app_data->input_str[2] - '0';
+        bt_hfp_ag_mic_vol_control(mux_id, value);
         break;
     }
     case '7':
     {
-        int value = (U8)atoi((const char *)bts2_app_data->input_str + 1);
-        bt_hfp_ag_set_inband(value);
+        uint8_t mux_id = bts2_app_data->input_str[1] - '0';
+        uint8_t value = bts2_app_data->input_str[2] - '0';
+        bt_hfp_ag_set_inband(mux_id, value);
         break;
     }
     case '8':
     {
-        int value = (U8)atoi((const char *)bts2_app_data->input_str + 1);
-        bt_hfp_ag_brva_response(value);
+        uint8_t mux_id = bts2_app_data->input_str[1] - '0';
+        uint8_t value = bts2_app_data->input_str[2] - '0';
+        bt_hfp_ag_brva_response(mux_id, value);
         break;
     }
     case '9':
@@ -2830,52 +2834,59 @@ static void bt_hdl_menu_hfp_ag(bts2_app_stru *bts2_app_data)
     }
     case 'b':
     {
-        int value = (U8)atoi((const char *)bts2_app_data->input_str + 1);
+        uint8_t mux_id = bts2_app_data->input_str[1] - '0';
+        uint8_t value = bts2_app_data->input_str[2] - '0';
         bt_hfp_ag_app_cind_status_change(HFP_AG_CIND_SERVICE_TYPE, value);
-        bt_hfp_ag_ind_status_update(HFP_AG_CIND_SERVICE_TYPE, value);
+        bt_hfp_ag_ind_status_update(mux_id, HFP_AG_CIND_SERVICE_TYPE, value);
         break;
     }
     case 'c':
     {
-        int value = (U8)atoi((const char *)bts2_app_data->input_str + 1);
+        uint8_t mux_id = bts2_app_data->input_str[1] - '0';
+        uint8_t value = bts2_app_data->input_str[2] - '0';
         bt_hfp_ag_app_cind_status_change(HFP_AG_CIND_CALL_TYPE, value);
-        bt_hfp_ag_ind_status_update(HFP_AG_CIND_CALL_TYPE, value);
+        bt_hfp_ag_ind_status_update(mux_id, HFP_AG_CIND_CALL_TYPE, value);
         break;
     }
     case 'd':
     {
-        int value = (U8)atoi((const char *)bts2_app_data->input_str + 1);
+        uint8_t mux_id = bts2_app_data->input_str[1] - '0';
+        uint8_t value = bts2_app_data->input_str[2] - '0';
         bt_hfp_ag_app_cind_status_change(HFP_AG_CIND_CALLSETUP_TYPE, value);
-        bt_hfp_ag_ind_status_update(HFP_AG_CIND_CALLSETUP_TYPE, value);
+        bt_hfp_ag_ind_status_update(mux_id, HFP_AG_CIND_CALLSETUP_TYPE, value);
         break;
     }
     case 'e':
     {
-        U8 value = (U8)atoi((const char *)bts2_app_data->input_str + 1);
+        uint8_t mux_id = bts2_app_data->input_str[1] - '0';
+        uint8_t value = bts2_app_data->input_str[2] - '0';
         bt_hfp_ag_app_cind_status_change(HFP_AG_CIND_BATT_TYPE, value);
-        bt_hfp_ag_ind_status_update(HFP_AG_CIND_BATT_TYPE, value);
+        bt_hfp_ag_ind_status_update(mux_id, HFP_AG_CIND_BATT_TYPE, value);
         break;
     }
     case 'f':
     {
-        int value = (U8)atoi((const char *)bts2_app_data->input_str + 1);
+        uint8_t mux_id = bts2_app_data->input_str[1] - '0';
+        uint8_t value = bts2_app_data->input_str[2] - '0';
         bt_hfp_ag_app_cind_status_change(HFP_AG_CIND_SIGNAL_TYPE, value);
-        bt_hfp_ag_ind_status_update(HFP_AG_CIND_SIGNAL_TYPE, value);
+        bt_hfp_ag_ind_status_update(mux_id, HFP_AG_CIND_SIGNAL_TYPE, value);
         break;
     }
 
     case 'g':
     {
-        U8 value = (U8)atoi((const char *)bts2_app_data->input_str + 1);
+        uint8_t mux_id = bts2_app_data->input_str[1] - '0';
+        uint8_t value = bts2_app_data->input_str[2] - '0';
         bt_hfp_ag_app_cind_status_change(HFP_AG_CIND_ROAM_TYPE, value);
-        bt_hfp_ag_ind_status_update(HFP_AG_CIND_ROAM_TYPE, value);
+        bt_hfp_ag_ind_status_update(mux_id, HFP_AG_CIND_ROAM_TYPE, value);
         break;
     }
     case 'h':
     {
-        int value = (U8)atoi((const char *)bts2_app_data->input_str + 1);
+        uint8_t mux_id = bts2_app_data->input_str[1] - '0';
+        uint8_t value = bts2_app_data->input_str[2] - '0';
         bt_hfp_ag_app_cind_status_change(HFP_AG_CIND_CALLHELD_TYPE, value);
-        bt_hfp_ag_ind_status_update(HFP_AG_CIND_CALLHELD_TYPE, value);
+        bt_hfp_ag_ind_status_update(mux_id, HFP_AG_CIND_CALLHELD_TYPE, value);
         break;
     }
     case 'i':
@@ -2884,58 +2895,66 @@ static void bt_hdl_menu_hfp_ag(bts2_app_stru *bts2_app_data)
         char *str = "1234567";
         bmemcpy(&remote_phone_num.phone_number, str, strlen(str));
         remote_phone_num.type = 0x81;
-        bt_hfp_ag_clip_response(&remote_phone_num);
+        bt_hfp_ag_clip_response(0, &remote_phone_num);
         break;
     }
     case 'j':
     {
         char *str = "18182307981";
-        bt_hfp_ag_app_call_status_change((char *)str, strlen(str) + 1, 0, 1, PHONE_CALL_DIR_INCOMING);
+        uint8_t mux_id = bts2_app_data->input_str[1] - '0';
+        bt_hfp_ag_app_call_status_change(mux_id, (char *)str, strlen(str) + 1, 0, 1, PHONE_CALL_DIR_INCOMING);
         break;
     }
     case 'k':
     {
         hfp_phone_call_info_t *call_info = bt_hfp_ag_app_get_remote_call_info();
-        bt_hfp_ag_app_call_status_change((char *)&call_info->phone_info.phone_number, strlen(call_info->phone_info.phone_number) + 1,
+        uint8_t mux_id = bts2_app_data->input_str[1] - '0';
+        bt_hfp_ag_app_call_status_change(mux_id, (char *)&call_info->phone_info.phone_number, strlen(call_info->phone_info.phone_number) + 1,
                                          1, 0, call_info->call_dir);
         break;
     }
     case 'l':
     {
         hfp_phone_call_info_t *call_info = bt_hfp_ag_app_get_remote_call_info();
-        bt_hfp_ag_app_call_status_change((char *)&call_info->phone_info.phone_number, strlen(call_info->phone_info.phone_number) + 1,
+        uint8_t mux_id = bts2_app_data->input_str[1] - '0';
+        bt_hfp_ag_app_call_status_change(mux_id, (char *)&call_info->phone_info.phone_number, strlen(call_info->phone_info.phone_number) + 1,
                                          0, 0, call_info->call_dir);
         break;
     }
     case 'm':
     {
         char *str = "18182307981";
-        bt_hfp_ag_app_call_status_change(str, strlen(str) + 1, 0, 2, PHONE_CALL_DIR_OUTGOING);
+        uint8_t mux_id = bts2_app_data->input_str[1] - '0';
+        bt_hfp_ag_app_call_status_change(mux_id, str, strlen(str) + 1, 0, 2, PHONE_CALL_DIR_OUTGOING);
         break;
     }
     case 'n':
     {
         char *str = "18182307981";
-        bt_hfp_ag_app_call_status_change(str, strlen(str) + 1, 0, 3, PHONE_CALL_DIR_OUTGOING);
+        uint8_t mux_id = bts2_app_data->input_str[1] - '0';
+        bt_hfp_ag_app_call_status_change(mux_id, str, strlen(str) + 1, 0, 3, PHONE_CALL_DIR_OUTGOING);
         break;
     }
     case 'o':
     {
-        int value = (U8)atoi((const char *)bts2_app_data->input_str + 1);
-        bt_hfp_ag_at_result_res(value);
+        uint8_t value = atoi((const char *)bts2_app_data->input_str + 1);
+        uint8_t mux_id = atoi((const char *)bts2_app_data->input_str + 2);
+        bt_hfp_ag_at_result_res(mux_id, value);
         break;
     }
     case 'p':
     {
-        int value = (U8)atoi((const char *)bts2_app_data->input_str + 1);
-        bt_hfp_ag_set_bcs(value);
+        uint8_t value = atoi((const char *)bts2_app_data->input_str + 1);
+        uint8_t mux_id = atoi((const char *)bts2_app_data->input_str + 2);
+        bt_hfp_ag_set_bcs(mux_id, value);
         break;
     }
 
     case 'q':
     {
-        extern void hfp_ag_app_send_ring();
-        hfp_ag_app_send_ring();
+        extern void hfp_ag_app_send_ring(U8 mux_id);
+        uint8_t mux_id = atoi((const char *)bts2_app_data->input_str + 1);
+        hfp_ag_app_send_ring(mux_id);
         break;
     }
     case 't':
@@ -2949,7 +2968,8 @@ static void bt_hdl_menu_hfp_ag(bts2_app_stru *bts2_app_data)
     }
     case 'x':
     {
-        int value = (U8)atoi((const char *)bts2_app_data->input_str + 1);
+        uint8_t mux_id = bts2_app_data->input_str[1] - '0';
+        uint8_t value = bts2_app_data->input_str[2] - '0';
         hfp_cind_status_t cind_status;
         cind_status.service_status = 1;
         cind_status.batt_level = 5;
@@ -2968,7 +2988,7 @@ static void bt_hdl_menu_hfp_ag(bts2_app_stru *bts2_app_data)
             cind_status.callsetup = 0;
             cind_status.callheld = 1;
         }
-        bt_hfp_ag_cind_response(&cind_status);
+        bt_hfp_ag_cind_response(mux_id, &cind_status);
         break;
     }
     case 'y':

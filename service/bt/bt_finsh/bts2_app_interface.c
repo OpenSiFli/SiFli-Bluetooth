@@ -1339,39 +1339,39 @@ void bt_interface_phone_state_changed(HFP_CALL_INFO_T *call_info)
     bt_hfp_ag_call_state_update_listener(call_info);
 }
 
-void bt_interface_local_phone_info_res(hfp_phone_number_t *local_phone_num)
+void bt_interface_local_phone_info_res(uint16_t profile_channel, hfp_phone_number_t *local_phone_num)
 {
-    bt_hfp_ag_cnum_response(local_phone_num);
+    bt_hfp_ag_cnum_response((uint8_t)profile_channel, local_phone_num);
 }
 
-void bt_interface_remote_call_info_res(hfp_remote_calls_info_t *calls_info)
+void bt_interface_remote_call_info_res(uint16_t profile_channel, hfp_remote_calls_info_t *calls_info)
 {
-    bt_hfp_ag_remote_calls_res_hdl(calls_info);
+    bt_hfp_ag_remote_calls_res_hdl((uint8_t)profile_channel, calls_info);
 }
 
-void bt_interface_get_all_indicator_info_res(hfp_cind_status_t *cind_status)
+void bt_interface_get_all_indicator_info_res(uint16_t profile_channel, hfp_cind_status_t *cind_status)
 {
-    bt_hfp_ag_cind_response(cind_status);
+    bt_hfp_ag_cind_response((uint8_t)profile_channel, cind_status);
 }
 
-void bt_interface_indicator_status_changed(HFP_IND_INFO_T *ind_info)
+void bt_interface_indicator_status_changed(uint16_t profile_channel, HFP_IND_INFO_T *ind_info)
 {
-    bt_hfp_ag_ind_status_update(ind_info->ind_type, ind_info->ind_val);
+    bt_hfp_ag_ind_status_update((uint8_t)profile_channel, ind_info->ind_type, ind_info->ind_val);
 }
 
-void bt_interface_spk_vol_change_req(U8 vol)
+void bt_interface_spk_vol_change_req(uint16_t profile_channel, uint8_t vol)
 {
-    bt_hfp_ag_spk_vol_control(vol);
+    bt_hfp_ag_spk_vol_control((uint8_t)profile_channel, vol);
 }
 
-void bt_interface_mic_vol_change_req(U8 vol)
+void bt_interface_mic_vol_change_req(uint16_t profile_channel, uint8_t vol)
 {
-    bt_hfp_ag_mic_vol_control(vol);
+    bt_hfp_ag_mic_vol_control((uint8_t)profile_channel, vol);
 }
 
-void bt_interface_make_call_res(U8 res)
+void bt_interface_make_call_res(Uuint16_t profile_channel, uint8_t res)
 {
-    bt_hfp_ag_at_result_res(res);
+    bt_hfp_ag_at_result_res((uint8_t)profile_channel, res);
 }
 
 bt_err_t bt_interface_ag_audio_switch(bt_hfp_audio_switch_t *audio)

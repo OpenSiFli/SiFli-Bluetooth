@@ -451,6 +451,10 @@ typedef struct
     bt_notify_device_mac_t mac;
     ///  profile type
     uint8_t profile_type;
+    ///  profile role
+    uint8_t profile_role;
+    ///  profile channel
+    uint16_t profile_channel;
     ///  reason
     uint8_t res;
 } bt_notify_profile_state_info_t;
@@ -475,6 +479,8 @@ typedef struct
     uint8_t sco_type;
     ///  reason
     uint8_t sco_res;
+    ///  profile channel
+    uint16_t profile_channel;
 } bt_notify_device_sco_info_t;
 
 ///  HFP HF at cmd send result
@@ -630,6 +636,16 @@ typedef struct
     uint8_t uuid_len;
 } bt_notify_spp_disc_ind_t;
 
+///  received spp data information
+typedef struct
+{
+    ///  profile channel
+    uint16_t profile_channel;
+    ///  payload length
+    uint16_t  payload_len;
+    ///  payload pointer
+    uint8_t  payload[1];
+} bt_notify_ag_at_arg_t;
 /// @}  BT_interface_type
 #ifdef __cplusplus
 }

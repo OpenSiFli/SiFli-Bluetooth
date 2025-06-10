@@ -101,6 +101,7 @@ enum
     BTS2MU_AG_SCO_RENEGOTIATE_IND,
     BTS2MU_AG_SCO_RENEGOTIATE_CFM,
     BTS2MU_AG_AT_CMD_EVENT,
+    BTS2MU_AG_AT_CMD_CFM,
 };
 
 /****************************************struct define*************************************************/
@@ -131,6 +132,7 @@ typedef struct
 typedef struct
 {
     U16 type;
+    U8  mux_id;
     S16 command_id;
     S16 val;
     char str[1];
@@ -146,6 +148,7 @@ typedef struct
 {
     U16 type;
     BTS2S_BD_ADDR bd;
+    U8  mux_id;
     U8 device_state;
     U8 res;
 } BTS2S_AG_CONN_RES;
@@ -154,6 +157,7 @@ typedef struct
 {
     U16 type;
     BTS2S_BD_ADDR bd;
+    U8  mux_id;
     U8 audio_on;
     U8 res;
 } BTS2S_AG_AUDIO_CONN_CFM;
@@ -162,6 +166,7 @@ typedef struct
 {
     U16 type;
     BTS2S_BD_ADDR bd;
+    U8  mux_id;
     U16 rfcomm_chnl; //for reconnect not need sdp search
     U8 res;
 } BTS2S_AG_CONN_IND_RES;
@@ -170,8 +175,23 @@ typedef struct
 {
     U16 type;
     BTS2S_BD_ADDR bd;
+    U8  mux_id;
     U8  code_id;
 } BTS2S_AG_AUDIO_CONN_IND;
+
+typedef struct
+{
+    U16 type;
+    U8  mux_id;
+} BTS2S_AG_DEVICE_RESET_CMD;
+
+typedef struct
+{
+    U16 type;
+    U16 at_cmd_id;
+    U8  mux_id;
+    U8  res;
+} BTS2S_AG_AT_CMD_CFM;
 /****************************************func define*************************************************/
 /*******************************************************************************
  *
@@ -296,7 +316,7 @@ void hfp_ag_stop_voice_recognition(BTS2S_BD_ADDR *bd);
  * Returns          void
  *
  ******************************************************************************/
-void hfp_ag_phone_call_status_changed_api(HFP_CALL_INFO_T *p_call_info);
+void hfp_ag_phone_call_status_changed_api(U8 mux_id, HFP_CALL_INFO_T *p_call_info);
 
 
 /****************************************AT cmd func define*************************************************/
@@ -309,7 +329,7 @@ void hfp_ag_phone_call_status_changed_api(HFP_CALL_INFO_T *p_call_info);
  * Returns          void
  *
  ******************************************************************************/
-void hfp_ag_spk_volume_control(S8 volume);
+void hfp_ag_spk_volume_control(U8 mux_id, S8 volume);
 
 /*******************************************************************************
  *
@@ -320,7 +340,7 @@ void hfp_ag_spk_volume_control(S8 volume);
  * Returns          void
  *
  ******************************************************************************/
-void hfp_ag_mic_volume_control(S8 volume);
+void hfp_ag_mic_volume_control(U8 mux_id, S8 volume);
 
 /*******************************************************************************
  *
@@ -331,7 +351,7 @@ void hfp_ag_mic_volume_control(S8 volume);
  * Returns          void
  *
  ******************************************************************************/
-void hfp_ag_cind_response(char *payload, U8 payload_len);
+void hfp_ag_cind_response(U8 mux_id, char *payload, U8 payload_len);
 
 /*******************************************************************************
  *
@@ -342,7 +362,7 @@ void hfp_ag_cind_response(char *payload, U8 payload_len);
  * Returns          void
  *
  ******************************************************************************/
-void hfp_ag_ind_status_update(char *payload, U8 payload_len);
+void hfp_ag_ind_status_update(U8 mux_id, char *payload, U8 payload_len);
 
 /*******************************************************************************
  *
@@ -353,7 +373,7 @@ void hfp_ag_ind_status_update(char *payload, U8 payload_len);
  * Returns          void
  *
  ******************************************************************************/
-void hfp_ag_brva_response(U8 val);
+void hfp_ag_brva_response(U8 mux_id, U8 val);
 
 /*******************************************************************************
  *
@@ -365,7 +385,7 @@ void hfp_ag_brva_response(U8 val);
  * Returns          void
  *
  ******************************************************************************/
-void hfp_ag_set_inband(U8 val);
+void hfp_ag_set_inband(U8 mux_id, U8 val);
 
 /*******************************************************************************
 *
@@ -381,7 +401,7 @@ void hfp_ag_set_inband(U8 val);
 * Returns          void
 *
 ******************************************************************************/
-void hfp_ag_cnum_response(char *payload, U8 payload_len);
+void hfp_ag_cnum_response(U8 mux_id, char *payload, U8 payload_len);
 
 /*******************************************************************************
  *
@@ -392,7 +412,7 @@ void hfp_ag_cnum_response(char *payload, U8 payload_len);
  * Returns          void
  *
  ******************************************************************************/
-void hfp_ag_set_btrh(U8 val);
+void hfp_ag_set_btrh(U8 mux_id, U8 val);
 
 /*******************************************************************************
 *
@@ -406,7 +426,7 @@ void hfp_ag_set_btrh(U8 val);
 * Returns          void
 *
 ******************************************************************************/
-void hfp_ag_clcc_response(char *payload, U8 payload_len);
+void hfp_ag_clcc_response(U8 mux_id, char *payload, U8 payload_len);
 
 /*******************************************************************************
  *
@@ -417,7 +437,7 @@ void hfp_ag_clcc_response(char *payload, U8 payload_len);
  * Returns          void
  *
  ******************************************************************************/
-void hfp_ag_cops_response(char *payload, U8 payload_len);
+void hfp_ag_cops_response(U8 mux_id, char *payload, U8 payload_len);
 
 /*******************************************************************************
  *
@@ -431,7 +451,7 @@ void hfp_ag_cops_response(char *payload, U8 payload_len);
  * Returns          void
  *
  ******************************************************************************/
-void hfp_ag_set_codec_id(U8 code_id);
+void hfp_ag_set_codec_id(U8 mux_id, U8 code_id);
 
 /*******************************************************************************
  *
@@ -442,7 +462,7 @@ void hfp_ag_set_codec_id(U8 code_id);
  * Returns          void
  *
  ******************************************************************************/
-void hfp_ag_clip_response(char *payload, U8 payload_len);
+void hfp_ag_clip_response(U8 mux_id, char *payload, U8 payload_len);
 
 /*******************************************************************************
  *
@@ -453,7 +473,18 @@ void hfp_ag_clip_response(char *payload, U8 payload_len);
  * Returns          void
  *
  ******************************************************************************/
-void hfp_ag_app_send_ring(void);
+void hfp_ag_app_send_ring(U8 mux_id);
+
+/*******************************************************************************
+ *
+ * Function         hfp_ag_send_unknow_at_cmd
+ *
+ * Description      send unknow at cmd
+ *
+ * Returns          void
+ *
+ ******************************************************************************/
+void hfp_ag_send_unknow_at_cmd(U8 mux_id, char *payload, U8 payload_len);
 
 /*******************************************************************************
  *
@@ -464,11 +495,12 @@ void hfp_ag_app_send_ring(void);
  * Returns          void
  *
  ******************************************************************************/
-void hfp_ag_at_cmd_result(U8 res);
-
+void hfp_ag_at_cmd_result(U8 mux_id, U8 res);
 
 void hfp_set_sco_retry_flag(U8 enable);
-U8 hfp_get_sco_retry_flag(void);
+U8 hfp_get_sco_retry_flag();
+uint8_t bt_hfp_ag_profile_get_service_max_num();
+void bt_hfp_ag_profile_set_service_max_num(uint8_t max_num);
 
 #ifdef __cplusplus
 }

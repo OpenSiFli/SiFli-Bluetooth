@@ -69,7 +69,7 @@
 static hfp_phone_call_info_t g_remote_calls_info ;
 hfp_cind_status_t g_cind_states;
 
-void bt_hfp_ag_app_call_status_change(char *phone_num, uint8_t phone_len, uint8_t active, uint8_t callsetup_state, uint8_t call_dir)
+void bt_hfp_ag_app_call_status_change(U8 mux_id, char *phone_num, uint8_t phone_len, uint8_t active, uint8_t callsetup_state, uint8_t call_dir)
 {
     phone_call_status_t call_status;
 
@@ -126,7 +126,7 @@ void bt_hfp_ag_app_call_status_change(char *phone_num, uint8_t phone_len, uint8_
     bmemcpy(&call_info.phone_number, phone_num, phone_len);
     call_info.phone_type = 0x81;
     call_info.phone_len = phone_len;
-    bt_hfp_ag_call_state_update_listener(&call_info);
+    bt_hfp_ag_call_state_update_listener(mux_id, &call_info);
 }
 
 void bt_hfp_ag_app_cind_status_change(uint8_t type, uint8_t val)
@@ -241,7 +241,7 @@ static void bt_hfp_ag_app_device_state_changed(bts2_app_stru *bts2_app_data, BTS
 {
     bts2_hfp_ag_inst_data *p_data = &bts2_app_data->hfp_ag_inst;
 
-    USER_TRACE("hfp_ag device state: %d res: %d type %d", con_msg->device_state, con_msg->res, con_msg->type);
+    USER_TRACE("hfp_ag device state: %d res: %d type %d mux_id:%d", con_msg->device_state, con_msg->res, con_msg->type, con_msg->mux_id);
 
     switch (p_data->st)
     {
@@ -263,19 +263,20 @@ static void bt_hfp_ag_app_device_state_changed(bts2_app_stru *bts2_app_data, BTS
             bt_addr_convert(&con_msg->bd, profile_state.mac.addr);
             profile_state.profile_type = BT_NOTIFY_HFP_AG;
             profile_state.res = BTS2_SUCC;
+            profile_state.profile_channel = con_msg->mux_id;
             bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_PROFILE_CONNECTED,
                                          &profile_state, sizeof(bt_notify_profile_state_info_t));
 #ifndef BT_USING_AG
-        if (g_flag_auto_answer_call)
-        {
-            hfp_phone_call_info_t * call_info = bt_hfp_ag_app_get_remote_call_info();
-
-            if (g_cind_states.call || g_cind_states.callsetup)
+            if (g_flag_auto_answer_call)
             {
-                bt_hfp_ag_app_call_status_change((char *)&call_info->phone_info.phone_number, strlen(call_info->phone_info.phone_number) + 1,
-                                        g_cind_states.call, g_cind_states.callsetup, call_info->call_dir);
+                hfp_phone_call_info_t *call_info = bt_hfp_ag_app_get_remote_call_info();
+
+                if (g_cind_states.call || g_cind_states.callsetup)
+                {
+                    bt_hfp_ag_app_call_status_change(con_msg->mux_id, (char *)&call_info->phone_info.phone_number, strlen(call_info->phone_info.phone_number) + 1,
+                                                     g_cind_states.call, g_cind_states.callsetup, call_info->call_dir);
+                }
             }
-        }
 #endif
         }
         else if (con_msg->device_state == HFP_DEVICE_DISCONNECTED)
@@ -284,6 +285,7 @@ static void bt_hfp_ag_app_device_state_changed(bts2_app_stru *bts2_app_data, BTS
             bt_addr_convert(&con_msg->bd, profile_state.mac.addr);
             profile_state.profile_type = BT_NOTIFY_HFP_AG;
             profile_state.res = con_msg->res;
+            profile_state.profile_channel = con_msg->mux_id;
             bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_PROFILE_DISCONNECTED,
                                          &profile_state, sizeof(bt_notify_profile_state_info_t));
 #ifdef AUDIO_USING_MANAGER
@@ -311,91 +313,105 @@ static void bt_hfp_ag_app_device_state_changed(bts2_app_stru *bts2_app_data, BTS
 
 //static void bt_hfp_ag_app_onAudioStateChanged(hfp_device_state_t state)
 
-static void bt_hfp_ag_app_vr_state_changed()
+static void bt_hfp_ag_app_vr_state_changed(U8 mux_id)
 {
 }
 
-static void bt_hfp_ag_app_answercall()
+static void bt_hfp_ag_app_answercall(U8 mux_id)
 {
-    bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_ANSWER_CALL_REQ, NULL, 0);
+    bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_ANSWER_CALL_REQ, &mux_id, 1);
 #ifndef BT_USING_AG
     if (g_flag_auto_answer_call)
     {
-        hfp_phone_call_info_t * call_info = bt_hfp_ag_app_get_remote_call_info();
-        bt_hfp_ag_app_call_status_change((char *)&call_info->phone_info.phone_number, strlen(call_info->phone_info.phone_number) + 1, 
-                                        1, 0, call_info->call_dir);
+        hfp_phone_call_info_t *call_info = bt_hfp_ag_app_get_remote_call_info();
+        bt_hfp_ag_app_call_status_change(mux_id, (char *)&call_info->phone_info.phone_number, strlen(call_info->phone_info.phone_number) + 1,
+                                         1, 0, call_info->call_dir);
     }
 #endif
 }
 
-static void bt_hfp_ag_app_hangupcall()
+static void bt_hfp_ag_app_hangupcall(U8 mux_id)
 {
-    bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_HANGUP_CALL_REQ, NULL, 0);
+    bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_HANGUP_CALL_REQ,  &mux_id, 1);
 #ifndef BT_USING_AG
-    hfp_phone_call_info_t * call_info = bt_hfp_ag_app_get_remote_call_info();
-    bt_hfp_ag_app_call_status_change((char *)&call_info->phone_info.phone_number, strlen(call_info->phone_info.phone_number) + 1, 
-                                        0, 0, call_info->call_dir);
+    hfp_phone_call_info_t *call_info = bt_hfp_ag_app_get_remote_call_info();
+    bt_hfp_ag_app_call_status_change(mux_id, (char *)&call_info->phone_info.phone_number, strlen(call_info->phone_info.phone_number) + 1,
+                                     0, 0, call_info->call_dir);
 #endif
 
 }
 
-static void bt_hfp_ag_app_vol_changed(U16 val)
+static void bt_hfp_ag_app_vol_changed(U8 mux_id, U16 val)
 {
-    bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_VOLUME_CHANGE, &val, 1);
+    bt_notify_ag_at_arg_t *data_info = (bt_notify_ag_at_arg_t *)bmalloc(sizeof(bt_notify_ag_at_arg_t) + 1);
+    data_info->profile_channel = mux_id;
+    data_info->payload_len = 1;
+    bmemcpy(data_info->payload, &val, 1);
+    bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_VOLUME_CHANGE, data_info, sizeof(bt_notify_ag_at_arg_t) + 1);
+    bfree(data_info);
 }
 
-static void bt_hfp_ag_app_onDialCall(char *number)
+static void bt_hfp_ag_app_onDialCall(U8 mux_id, char *number)
 {
-
-    bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_MAKE_CALL_REQ, number, strlen(number));
+    bt_notify_ag_at_arg_t *data_info = (bt_notify_ag_at_arg_t *)bmalloc(sizeof(bt_notify_ag_at_arg_t) + strlen(number));
+    data_info->profile_channel = mux_id;
+    data_info->payload_len = strlen(number);
+    bmemcpy(data_info->payload, number, strlen(number));
+    bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_MAKE_CALL_REQ, data_info, sizeof(bt_notify_ag_at_arg_t) + strlen(number));
+    bfree(data_info);
 #ifndef BT_USING_AG
     if (g_flag_auto_answer_call)
     {
-        hfp_ag_at_cmd_result(BTS2_SUCC);
+        hfp_ag_at_cmd_result(mux_id, BTS2_SUCC);
         uint8_t phone_len = strlen(number);
         number[phone_len - 1] = '\0';
-        bt_hfp_ag_app_call_status_change(number, phone_len, 0, 2, PHONE_CALL_DIR_OUTGOING);
-        bt_hfp_ag_app_call_status_change(number, phone_len, 0, 3, PHONE_CALL_DIR_OUTGOING);
+        bt_hfp_ag_app_call_status_change(mux_id, number, phone_len, 0, 2, PHONE_CALL_DIR_OUTGOING);
+        bt_hfp_ag_app_call_status_change(mux_id, number, phone_len, 0, 3, PHONE_CALL_DIR_OUTGOING);
     }
     else
     {
-        hfp_ag_at_cmd_result(BTS2_FAILED);
+        hfp_ag_at_cmd_result(mux_id, BTS2_FAILED);
     }
 #endif
 }
 
-static void bt_hfp_ag_app_onSendDtmf(char *number)
+static void bt_hfp_ag_app_onSendDtmf(U8 mux_id, char *number)
 {
-    bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_RECV_DTMF_KEY, number, 1);
+    bt_notify_ag_at_arg_t *data_info = (bt_notify_ag_at_arg_t *)bmalloc(sizeof(bt_notify_ag_at_arg_t) + strlen(number));
+    data_info->profile_channel = mux_id;
+    data_info->payload_len = strlen(number);
+    bmemcpy(data_info->payload, number, strlen(number));
+    bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_RECV_DTMF_KEY, data_info, sizeof(bt_notify_ag_at_arg_t) + strlen(number));
+    bfree(data_info);
 }
 
-static void bt_hfp_ag_app_onNoiseReductionEnable()
-{
-}
-
-static void bt_hfp_ag_app_onWBS()
-{
-}
-
-static void bt_hfp_ag_app_onAtChld()
+static void bt_hfp_ag_app_onNoiseReductionEnable(U8 mux_id)
 {
 }
 
-static void bt_hfp_ag_app_onAtCnum()
+static void bt_hfp_ag_app_onWBS(U8 mux_id)
 {
-    bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_GET_LOCAL_PHONE_INFO_REQ, NULL, 0);
+}
+
+static void bt_hfp_ag_app_onAtChld(U8 mux_id)
+{
+}
+
+static void bt_hfp_ag_app_onAtCnum(U8 mux_id)
+{
+    bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_GET_LOCAL_PHONE_INFO_REQ, &mux_id, 1);
 #ifndef BT_USING_AG
     hfp_phone_number_t local_phone_num;
     char *str = "19396395979";
     bmemcpy(&local_phone_num.phone_number, str, strlen(str) + 1);
     local_phone_num.type = 0x81;
-    bt_hfp_ag_cnum_response(&local_phone_num);
+    bt_hfp_ag_cnum_response(mux_id, &local_phone_num);
 #endif
 }
 
-static void bt_hfp_ag_app_onAtCind()
+static void bt_hfp_ag_app_onAtCind(U8 mux_id)
 {
-    bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_GET_INDICATOR_STATUS_REQ, NULL, 0);
+    bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_GET_INDICATOR_STATUS_REQ, &mux_id, 1);
 #ifndef BT_USING_AG
     if (g_flag_auto_answer_call)
     {
@@ -407,29 +423,29 @@ static void bt_hfp_ag_app_onAtCind()
         cind_status.signal = 3;
         cind_status.roam_status = 1;
         cind_status.callheld = g_cind_states.callheld;
-        bt_hfp_ag_cind_response(&cind_status);
+        bt_hfp_ag_cind_response(mux_id, &cind_status);
     }
 #endif
 }
 
-static void bt_hfp_ag_app_onAtCops()
+static void bt_hfp_ag_app_onAtCops(U8 mux_id)
 {
     char *test_payload = "4G FOR TEST";
-    bt_hfp_ag_cops_response(test_payload, strlen(test_payload));
+    bt_hfp_ag_cops_response(mux_id, test_payload, strlen(test_payload));
 }
 
-static void bt_hfp_ag_app_onAtClcc()
+static void bt_hfp_ag_app_onAtClcc(U8 mux_id)
 {
-    bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_GET_ALL_REMT_CALLS_INFO_REQ, NULL, 0);
+    bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_GET_ALL_REMT_CALLS_INFO_REQ, &mux_id, 1);
 #ifndef BT_USING_AG
     if (g_flag_auto_answer_call)
     {
         hfp_phone_call_info_t *remote_call_info = bt_hfp_ag_app_get_remote_call_info();
         if (remote_call_info->call_idx)
         {
-            bt_hfp_ag_clcc_response(remote_call_info);
+            bt_hfp_ag_clcc_response(mux_id, remote_call_info);
         }
-        hfp_ag_at_cmd_result(BTS2_SUCC);
+        hfp_ag_at_cmd_result(mux_id, BTS2_SUCC);
     }
 #endif
 }
@@ -443,47 +459,47 @@ static void bt_hfp_ag_app_at_cmd_hdl(BTS2S_AG_AT_CMD_INFO *at_cmd)
     case HFP_AG_SPK_EVT:
     case HFP_AG_MIC_EVT:
     {
-        bt_hfp_ag_app_vol_changed(at_cmd->val);
+        bt_hfp_ag_app_vol_changed(at_cmd->mux_id, at_cmd->val);
         break;
     }
     case HFP_AG_AT_A_EVT:
     {
-        bt_hfp_ag_app_answercall();
+        bt_hfp_ag_app_answercall(at_cmd->mux_id);
         break;
     }
     case HFP_AG_AT_D_EVT:
     {
-        bt_hfp_ag_app_onDialCall(at_cmd->str);
+        bt_hfp_ag_app_onDialCall(at_cmd->mux_id, at_cmd->str);
         break;
     }
     case HFP_AG_AT_CHLD_EVT:
     {
-        hfp_ag_at_cmd_result(BTS2_SUCC);
+        hfp_ag_at_cmd_result(at_cmd->mux_id, BTS2_SUCC);
         break;
     }
     case HFP_AG_AT_CHUP_EVT:
     {
-        bt_hfp_ag_app_hangupcall();
+        bt_hfp_ag_app_hangupcall(at_cmd->mux_id);
         break;
     }
     case HFP_AG_AT_CIND_EVT:
     {
-        bt_hfp_ag_app_onAtCind();
+        bt_hfp_ag_app_onAtCind(at_cmd->mux_id);
         break;
     }
     case HFP_AG_AT_VTS_EVT:
     {
-        bt_hfp_ag_app_onSendDtmf(at_cmd->str);
+        bt_hfp_ag_app_onSendDtmf(at_cmd->mux_id, at_cmd->str);
         break;
     }
     case HFP_AG_AT_BLDN_EVT:
     {
-        bt_hfp_ag_app_onDialCall(at_cmd->str);
+        bt_hfp_ag_app_onDialCall(at_cmd->mux_id, at_cmd->str);
         break;
     }
     case HFP_AG_AT_BVRA_EVT:
     {
-        hfp_ag_at_cmd_result(BTS2_SUCC);
+        hfp_ag_at_cmd_result(at_cmd->mux_id, BTS2_SUCC);
         break;
     }
     case HFP_AG_AT_NREC_EVT:
@@ -496,30 +512,34 @@ static void bt_hfp_ag_app_at_cmd_hdl(BTS2S_AG_AT_CMD_INFO *at_cmd)
     }
     case HFP_AG_AT_CLCC_EVT:
     {
-        bt_hfp_ag_app_onAtClcc();
+        bt_hfp_ag_app_onAtClcc(at_cmd->mux_id);
         break;
     }
     case HFP_AG_AT_COPS_EVT:
     {
-        bt_hfp_ag_app_onAtCops();
-        hfp_ag_at_cmd_result(BTS2_SUCC);
+        bt_hfp_ag_app_onAtCops(at_cmd->mux_id);
+        hfp_ag_at_cmd_result(at_cmd->mux_id, BTS2_SUCC);
         break;
     }
     case HFP_AG_AT_CNUM_EVT:
     {
-        bt_hfp_ag_app_onAtCnum();
+        bt_hfp_ag_app_onAtCnum(at_cmd->mux_id);
         break;
     }
     case HFP_AG_AT_UNAT_EVT:
     {
         LOG_I("ag recv at cmd:%s", at_cmd->str); //handle and need send result
-        bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_EXTERN_AT_CMD_KEY_REQ, at_cmd->str, strlen(at_cmd->str));
-        // hfp_ag_at_cmd_result(BTS2_FAILED);
+        bt_notify_ag_at_arg_t *data_info = (bt_notify_ag_at_arg_t *)bmalloc(sizeof(bt_notify_ag_at_arg_t) + strlen(at_cmd->str));
+        data_info->profile_channel = at_cmd->mux_id;
+        data_info->payload_len = strlen(at_cmd->str);
+        bmemcpy(data_info->payload,  at_cmd->str, strlen(at_cmd->str));
+        bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_EXTERN_AT_CMD_KEY_REQ, data_info, strlen(at_cmd->str));
+        bfree(data_info);
         break;
     }
     case HFP_AG_WBS_EVT:
     {
-        bt_hfp_ag_app_onWBS();
+        bt_hfp_ag_app_onWBS(at_cmd->mux_id);
         break;
     }
     case HFP_AG_BATT_EVT:
@@ -567,8 +587,8 @@ void bt_hfp_ag_msg_hdl(bts2_app_stru *bts2_app_data)
     {
         BTS2S_AG_CONN_REQ *con_msg;
         con_msg = (BTS2S_AG_CONN_REQ *)bts2_app_data->recv_msg;
-        hfp_ag_connect_ind_res(&con_msg->bd, con_msg->rfcomm_chnl, 1);//acpt connect from remote 
-        // hfp_ag_connect_ind_res(&con_msg->bd, con_msg->rfcomm_chnl, 0);//reject connect from remote 
+        hfp_ag_connect_ind_res(&con_msg->bd, con_msg->rfcomm_chnl, 1);//acpt connect from remote
+        // hfp_ag_connect_ind_res(&con_msg->bd, con_msg->rfcomm_chnl, 0);//reject connect from remote
         break;
     }
     case BTS2MU_AG_CONN_CFM:
@@ -603,6 +623,7 @@ void bt_hfp_ag_msg_hdl(bts2_app_stru *bts2_app_data)
             bt_notify_device_sco_info_t sco_info;
             sco_info.sco_type = BT_NOTIFY_HFP_AG;
             sco_info.sco_res = BTS2_SUCC;
+            sco_info.profile_channel = msg->mux_id;
             bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_SCO_CONNECTED,
                                          &sco_info, sizeof(bt_notify_device_sco_info_t));
         }
@@ -612,6 +633,7 @@ void bt_hfp_ag_msg_hdl(bts2_app_stru *bts2_app_data)
             bt_notify_device_sco_info_t sco_info;
             sco_info.sco_type = BT_NOTIFY_HFP_AG;
             sco_info.sco_res = BTS2_SUCC;
+            sco_info.profile_channel = msg->mux_id;
             bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_SCO_DISCONNECTED,
                                          &sco_info, sizeof(bt_notify_device_sco_info_t));
         }
@@ -650,7 +672,7 @@ void bt_hfp_ag_msg_hdl(bts2_app_stru *bts2_app_data)
     {
         BTS2S_HF_AUDIO_INFO *msg;
         msg = (BTS2S_HF_AUDIO_INFO *)bts2_app_data->recv_msg;
-        USER_TRACE("<< BTS2MU_AG_AUDIO_DISC_IND\n");
+        USER_TRACE("<< BTS2MU_AG_AUDIO_DISC_IND hdl 0x%2x\n", msg->sco_hdl);
 #ifdef AUDIO_USING_MANAGER
         hfp_ag_audio_opt(msg, msg->audio_on);
 #endif // AUDIO_USING_MANAGER
@@ -792,31 +814,31 @@ void bt_hfp_disconnect_audio(BTS2S_BD_ADDR *bd)
     hfp_ag_disconnect_audio(bd);
 }
 
-void bt_hfp_ag_call_state_update_listener(HFP_CALL_INFO_T *call_info)
+void bt_hfp_ag_call_state_update_listener(U8 mux_id,  HFP_CALL_INFO_T *call_info)
 {
-    hfp_ag_phone_call_status_changed_api(call_info);
+    hfp_ag_phone_call_status_changed_api(mux_id, call_info);
 }
 
-void bt_hfp_ag_remote_calls_res_hdl(hfp_remote_calls_info_t *call_info)
+void bt_hfp_ag_remote_calls_res_hdl(U8 mux_id, hfp_remote_calls_info_t *call_info)
 {
     //U8 num_call = call_info->num_call;
     if (call_info->num_call)
     {
         for (U8 i = 0; i < call_info->num_call; i++)
         {
-            bt_hfp_ag_clcc_response(&call_info->calls[i]);
+            bt_hfp_ag_clcc_response(mux_id, &call_info->calls[i]);
         }
     }
 
-    hfp_ag_at_cmd_result(BTS2_SUCC);
+    hfp_ag_at_cmd_result(mux_id, BTS2_SUCC);
 }
 
 /*************************************AT CMD *************************************/
-void bt_hfp_ag_spk_vol_control(U8 vol)
+void bt_hfp_ag_spk_vol_control(U8 mux_id, U8 vol)
 {
     if (0 <= vol && vol <= 15)
     {
-        hfp_ag_spk_volume_control(vol);
+        hfp_ag_spk_volume_control(mux_id, vol);
     }
     else
     {
@@ -824,11 +846,11 @@ void bt_hfp_ag_spk_vol_control(U8 vol)
     }
 }
 
-void bt_hfp_ag_mic_vol_control(U8 vol)
+void bt_hfp_ag_mic_vol_control(U8 mux_id, U8 vol)
 {
     if (0 <= vol && vol <= 15)
     {
-        hfp_ag_mic_volume_control(vol);
+        hfp_ag_mic_volume_control(mux_id, vol);
     }
     else
     {
@@ -836,7 +858,7 @@ void bt_hfp_ag_mic_vol_control(U8 vol)
     }
 }
 
-void bt_hfp_ag_cind_response(hfp_cind_status_t *cind_status)
+void bt_hfp_ag_cind_response(U8 mux_id, hfp_cind_status_t *cind_status)
 {
     char payload[24];
     U8 payload_len = snprintf(payload, sizeof(payload), "%d,%d,%d,%d,%d,%d,%d",
@@ -847,22 +869,22 @@ void bt_hfp_ag_cind_response(hfp_cind_status_t *cind_status)
                               cind_status->signal,
                               cind_status->roam_status,
                               cind_status->callheld);
-    hfp_ag_cind_response(payload, payload_len);
-    hfp_ag_at_cmd_result(BTS2_SUCC);
+    hfp_ag_cind_response(mux_id, payload, payload_len);
+    hfp_ag_at_cmd_result(mux_id, BTS2_SUCC);
 }
 
-void bt_hfp_ag_ind_status_update(U8 type, U8 val)
+void bt_hfp_ag_ind_status_update(U8 mux_id, U8 type, U8 val)
 {
     char payload[6];
     U8 payload_len = snprintf(payload, sizeof(payload), "%u,%u", type, val);
-    hfp_ag_ind_status_update(payload, payload_len);
+    hfp_ag_ind_status_update(mux_id, payload, payload_len);
 }
 
-void bt_hfp_ag_brva_response(U8 val)
+void bt_hfp_ag_brva_response(U8 mux_id, U8 val)
 {
     if (0 <= val && val <= 1)
     {
-        hfp_ag_brva_response(val);
+        hfp_ag_brva_response(mux_id, val);
     }
     else
     {
@@ -870,11 +892,11 @@ void bt_hfp_ag_brva_response(U8 val)
     }
 }
 
-void bt_hfp_ag_set_inband(U8 val)
+void bt_hfp_ag_set_inband(U8 mux_id, U8 val)
 {
     if (0 <= val && val <= 1)
     {
-        hfp_ag_set_inband(val);
+        hfp_ag_set_inband(mux_id, val);
     }
     else
     {
@@ -882,21 +904,21 @@ void bt_hfp_ag_set_inband(U8 val)
     }
 }
 
-void bt_hfp_ag_cnum_response(hfp_phone_number_t *local_phone_num)
+void bt_hfp_ag_cnum_response(U8 mux_id, hfp_phone_number_t *local_phone_num)
 {
     char payload[40];
     U8 payload_len = snprintf(payload, sizeof(payload), ",\"%s\",%u, ,...", local_phone_num->phone_number, local_phone_num->type);
 
-    hfp_ag_cnum_response(payload, payload_len);
-    hfp_ag_at_cmd_result(BTS2_SUCC);
+    hfp_ag_cnum_response(mux_id, payload, payload_len);
+    hfp_ag_at_cmd_result(mux_id, BTS2_SUCC);
 }
 
-void bt_hfp_ag_set_btrh(U8 val)
+void bt_hfp_ag_set_btrh(U8 mux_id, U8 val)
 {
-    hfp_ag_set_btrh(val);
+    hfp_ag_set_btrh(mux_id, val);
 }
 
-void bt_hfp_ag_clcc_response(hfp_phone_call_info_t *call_info)
+void bt_hfp_ag_clcc_response(U8 mux_id, hfp_phone_call_info_t *call_info)
 {
     char payload[100];
     int payload_len = snprintf(payload, sizeof(payload), "%d,%d,%d,%d,%d",  call_info->call_idx, call_info->call_dir,
@@ -907,30 +929,30 @@ void bt_hfp_ag_clcc_response(hfp_phone_call_info_t *call_info)
                                 call_info->phone_info.phone_number, call_info->phone_info.type);
     }
 
-    hfp_ag_clcc_response(payload, payload_len);
+    hfp_ag_clcc_response(mux_id, payload, payload_len);
 }
 
-void bt_hfp_ag_cops_response(char *payload, U8 payload_len)
+void bt_hfp_ag_cops_response(U8 mux_id, char *payload, U8 payload_len)
 {
-    hfp_ag_cops_response(payload, payload_len);
+    hfp_ag_cops_response(mux_id, payload, payload_len);
 }
 
-void bt_hfp_ag_set_bcs(U8 code_id)
+void bt_hfp_ag_set_bcs(U8 mux_id, U8 code_id)
 {
-    hfp_ag_set_codec_id(code_id);
+    hfp_ag_set_codec_id(mux_id, code_id);
 }
 
-void bt_hfp_ag_clip_response(hfp_phone_number_t *remote_phone_num)
+void bt_hfp_ag_clip_response(U8 mux_id, hfp_phone_number_t *remote_phone_num)
 {
     char payload[40];
     U8 payload_len = snprintf(payload, sizeof(payload), "\"%s\",%u", remote_phone_num->phone_number, remote_phone_num->type);
 
-    hfp_ag_clip_response(payload, payload_len);
+    hfp_ag_clip_response(mux_id, payload, payload_len);
 }
 
-void bt_hfp_ag_at_result_res(U8 res)
+void bt_hfp_ag_at_result_res(U8 mux_id, U8 res)
 {
-    hfp_ag_at_cmd_result(res);
+    hfp_ag_at_cmd_result(mux_id, res);
 }
 
 #endif
