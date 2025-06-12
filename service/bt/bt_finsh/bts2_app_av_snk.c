@@ -72,6 +72,16 @@ uint8_t   frms_per_payload;
 
 extern bts2_app_stru *bts2g_app_p;
 
+#ifdef A2DP_RELAY_SERVICE
+extern U16 a2dp_relay_transfer(U8 *data, U16 len, uint8_t left_cnt, uint32_t left_byte);
+extern void a2dp_relay_trigger_audio_server(void);
+extern void a2dp_relay_start(U8 codec, BTS2E_SBC_CHNL_MODE chnl_mode, BTS2E_SBC_ALLOC_METHOD alloc_method, U16 sample_freq,
+                             U8 nrof_blocks, U8 nrof_subbands, U8 bitpool, U8 start_playing_cnt, U8 max_playing_cnt, U8 target_channel);
+extern void a2dp_relay_stop(void);
+extern uint8_t a2dp_relay_stereo_enable(void);
+extern uint8_t a2dp_relay_get_channel(void);
+#endif // A2DP_RELAY_SERVICE
+
 
 //#include "windows.h"
 
@@ -197,6 +207,25 @@ static int audio_bt_music_client_cb(audio_server_callback_cmt_t cmd, void *userd
     }
 
     return 0;
+}
+
+static U8 *play_data_decode_data_process(bts2s_av_inst_data *inst, U8 *decode_buf, U16 *out_len)
+{
+#ifdef A2DP_RELAY_SERVICE
+    // stereo to mono
+    if (a2dp_relay_stereo_enable())
+    {
+        uint8_t channel = a2dp_relay_get_channel();
+        int16_t *p = (int16_t *)decode_buf;
+        uint32_t samples = *out_len >> 2;
+        for (uint32_t i = 0; i < samples; i++)
+        {
+            p[i] = p[i * 2 + channel];
+        }
+        *out_len = *out_len >> 1;
+    }
+#endif // A2DP_RELAY_SERVICE
+    return decode_buf;
 }
 
 static U8 *play_data_decode(bts2s_av_inst_data *inst, U16 *out_len)
@@ -339,6 +368,8 @@ static U8 *play_data_decode(bts2s_av_inst_data *inst, U16 *out_len)
         RT_ASSERT(0);
     }
 
+
+    ret = play_data_decode_data_process(inst, ret, out_len);
     bfree(pt_data);
 
     return ret;
@@ -409,9 +440,18 @@ static void decode_playback_thread(void *args)
                 USER_TRACE("Unsupported codec!!!!!\n");
                 RT_ASSERT(0);
             }
-            param.write_channnel_num = 2;
+#ifdef A2DP_RELAY_SERVICE
+            if (a2dp_relay_stereo_enable())
+            {
+                param.write_channnel_num = 1;
+            }
+            else
+#endif // A2DP_RELAY_SERVICE
+            {
+                param.write_channnel_num = 2;
+            }
             param.write_bits_per_sample = 16;
-            param.write_cache_size = 32000;
+            param.write_cache_size = 8192;
             debug_tx_cnt = 0;
             inst_data->snk_data.audio_client = audio_open(AUDIO_TYPE_BT_MUSIC, AUDIO_TX, &param, audio_bt_music_client_cb, NULL);
             is_stopped = 0;
@@ -563,6 +603,9 @@ static void stop_audio_playback(bts2s_av_inst_data *inst)
     USER_TRACE("stop_audio_playback state:%d\n", inst->snk_data.play_state);
     if (inst->snk_data.play_state == TRUE)
     {
+#ifdef A2DP_RELAY_SERVICE
+        a2dp_relay_stop();
+#endif // A2DP_RELAY_SERVICE
         rt_event_send(g_playback_evt, PLAYBACK_STOPPING_EVENT_FLAG);
         rt_event_recv(g_playback_evt, PLAYBACK_STOPPED_EVENT_FLAG, RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, RT_WAITING_FOREVER, &evt);
         inst->snk_data.play_state = FALSE;
@@ -584,6 +627,8 @@ static void stop_audio_playback(bts2s_av_inst_data *inst)
 
     if (inst->snk_data.decode_buf)
     {
+        // frm payload could be updated before decode
+        frms_per_payload = 0;
         bfree(inst->snk_data.decode_buf);
         inst->snk_data.decode_buf = NULL;
     }
@@ -1132,6 +1177,15 @@ uint8_t bt_avsnk_hdl_start_ind(bts2s_av_inst_data *inst, BTS2S_AV_START_IND *msg
 
         inst->snk_data.play_rd_idx = inst->snk_data.play_wr_idx = 0;
         inst->snk_data.codec = codec;
+#ifdef A2DP_RELAY_SERVICE
+        // 2 means stereo, 0 means left, 1 means right
+        uint8_t target_channel = a2dp_relay_stereo_enable() ? (a2dp_relay_get_channel() == 0 ? 1 : 0) : 2;
+        LOG_D("src channel %d, snk %d", a2dp_relay_get_channel(), target_channel);
+        a2dp_relay_start(codec, inst->con[con_idx].act_cfg.chnl_mode, inst->con[con_idx].act_cfg.alloc_method,
+                         inst->con[con_idx].act_cfg.sample_freq, inst->con[con_idx].act_cfg.blocks,
+                         inst->con[con_idx].act_cfg.subbands, inst->con[con_idx].act_cfg.bit_pool,
+                         SINK_DATA_LIST_START_THRESHOLD, SINK_DATA_LIST_MAX_THRESHOLD, target_channel);
+#endif // A2DP_RELAY_SERVICE
 #if defined(AUDIO_USING_MANAGER) && defined(AUDIO_BT_AUDIO)
         if (inst->snk_data.codec == AV_SBC)
         {
@@ -1203,6 +1257,40 @@ void bt_avsnk_hdl_suspend_ind(bts2s_av_inst_data *inst, uint8_t con_idx)
     }
 #endif
 }
+
+#ifdef A2DP_RELAY_SERVICE
+__WEAK U16 a2dp_relay_transfer(U8 *data, U16 len, uint8_t left_cnt, uint32_t left_byte)
+{
+    return 0;
+}
+
+__WEAK void a2dp_relay_trigger_audio_server(void)
+{
+
+}
+
+__WEAK void a2dp_relay_stop(void)
+{
+
+}
+
+__WEAK uint8_t a2dp_relay_stereo_enable(void)
+{
+    return 0;
+}
+
+__WEAK uint8_t a2dp_relay_get_channel(void)
+{
+    return 0;
+}
+
+__WEAK void a2dp_relay_start(U8 codec, BTS2E_SBC_CHNL_MODE chnl_mode, BTS2E_SBC_ALLOC_METHOD alloc_method, U16 sample_freq,
+                             U8 nrof_blocks, U8 nrof_subbands, U8 bitpool, U8 start_playing_cnt, U8 max_playing_cnt, U8 target_channel)
+{
+
+}
+#endif // A2DP_RELAY_SERVICE
+
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
@@ -1223,6 +1311,7 @@ void bt_avsnk_hdl_streamdata_ind(bts2s_av_inst_data *inst, uint8_t con_idx, BTS2
     U8 *frm_ptr;
     U8 codec;
     U16 sbc_frame_size;
+    static uint32_t count = 0;
 
     codec = inst->local_seid_info[inst->con[con_idx].local_seid_idx].local_seid.codec;
 
@@ -1254,7 +1343,7 @@ void bt_avsnk_hdl_streamdata_ind(bts2s_av_inst_data *inst, uint8_t con_idx, BTS2
                 if (inst->snk_data.play_state  == TRUE)
                 {
 #if defined(AUDIO_USING_MANAGER) && defined(AUDIO_BT_AUDIO)
-                    stop_audio_playback_temporarily(inst);
+                    stop_audio_playback(inst);
 #endif
                 }
                 bfree(msg->data);
@@ -1274,6 +1363,17 @@ void bt_avsnk_hdl_streamdata_ind(bts2s_av_inst_data *inst, uint8_t con_idx, BTS2
         }
         else
         {
+#ifdef A2DP_RELAY_SERVICE
+            // resume
+            if (inst->snk_data.slience_count > (SINK_DATA_LIST_MAX_THRESHOLD + 2))
+            {
+                LOG_I("silence start");
+                a2dp_relay_start(inst->snk_data.codec, inst->con[con_idx].act_cfg.chnl_mode, inst->con[con_idx].act_cfg.alloc_method,
+                                 inst->con[con_idx].act_cfg.sample_freq, inst->con[con_idx].act_cfg.blocks,
+                                 inst->con[con_idx].act_cfg.subbands, inst->con[con_idx].act_cfg.bit_pool,
+                                 SINK_DATA_LIST_START_THRESHOLD, SINK_DATA_LIST_MAX_THRESHOLD, 0);
+            }
+#endif // A2DP_RELAY_SERVICE
             inst->snk_data.slience_count = 0;
         }
     }
@@ -1283,10 +1383,23 @@ void bt_avsnk_hdl_streamdata_ind(bts2s_av_inst_data *inst, uint8_t con_idx, BTS2
         play_data_t *pt_data = (play_data_t *)msg->data;
         uint8_t ret;
 
+#ifdef A2DP_RELAY_SERVICE
+        uint32_t left_byte = 0;
+        if (inst->snk_data.audio_client)
+        {
+            uint8_t left_cnt = inst->snk_data.playlist.cnt;
+            audio_ioctl(inst->snk_data.audio_client, 3, &left_byte);
+            LOG_I("cnt[%d] %d, %d", count++, left_cnt, left_byte);
+            a2dp_relay_transfer(msg->data, msg->len, left_cnt, left_byte);
+        }
+#endif // A2DP_RELAY_SERVICE
         pt_data->len = msg->len;
         ret = list_push_back(&inst->snk_data.playlist, &(pt_data->hdr));
         if ((inst->snk_data.play_state == FALSE) && (ret == 1))
         {
+#ifdef A2DP_RELAY_SERVICE
+            a2dp_relay_trigger_audio_server();
+#endif // A2DP_RELAY_SERVICE
             inst->snk_data.play_state = TRUE;
             USER_TRACE("av_snk.c open a2dp\r\n");
             rt_event_send(g_playback_evt, PLAYBACK_START_EVENT_FLAG);

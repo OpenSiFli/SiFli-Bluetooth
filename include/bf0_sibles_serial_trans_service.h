@@ -116,14 +116,18 @@ typedef enum
     BLE_SERIAL_TRAN_SEND_AVAILABLE, /**< BLE serial transmission can try send data if last send failed. */
     BLE_SERIAL_TRAN_CLOSE,          /**< BLE serial transmission channel closed. */
     BLE_SERIAL_TRAN_ERROR,          /**< BLE serial transmission error due to packet lose or other reason */
+    BLE_SERIAL_TRAN_OPEN_FAILED,    /**< BLE serial transmission open failed for seriral transmission client */
 } ble_serial_tran_event_t;
 
 typedef enum
 {
+    BLE_SERIAL_TRAN_ERROR_NO_ERROR,
     BLE_SERIAL_TRAN_ERROR_CATE_ID,
     BLE_SERIAL_TRAN_ERROR_LACK_OF_MEMORY,
     BLE_SERIAL_TRAN_ERROR_ASSEMBLE_OVER_LEN,
     BLE_SERIAL_TRAN_ERROR_ASSEMBLE_ERROR,
+    BLE_SERIAL_TRAN_ERROR_INVALID_PARA,
+    BLE_SERIAL_TRAN_ERROR_COMMON_ERROR,
 } ble_serial_tran_error_event_t;
 
 

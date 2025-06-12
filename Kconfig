@@ -245,6 +245,10 @@ menu "Bluetooth"
             bool "Enable A2DP sink profile"
             default n     
 
+        config A2DP_RELAY_SERVICE
+            depends on CFG_AV_SNK && BSP_BLE_SERIAL_TRANSMISSION
+            bool "Enable A2DP sink relay service"
+            default n
         config CFG_AVRCP
             bool "Enable AVRCP"
             depends on BT_PROFILE_CUSTOMIZE

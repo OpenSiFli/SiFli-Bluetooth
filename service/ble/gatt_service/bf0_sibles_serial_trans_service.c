@@ -59,6 +59,7 @@
 #include "section.h"
 #include "ble_connection_manager.h"
 
+
 #define LOG_TAG "sibles"
 #include "log.h"
 

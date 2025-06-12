@@ -411,7 +411,7 @@ void sibles_check_wr_list_msg(void)
         g_sibles.num_of_tx_pkt++;
         rt_exit_critical();
         RT_ASSERT(g_sibles.num_of_tx_pkt <= MAX_NUM_OF_TX_PKT);
-        LOG_I("rev wr rsp:left_txnum %d\n", g_sibles.num_of_tx_pkt);
+        LOG_D("rev wr rsp:left_txnum %d\n", g_sibles.num_of_tx_pkt);
         return;
     }
 #ifdef BLE_GATT_CLIENT
@@ -1655,15 +1655,17 @@ int8_t sibles_write_remote_value(uint16_t remote_handle, uint8_t conn_idx, sible
         return SIBLES_WRITE_HANDLE_ERR;
 
     acq_tx = sibles_acquire_tx_pkts();
-    LOG_I("send:acq_tx, buffer tx_num t_pkt %d %d %d\n", acq_tx, buffer_num, g_sibles.num_of_tx_pkt);
+    LOG_D("send:acq_tx, buffer tx_num t_pkt %d %d %d\n", acq_tx, buffer_num, g_sibles.num_of_tx_pkt);
     if ((0 == acq_tx) && (20 == buffer_num))
     {
+        LOG_W("no buff for sibles write!");
         return SIBLES_WIRTE_TX_FLOWCTRL_ERR;
     }
     if (0 == acq_tx)
     {
         struct sibles_rte_wr_info  *node;
         struct sibles_value_write_req_content_t *wr_req;
+        LOG_I("use cache buf %d", buffer_num);
         //the size of struct + the length of value[__ARRAY_EMPTY];
         wr_req = bt_mem_alloc(sizeof(struct sibles_value_write_req_content_t) + value->len);
         node = bt_mem_alloc(sizeof(struct sibles_rte_wr_info));

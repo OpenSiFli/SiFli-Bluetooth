@@ -132,12 +132,11 @@ static void ble_xtal_less_init(void)
 #endif
     }
 
-#ifdef SOC_SF32LB56X
-    // For BTC run in flash
-    rom_config_set_lld_prog_delay(3);
-#else
+#ifdef SOC_SF32LB55X
     rom_config_set_lld_prog_delay(2);
-#endif
+#else // !SOC_SF32LB55X
+    rom_config_set_lld_prog_delay(3);
+#endif // SOC_SF32LB55X
 
 #endif //BSP_USING_PC_SIMULATOR
 #endif // ROM_CONFIG_V2
