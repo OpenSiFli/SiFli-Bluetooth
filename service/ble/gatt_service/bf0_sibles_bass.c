@@ -160,10 +160,26 @@ int8_t ble_bass_notify_battery_lvl(uint8_t conn_idx, uint8_t lvl)
             value.idx = BAS_IDX_BATT_LVL_VAL;
             value.len = sizeof(uint8_t);
             value.value = &env->bas_lvl;
-            int ret = sibles_write_value(conn_idx, &value);
-            ret = 0;
+            int write_ret = sibles_write_value(conn_idx, &value);
+            if (write_ret == value.len)
+            {
+                ret = 0;
+            }
+            else
+            {
+                LOG_W("battery level write failed with %d", write_ret);
+                ret = -3;
+            }
         }
-        ret = -2;
+        else
+        {
+            LOG_D("battery level the same %d, skip", lvl);
+            ret = -2;
+        }
+    }
+    else
+    {
+        LOG_I("battery service state not ready %d", env->state);
     }
     return ret;
 }
