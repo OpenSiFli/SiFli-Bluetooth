@@ -1001,8 +1001,8 @@
 #endif
 
 //BT_PAC_SRC
-#ifdef BT_PAC_SRC
-    #define CONFIG_BT_PAC_SRC BT_PAC_SRC
+#ifdef BT_PAC_SRC2
+    #define CONFIG_BT_PAC_SRC BT_PAC_SRC2
 #endif
 
 //BT_USE_DEBUG_KEYS
@@ -2126,8 +2126,8 @@
 #endif
 
 //BT_PAC_SNK
-#ifdef BT_PAC_SNK
-    #define CONFIG_BT_PAC_SNK BT_PAC_SNK
+#ifdef BT_PAC_SNK2
+    #define CONFIG_BT_PAC_SNK BT_PAC_SNK2
 #endif
 
 //BT_ISO_PERIPHERAL

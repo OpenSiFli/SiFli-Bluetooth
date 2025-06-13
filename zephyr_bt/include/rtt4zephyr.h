@@ -464,10 +464,6 @@ struct k_spinlock
 #define k_sched_lock  rt_enter_critical
 #define k_sched_unlock rt_exit_critical
 
-/*********** BT MACROS *********************************/
-#undef BT_PAC_SNK
-#undef BT_PAC_SRC
-
 /*********** fifo -> rt_data_queue ********************/
 
 struct k_fifo

@@ -616,7 +616,7 @@ static inline void process_tx(const struct device *dev)
         h4->tx.buf = k_fifo_get(&h4->tx.fifo, K_NO_WAIT);
         if (!h4->tx.buf)
         {
-            LOG_ERR("TX interrupt but no pending buffer!");
+            LOG_DBG("TX interrupt but no pending buffer!");
             uart_irq_tx_disable(cfg->uart);
             return;
         }

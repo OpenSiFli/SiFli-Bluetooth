@@ -7,12 +7,12 @@
 
 menu "Published Audio Capabilities (PAC) options"
 
-config BT_PAC_SNK
+config BT_PAC_SNK2
 	bool "Sink PAC Characteristic Support"
 	help
 	  This option enables support for Sink Published Audio Capabilities.
 
-if BT_PAC_SNK
+if BT_PAC_SNK2
 config BT_PAC_SNK_NOTIFIABLE
 	bool "Sink PAC Notifiable Support"
 	help
@@ -41,12 +41,12 @@ config BT_PAC_SNK_LOC_NOTIFIABLE
 
 endif # BT_PACS_SNK
 
-config BT_PAC_SRC
+config BT_PAC_SRC2
 	bool "Source PAC Characteristic Support"
 	help
 	  This option enables support for Source Published Audio Capabilities.
 
-if BT_PAC_SRC
+if BT_PAC_SRC2
 
 config BT_PAC_SRC_NOTIFIABLE
 	bool "Source PAC Notifiable Support"
@@ -74,10 +74,10 @@ config BT_PAC_SRC_LOC_NOTIFIABLE
 	  This option enables support for clients to be notified on the Source
 	  Audio Location Characteristic changes.
 
-endif # BT_PAC_SRC
+endif # BT_PAC_SRC2
 
 config BT_PACS
-	def_bool BT_PAC_SNK || BT_PAC_SRC
+	def_bool BT_PAC_SNK2 || BT_PAC_SRC2
 
 config BT_PACS_SUPPORTED_CONTEXT_NOTIFIABLE
 	bool "Supported Audio Context Notifiable Support"

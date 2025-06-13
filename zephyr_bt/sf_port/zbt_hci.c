@@ -4578,7 +4578,7 @@ static void rx_queue_put(struct net_buf *buf)
 #endif /* CONFIG_BT_RECV_WORKQ_SYS */
     if (err < 0)
     {
-        LOG_ERR("Could not submit rx_work: %d", err);
+        LOG_DBG("Could not submit rx_work 2: %d", err);
     }
 }
 
@@ -4788,7 +4788,7 @@ static void rx_work_handler(struct k_work *work)
 #endif
         if (err < 0)
         {
-            LOG_ERR("Could not submit rx_work: %d", err);
+            LOG_DBG("Could not submit rx_work: %d", err);
         }
     }
 }

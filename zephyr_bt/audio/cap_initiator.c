@@ -39,7 +39,7 @@ LOG_MODULE_REGISTER(bt_cap_initiator, CONFIG_BT_CAP_INITIATOR_LOG_LEVEL);
 
 static const struct bt_cap_initiator_cb *cap_cb;
 
-#if 1
+#if 0
     #undef LOG_DBG
     #define LOG_DBG(fmt,...) rt_kprintf("%s "fmt"\n",__FUNCTION__,##__VA_ARGS__)
     #undef LOG_WRN

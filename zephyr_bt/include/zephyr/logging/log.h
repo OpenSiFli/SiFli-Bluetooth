@@ -33,6 +33,19 @@
 #define LOG_HEXDUMP_INF(...) (void) 0
 
 #define LOG_MODULE_REGISTER(...)
+
+#if 0
+    #include <log.h>
+    #undef LOG_DBG
+    #define LOG_DBG LOG_D
+    #undef LOG_WRN
+    #define LOG_WRN LOG_W
+    #undef LOG_ERR
+    #define LOG_ERR LOG_E
+    #undef LOG_INF
+    #define LOG_INF LOG_I
+#endif
+
 /**
  * @}
  */
