@@ -104,6 +104,48 @@ enum
     BTS2MU_AG_AT_CMD_CFM,
 };
 
+/* AT res events */
+typedef enum
+{
+    HFP_AG_SPK_RES = 0x00,          /* Update speaker volume */
+    HFP_AG_MIC_RES,                 /* Update microphone volume */
+    HFP_AG_INBAND_RING_RES,         /* Update inband ring state */
+    HFP_AG_CIND_RES,                /* Send indicator response for AT+CIND */
+    HFP_AG_BINP_RES,                /* Send phone number for voice tag for AT+BINP */
+    HFP_AG_IND_RES,                 /* Update an indicator value */
+    HFP_AG_BVRA_RES,                /* Update voice recognition state */
+    HFP_AG_CNUM_RES,                /* Send subscriber number response for AT+CNUM */
+    HFP_AG_BTRH_RES,                /* Send CCAP incoming call hold */
+    HFP_AG_CLCC_RES,                /* Query list of calls */
+    HFP_AG_COPS_RES,                /* Read network operator */
+
+    HFP_AG_IN_CALL_RES,             /* Indicate incoming phone call */
+    HFP_AG_IN_CALL_CONN_RES,        /* Incoming phone call connected */
+    HFP_AG_CALL_WAIT_RES,           /* Call waiting notification */
+    HFP_AG_OUT_CALL_ORIG_RES,       /* Outgoing phone call origination */
+    HFP_AG_OUT_CALL_ALERT_RES,      /* Outgoing phone call alerting remote party */
+    HFP_AG_OUT_CALL_CONN_RES,       /* Outgoing phone call connected */
+    HFP_AG_CALL_CANCEL_RES,         /* Incoming/outgoing 3-way canceled before connected */
+    HFP_AG_END_CALL_RES,            /* End call */
+    HFP_AG_IN_CALL_HELD_RES,        /* Incoming call held */
+    HFP_AG_MULTI_CALL_RES,          /* SLC at three way call */
+
+    HFP_AG_UNAT_RES,                /* Response to unknown AT command event */
+    HFP_AG_BIND_RES,                /* Activate/Deactivate HF indicator */
+} hfp_ag_at_res_event_t;
+
+/* Local AT command result codes defined in hfp_ag_api.h */
+typedef enum
+{
+    HFP_AG_LOCAL_RES_FIRST = 0x0100,
+    HFP_AG_LOCAL_RES_OK,
+    HFP_AG_LOCAL_RES_ERROR,
+    HFP_AG_LOCAL_RES_RING,
+    HFP_AG_LOCAL_RES_CLIP,
+    HFP_AG_LOCAL_RES_BRSF,
+    HFP_AG_LOCAL_RES_CMEE,
+    HFP_AG_LOCAL_RES_BCS
+} hfp_ag_lcoal_at_res_event_t;
 /****************************************struct define*************************************************/
 typedef struct
 {
@@ -178,12 +220,6 @@ typedef struct
     U8  mux_id;
     U8  code_id;
 } BTS2S_AG_AUDIO_CONN_IND;
-
-typedef struct
-{
-    U16 type;
-    U8  mux_id;
-} BTS2S_AG_DEVICE_RESET_CMD;
 
 typedef struct
 {
