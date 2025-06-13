@@ -621,6 +621,8 @@ void gap_rd_rmt_version_req(U16 tid, BTS2S_BD_ADDR bd);
  *----------------------------------------------------------------------------*/
 void gap_rd_local_bd_req(U16 tid);
 
+void gap_rd_rmt_ext_featr_req(U16 tid, U8 page_num, BTS2S_BD_ADDR bd);
+
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:

@@ -1922,6 +1922,18 @@ void bt_cm(uint8_t argc, char **argv)
             bt_spp_set_spp_data_loopback_enable(atoi(argv[2]));
         }
 #endif
+        else if (strcmp(argv[1], "rd_ext") == 0)
+        {
+            bt_cm_env_t *env = bt_cm_get_env();
+            uint32_t i;
+            for (i = 0; i < BT_CM_MAX_CONN; i++)
+            {
+                if (env->conn_device[i].state >= BT_CM_STATE_CONNECTED)
+                {
+                    gap_rd_rmt_ext_featr_req(bts2_task_get_app_task_id(), atoi(argv[2]), env->conn_device[i].info.bd_addr);
+                }
+            }
+        }
     }
 }
 

@@ -1550,6 +1550,14 @@ void bt_hdl_gap_msg(bts2_app_stru *bts2_app_data)
         USER_TRACE("res = %d,page_num = %d,max_page_num = %d\n", msg->res, msg->page_num, msg->max_page_num);
         USER_TRACE("ext_lmp_featr[0] = 0x%x,ext_lmp_featr[1] = 0x%x,ext_lmp_featr[2] = 0x%x,ext_lmp_featr[3] = 0x%x\n",
                    msg->ext_lmp_featr[0], msg->ext_lmp_featr[1], msg->ext_lmp_featr[2], msg->ext_lmp_featr[3]);
+
+        bt_notify_rd_extend_feature_resp_t ext_feature_resp_info;
+        ext_feature_resp_info.res = msg->res;
+        ext_feature_resp_info.page_num = msg->page_num;
+        ext_feature_resp_info.max_page_num = msg->max_page_num;
+        bmemcpy(ext_feature_resp_info.ext_lmp_featr, msg->ext_lmp_featr, sizeof(ext_feature_resp_info.ext_lmp_featr));
+        bt_addr_convert(&msg->bd, ext_feature_resp_info.mac.addr);
+        bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_RD_EXT_FEATURE_RSP, &ext_feature_resp_info, sizeof(bt_notify_rd_extend_feature_resp_t));
         break;
     }
     case BTS2MU_GAP_RD_INQUIRY_RESP_CFM:

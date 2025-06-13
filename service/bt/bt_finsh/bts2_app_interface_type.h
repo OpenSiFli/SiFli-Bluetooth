@@ -141,6 +141,8 @@ typedef enum
     BT_NOTIFY_COMMON_WR_INQUIRY_MODE_RSP,
     /// write inquiry mode response event
     BT_NOTIFY_COMMON_RD_INQUIRY_MODE_RSP,
+    /// read remote extend feature event
+    BT_NOTIFY_COMMON_RD_EXT_FEATURE_RSP,
 } bt_notify_common_event_id_t;
 
 ///  these type are BT_NOTIFY_HFP_HF event id
@@ -418,6 +420,21 @@ typedef struct
     /// local device EIR data
     uint8_t eir_data[240];
 } bt_notify_rd_inquiry_resp_t;
+
+/// bt read remote extend feature result
+typedef struct
+{
+    /// read remote extend feature result
+    uint8_t res;
+    //page number
+    U8 page_num;
+    //max page number
+    U8 max_page_num;
+    //Bit map of requested page of LMP features
+    U16 ext_lmp_featr[4];
+    /// remote device mac
+    bt_notify_device_mac_t mac;
+} bt_notify_rd_extend_feature_resp_t;
 
 ///  bt read inquiry mode response event
 typedef struct

@@ -104,6 +104,14 @@ void bt_interface_wr_inquiry_mode(U8 mode);
 void bt_interface_rd_inquiry_mode(void);
 
 /**
+ * @brief           Read remote extend feature reques
+ * @param[in]mac Remote device address
+ * @param[in]page_num  The page number of the features required
+ *
+ **/
+void bt_interface_rd_extend_feature(unsigned char *mac, uint8_t page_num);
+
+/**
  * @brief           Read local device EIR data
  * @param[in] fec_required  fec_required mode
  * @param[in] size_eir_data  the size of EIR data

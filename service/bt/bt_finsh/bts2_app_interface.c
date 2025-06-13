@@ -369,6 +369,15 @@ void bt_interface_rd_inquiry_mode(void)
     gap_rd_inquiry_mode_req();
 }
 
+void bt_interface_rd_extend_feature(unsigned char *mac, uint8_t page_num)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    BTS2S_BD_ADDR bd_addr;
+    bt_addr_convert_to_bts((bd_addr_t *)mac, &bd_addr);
+
+    gap_rd_rmt_ext_featr_req(bts2_app_data->phdl, page_num, bd_addr);
+}
+
 int8_t bt_interface_cancel_connect_req(unsigned char *mac)
 {
     BTS2S_BD_ADDR bd_addr;
