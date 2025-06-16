@@ -4415,6 +4415,9 @@ static int hci_init(void)
 {
     int err;
 
+    void hci_log_init(void);
+    hci_log_init();
+
 #if defined(CONFIG_BT_HCI_SETUP)
     struct bt_hci_setup_params setup_params = { 0 };
 
@@ -4492,8 +4495,6 @@ static int hci_init(void)
         return err;
     }
 
-    void hci_log_init(void);
-    hci_log_init();
 
     return 0;
 }
