@@ -1077,6 +1077,18 @@ void sifli_mbox_process(sibles_msg_para_t *header, uint8_t *data_ptr, uint16_t p
         ble_event_publish(SIBLES_DIS_SET_VAL_RSP, &rsp, sizeof(sibles_set_dis_rsp_t));
         break;
     }
+    case SIBLES_ATT_ERROR_IND:
+    {
+        struct gattc_error_ind *ind = (struct gattc_error_ind *)data_ptr;
+
+        sibles_att_error_ind_t att_error;
+        att_error.conn_idx = conn_idx;
+        att_error.op_code = ind->op_code;
+        att_error.handle = ind->handle;
+        att_error.reason = ind->reason;
+        ble_event_publish(SIBLES_ATT_ERROR_EVENT_IND, &att_error, sizeof(sibles_att_error_ind_t));
+        break;
+    }
     case 0xFE:
     {
 #ifdef SOC_BF_Z0

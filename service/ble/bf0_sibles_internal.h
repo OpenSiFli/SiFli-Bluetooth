@@ -642,6 +642,8 @@ enum sibles_msg_id
     SIBLES_SET_ATT_VISIBILITY_REQ,
     SIBLES_SET_ATT_VISIBILITY_RSP,
 
+    SIBLES_ATT_ERROR_IND,
+
     //  Sibles ready
     SIBLES_SVC_READY_IND = 0xFF,                            //!< SIBLES_SVC_READY_IND
 };
@@ -783,6 +785,8 @@ enum gattc_msg_id
     GATTC_CLIENT_RTX_IND,
     /// Server indication confirmation timeout indication
     GATTC_SERVER_RTX_IND,
+
+    GATTC_ERROR_IND,
 };
 
 enum diss_msg_id
@@ -1034,6 +1038,13 @@ struct sibles_set_att_visibility_rsp
 {
     uint16_t handle;
     uint8_t status;
+};
+
+struct gattc_error_ind
+{
+    uint8_t op_code;
+    uint8_t reason;
+    uint16_t handle;
 };
 
 typedef struct

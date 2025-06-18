@@ -123,7 +123,114 @@ enum bf0_sifli_event_t
     SIBLES_ATT_UPDATE_PERM_IND,
     SIBLES_DIS_SET_VAL_RSP,
     SIBLES_ATT_SET_VISIBILITY_IND,
+    SIBLES_ATT_ERROR_EVENT_IND,
 };
+
+typedef enum
+{
+    /// Error response
+    SIBLES_ATT_ERR_RSP            = 0x01,
+    /// Exchange MTU Request
+    SIBLES_ATT_MTU_REQ            = 0x02,
+    /// Exchange MTU Response
+    SIBLES_ATT_MTU_RSP            = 0x03,
+    /// Find Information Request
+    SIBLES_ATT_FIND_INFO_REQ      = 0x04,
+    /// Find Information Response
+    SIBLES_ATT_FIND_INFO_RSP      = 0x05,
+    /// Find By Type Value Request
+    SIBLES_ATT_FIND_BY_TYPE_REQ   = 0x06,
+    /// Find By Type Value Response
+    SIBLES_ATT_FIND_BY_TYPE_RSP   = 0x07,
+    /// Read By Type Request
+    SIBLES_ATT_RD_BY_TYPE_REQ     = 0x08,
+    /// Read By Type Response
+    SIBLES_ATT_RD_BY_TYPE_RSP     = 0x09,
+    /// Read Request
+    SIBLES_ATT_RD_REQ             = 0x0A,
+    /// Read Response
+    SIBLES_ATT_RD_RSP             = 0x0B,
+    /// Read Blob Request
+    SIBLES_ATT_RD_BLOB_REQ        = 0x0C,
+    /// Read Blob Response
+    SIBLES_ATT_RD_BLOB_RSP        = 0x0D,
+    /// Read Multiple Request
+    SIBLES_ATT_RD_MULT_REQ        = 0x0E,
+    /// Read Multiple Response
+    SIBLES_ATT_RD_MULT_RSP        = 0x0F,
+    /// Read by Group Type Request
+    SIBLES_ATT_RD_BY_GRP_TYPE_REQ = 0x10,
+    /// Read By Group Type Response
+    SIBLES_ATT_RD_BY_GRP_TYPE_RSP = 0x11,
+    /// Write Request
+    SIBLES_ATT_WR_REQ             = 0x12,
+    /// Write Response
+    SIBLES_ATT_WR_RSP             = 0x13,
+    /// Write Command
+    SIBLES_ATT_WR_CMD_INFO        = 0x14,
+    SIBLES_ATT_WR_CMD             = 0x52,
+    /// Signed Write Command
+    SIBLES_ATT_SIGN_WR_CMD_INFO   = 0x15,
+    SIBLES_ATT_SIGN_WR_CMD        = 0xD2,
+    /// Prepare Write Request
+    SIBLES_ATT_PREP_WR_REQ        = 0x16,
+    /// Prepare Write Response
+    SIBLES_ATT_PREP_WR_RSP        = 0x17,
+    /// Execute Write Request
+    SIBLES_ATT_EXE_WR_REQ         = 0x18,
+    /// Execute Write Response
+    SIBLES_ATT_EXE_WR_RSP         = 0x19,
+    /// Handle Value Notification
+    SIBLES_ATT_HDL_VAL_NTF        = 0x1B,
+    /// Handle Value Indication
+    SIBLES_ATT_HDL_VAL_IND        = 0x1D,
+    /// Handle Value Confirmation
+    SIBLES_ATT_HDL_VAL_CFM        = 0x1E,
+
+    /// max number of security codes
+    SIBLES_ATT_MAX
+} sibles_attribute_code_t;
+
+typedef enum
+{
+    SIBLES_ATT_ERR_NO_ERROR                                                               = 0x00,
+    /// 0x01: Handle is invalid
+    SIBLES_ATT_ERR_INVALID_HANDLE                                                         = 0x01,
+    /// 0x02: Read permission disabled
+    SIBLES_ATT_ERR_READ_NOT_PERMITTED                                                     = 0x02,
+    /// 0x03: Write permission disabled
+    SIBLES_ATT_ERR_WRITE_NOT_PERMITTED                                                    = 0x03,
+    /// 0x04: Incorrect PDU
+    SIBLES_ATT_ERR_INVALID_PDU                                                            = 0x04,
+    /// 0x05: Authentication privilege not enough
+    SIBLES_ATT_ERR_INSUFF_AUTHEN                                                          = 0x05,
+    /// 0x06: Request not supported or not understood
+    SIBLES_ATT_ERR_REQUEST_NOT_SUPPORTED                                                  = 0x06,
+    /// 0x07: Incorrect offset value
+    SIBLES_ATT_ERR_INVALID_OFFSET                                                         = 0x07,
+    /// 0x08: Authorization privilege not enough
+    SIBLES_ATT_ERR_INSUFF_AUTHOR                                                          = 0x08,
+    /// 0x09: Capacity queue for reliable write reached
+    SIBLES_ATT_ERR_PREPARE_QUEUE_FULL                                                     = 0x09,
+    /// 0x0A: Attribute requested not existing
+    SIBLES_ATT_ERR_ATTRIBUTE_NOT_FOUND                                                    = 0x0A,
+    /// 0x0B: Attribute requested not long
+    SIBLES_ATT_ERR_ATTRIBUTE_NOT_LONG                                                     = 0x0B,
+    /// 0x0C: Encryption size not sufficient
+    SIBLES_ATT_ERR_INSUFF_ENC_KEY_SIZE                                                    = 0x0C,
+    /// 0x0D: Invalid length of the attribute value
+    SIBLES_ATT_ERR_INVALID_ATTRIBUTE_VAL_LEN                                              = 0x0D,
+    /// 0x0E: Operation not fit to condition
+    SIBLES_ATT_ERR_UNLIKELY_ERR                                                           = 0x0E,
+    /// 0x0F: Attribute requires encryption before operation
+    SIBLES_ATT_ERR_INSUFF_ENC                                                             = 0x0F,
+    /// 0x10: Attribute grouping not supported
+    SIBLES_ATT_ERR_UNSUPP_GRP_TYPE                                                        = 0x10,
+    /// 0x11: Resources not sufficient to complete the request
+    SIBLES_ATT_ERR_INSUFF_RESOURCE                                                        = 0x11,
+    /// 0x80: Application error (also used in PRF Errors)
+    SIBLES_ATT_ERR_APP_ERROR                                                              = 0x80,
+} sibles_att_error_reason_t;
 
 /**
  * @brief Sibles GATT write type.
@@ -489,6 +596,16 @@ typedef struct
     uint8_t value;
     uint8_t status;
 } sibles_set_dis_rsp_t;
+
+typedef struct
+{
+    uint8_t conn_idx;
+    // see @sibles_attribute_code_t
+    uint8_t op_code;
+    uint16_t handle;
+    // see @sibles_att_error_reason_t
+    uint8_t reason;
+} sibles_att_error_ind_t;
 
 /**
 * @} sible_types
