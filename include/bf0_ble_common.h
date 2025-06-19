@@ -108,6 +108,7 @@ if (!(EX))                                                                    \
 #define RW_ASSERT(expr)
 #endif
 
+#undef BT_ASSERT
 #define BT_ASSERT(expr) RW_ASSERT(expr)
 #define BT_OOM_ASSERT(expr) RW_ASSERT(expr)
 #define RW_WAITING_FOREVER -1

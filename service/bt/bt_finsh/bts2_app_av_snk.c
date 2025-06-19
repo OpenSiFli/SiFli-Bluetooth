@@ -65,6 +65,10 @@
     #include "vbe_eq_drc_api.h"
     #define A2DP_VBE_OUT_BUFFER_SIZE     8192
 #endif
+
+#include "sifli_resample.h"
+static sifli_resample_t *resample;
+
 uint8_t   bts2s_avsnk_openFlag;//0x00:dont open a2dp profile; 0x01:open a2dp profile;
 uint8_t   frms_per_payload;
 
@@ -409,10 +413,18 @@ static void decode_playback_thread(void *args)
             }
             param.write_channnel_num = 2;
             param.write_bits_per_sample = 16;
-            param.write_cache_size = 8192;
+            param.write_cache_size = 32000;
             debug_tx_cnt = 0;
             inst_data->snk_data.audio_client = audio_open(AUDIO_TYPE_BT_MUSIC, AUDIO_TX, &param, audio_bt_music_client_cb, NULL);
             is_stopped = 0;
+
+            if (!resample)
+            {
+                USER_TRACE("resample from %d to 48k", param.write_samplerate);
+                resample = sifli_resample_open(param.write_channnel_num, param.write_samplerate, 48000);
+                RT_ASSERT(resample);
+            }
+
 #if PKG_USING_VBE_DRC
             inst_data->snk_data.vbe_out = rt_malloc(A2DP_VBE_OUT_BUFFER_SIZE);
             RT_ASSERT(inst_data->snk_data.vbe_out);
@@ -456,7 +468,24 @@ static void decode_playback_thread(void *args)
 #if PKG_USING_VBE_DRC
             ret_write = audio_write(inst_data->snk_data.audio_client, inst_data->snk_data.vbe_out, vbe_out_size);
 #else
-            ret_write = audio_write(inst_data->snk_data.audio_client, decode_data, decode_len);
+
+            if (get_server_current_device() == AUDIO_DEVICE_BLE_BAP_SINK)
+            {
+                int try_times = 0;
+                uint32_t bytes = sifli_resample_process(resample, (int16_t *)decode_data, decode_len, 0);
+                while (1)
+                {
+                    ret_write = audio_write(inst_data->snk_data.audio_client, (uint8_t *)sifli_resample_get_output(resample), bytes);
+                    if (ret_write)
+                        break;
+                    rt_thread_mdelay(10);
+                    try_times++;
+                    if (try_times > 20)
+                        break;
+                }
+            }
+            else
+                ret_write = audio_write(inst_data->snk_data.audio_client, decode_data, decode_len);
 #endif
             if (ret_write < 0)
             {
@@ -465,6 +494,10 @@ static void decode_playback_thread(void *args)
             }
             else if (ret_write == 0)
             {
+                if (get_server_current_device() == AUDIO_DEVICE_BLE_BAP_SINK)
+                {
+                    USER_TRACE("--a2dp drop data\n");
+                }
                 break;
             }
             else
@@ -536,6 +569,8 @@ static void stop_audio_playback(bts2s_av_inst_data *inst)
         rt_event_recv(g_playback_evt, PLAYBACK_STOPPED_EVENT_FLAG, RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, RT_WAITING_FOREVER, &evt);
         inst->snk_data.play_state = FALSE;
 #if defined(AUDIO_USING_MANAGER) && defined(AUDIO_BT_AUDIO)
+        sifli_resample_close(resample);
+        resample = NULL;
         audio_close(inst->snk_data.audio_client);
         inst->snk_data.audio_client = NULL;
 #endif
@@ -568,6 +603,8 @@ static void stop_audio_playback_temporarily(bts2s_av_inst_data *inst)
         rt_event_recv(g_playback_evt, PLAYBACK_STOPPED_EVENT_FLAG, RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, RT_WAITING_FOREVER, &evt);
         inst->snk_data.play_state = FALSE;
 #if defined(AUDIO_USING_MANAGER) && defined(AUDIO_BT_AUDIO)
+        sifli_resample_close(resample);
+        resample = NULL;
         audio_close(inst->snk_data.audio_client);
         inst->snk_data.audio_client = NULL;
 #endif
