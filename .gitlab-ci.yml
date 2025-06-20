@@ -1,0 +1,64 @@
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: always
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - if: $CI_PIPELINE_SOURCE == "api"
+      when: always
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: always
+    - if: $CI_PIPELINE_SOURCE == "push"
+      when: always
+    - when: never
+  
+stages:
+  - sync_to_github
+
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
+sync_to_github:
+  stage: sync_to_github
+  image: $CI_DOCKER_BASE_REGISTRY:latest
+  tags:
+    - docker
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
+  before_script:
+    # 启动SSH Agent
+    - eval $(ssh-agent -s)
+    # 添加SSH私钥（base64编码格式）
+    - echo "$GITHUB_DEPLOY_KEY" | base64 -d | tr -d '\r' | ssh-add -
+    # 创建SSH目录并配置
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    # 添加GitHub到known_hosts
+    - ssh-keyscan github.com >> ~/.ssh/known_hosts
+    # 配置Git用户信息
+    - git config --global user.name "$GIT_CI_USER_NAME"
+    - git config --global user.email "$GIT_CI_USER_EMAIL"
+  script:
+    - |
+      git remote add github git@github.com:${GITHUB_REPO}.git || git remote set-url github git@github.com:${GITHUB_REPO}.git
+      
+      export CURRENT_BRANCH=${CI_COMMIT_REF_NAME}
+      echo "Current branch: $CURRENT_BRANCH"
+      
+      echo "Fetching remote repository info..."
+      git fetch github
+      
+      echo "Starting sync to GitHub..."
+      git push github "HEAD:$CURRENT_BRANCH" --force-with-lease
+      
+      # 如果是主分支，同时推送标签
+      if [ "$CURRENT_BRANCH" = "main" ] || [ "$CURRENT_BRANCH" = "master" ]; then
+        echo "Pushing tags to GitHub..."
+        git push github --tags
+      fi
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $SYNC_GITHUB'
+      when: always
+    - if: '$CI_PIPELINE_SOURCE == "web" && $SYNC_GITHUB'
+      when: always
+    - when: never
