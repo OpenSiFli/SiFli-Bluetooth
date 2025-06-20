@@ -60,14 +60,12 @@
 #include "log.h"
 #if defined(AUDIO_USING_MANAGER) && defined(AUDIO_BT_AUDIO)
     #include "audio_server.h"
+    #include "sifli_resample.h"
 #endif
 #if PKG_USING_VBE_DRC
     #include "vbe_eq_drc_api.h"
     #define A2DP_VBE_OUT_BUFFER_SIZE     8192
 #endif
-
-#include "sifli_resample.h"
-static sifli_resample_t *resample;
 
 uint8_t   bts2s_avsnk_openFlag;//0x00:dont open a2dp profile; 0x01:open a2dp profile;
 uint8_t   frms_per_payload;
@@ -101,7 +99,7 @@ extern bts2_app_stru *bts2g_app_p;
 
 
 #if defined(AUDIO_USING_MANAGER) && defined(AUDIO_BT_AUDIO)
-
+static sifli_resample_t *resample;
 static rt_event_t g_playback_evt;
 static rt_thread_t g_playback_thread = NULL;
 #define  PLAYBACK_GETDATA_EVENT_FLAG       (1 << 0)
