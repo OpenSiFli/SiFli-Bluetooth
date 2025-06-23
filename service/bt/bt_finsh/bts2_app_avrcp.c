@@ -38,9 +38,9 @@ uint8_t   bts2s_avrcp_openFlag;//0x00:dont open avrcp profile; 0x01:open avrcp p
 #endif
 
 
-#define BEGIN_ACCESS_VAR()              {rt_sem_take(bts2g_app_p->avrcp_inst.volume_change_sem, RT_WAITING_FOREVER);  \
+#define BEGIN_ACCESS_VAR()              {os_sem_take(bts2g_app_p->avrcp_inst.volume_change_sem, OS_WAIT_FORVER);  \
                                          LOG_D("enter modifly abs_vol_support\n");}
-#define END_ACCESS_VAR()                {rt_sem_release(bts2g_app_p->avrcp_inst.volume_change_sem); \
+#define END_ACCESS_VAR()                {os_sem_release(bts2g_app_p->avrcp_inst.volume_change_sem); \
                                          LOG_D("exit modifly abs_vol_support\n");}
 
 
@@ -64,22 +64,21 @@ bt_avrcp_music_detail_t music_detail_info;
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avrcp_int(bts2_app_stru *bts2_app_data)
+void bt_avrcp_init(bts2_app_stru *bts2_app_data)
 {
-    bts2_app_data->avrcp_inst.st = avrcp_idle;
-    bts2_app_data->avrcp_inst.release_type = 0x00;
-    bts2_app_data->avrcp_inst.avrcp_time_handle = NULL;
-    bts2_app_data->avrcp_inst.avrcp_vol_time_handle = NULL;
-    bts2_app_data->avrcp_inst.volume_change_sem = rt_sem_create("bt_avrcp_vol_change", 1, RT_IPC_FLAG_FIFO);
-    bts2_app_data->avrcp_inst.abs_vol_support = 0;
-    bts2_app_data->avrcp_inst.play_status_notify = 0;
+    bts2_app_data->avrcp_inst.volume_change_sem = os_sem_create("bt_avrcp_vol_change", 1);
     bts2_app_data->avrcp_inst.abs_volume_pending = 0;
-    bts2_app_data->avrcp_inst.playback_status = 0;
-    bts2_app_data->avrcp_inst.ab_volume = 20;//default value;
-    for (U8 i = 0; i < AVRCP_MAX_CONNS; i++)
+    bts2_app_data->avrcp_inst.release_type = 0x00;
+
+    for (U8 idx = 0; idx < CFG_MAX_AVRCP_CONN_NUM; idx++)
     {
-        bd_set_empty(&bts2_app_data->avrcp_inst.con[i].rmt_bd);
-        bts2_app_data->avrcp_inst.con[i].role = AVRCP_NO_ROLE;
+        bd_set_empty(&bts2_app_data->avrcp_inst.conn[idx].rmt_bd);
+        bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle = NULL;
+        bts2_app_data->avrcp_inst.conn[idx].play_status_notify = 0;
+        bts2_app_data->avrcp_inst.conn[idx].ab_volume = 20;//default value;
+        bts2_app_data->avrcp_inst.conn[idx].playback_status = 0;
+        bts2_app_data->avrcp_inst.conn[idx].abs_vol_support = 0;
+        bts2_app_data->avrcp_inst.conn[idx].role = AVRCP_NO_ROLE;
     }
 #ifdef CFG_OPEN_AVRCP
     bts2s_avrcp_openFlag = 1;
@@ -138,13 +137,13 @@ U8 bt_avrcp_get_role_by_addr(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd_add
 {
     //!Only applicable to avrcp single connection
     U8 role = AVRCP_CT;
-    for (U8 i = 0; i < AVRCP_MAX_CONNS; i++)
+    for (U8 i = 0; i < CFG_MAX_AVRCP_CONN_NUM; i++)
     {
-        if (bd_eq(bd_addr, &bts2_app_data->avrcp_inst.con[i].rmt_bd) == TRUE)
+        if (bd_eq(bd_addr, &bts2_app_data->avrcp_inst.conn[i].rmt_bd) == TRUE)
         {
-            if (bts2_app_data->avrcp_inst.con[i].role != AVRCP_NO_ROLE)
+            if (bts2_app_data->avrcp_inst.conn[i].role != AVRCP_NO_ROLE)
             {
-                role = bts2_app_data->avrcp_inst.con[i].role;
+                role = bts2_app_data->avrcp_inst.conn[i].role;
                 return role;
             }
             else
@@ -183,29 +182,39 @@ int bt_avrcp_controller_connect_request(BTS2S_BD_ADDR *bd)
 int bt_avrcp_conn_2_dev(BTS2S_BD_ADDR *bd, BOOL is_target)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
+    BTS2S_BD_ADDR temp = {0xffffff, 0xff, 0xffff};
 
-    if (bts2_app_data->avrcp_inst.st == avrcp_idle)
+    if (!bd_eq(bd, &temp))
     {
         USER_TRACE(" -- avrcp conn remote device...\n");
-        USER_TRACE(" -- address: %04X:%02X:%06lX\n",
+        USER_TRACE(" -- address: %04X:%02X:%06X\n",
                    bd->nap,
                    bd->uap,
                    bd->lap);
 
+        for (U8 idx = 0; idx < CFG_MAX_AVRCP_CONN_NUM; idx++)
+        {
+            if (bd_eq(&(bts2_app_data->avrcp_inst.conn[idx].rmt_bd), bd))
+            {
+                USER_TRACE(" -- already connected with remote device\n");
+                return 1;
+            }
+        }
+
         if (!is_target)
         {
-            avrcp_conn_req(bts2_app_data->phdl, *bd, AVRCP_TG, AVRCP_CT);
+            avrcp_conn_req(bts2_app_data->phdl, bd, AVRCP_TG, AVRCP_CT);
         }
         else
         {
-            avrcp_conn_req(bts2_app_data->phdl, *bd, AVRCP_CT, AVRCP_TG);
+            avrcp_conn_req(bts2_app_data->phdl, bd, AVRCP_CT, AVRCP_TG);
         }
 
         return 0;
     }
     else
     {
-        USER_TRACE(" -- already connected with remote device\n");
+        USER_TRACE(">> pls input remote device address\n");
         return 1;
     }
     return 1;
@@ -225,18 +234,31 @@ int bt_avrcp_conn_2_dev(BTS2S_BD_ADDR *bd, BOOL is_target)
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avrcp_disc_2_dev(BTS2S_BD_ADDR *bd_addr)
+void bt_avrcp_disc_2_dev(BTS2S_BD_ADDR *bd)
 {
-    bts2_app_stru *bts2_app_data = getApp();
-    if (avrcp_conned == bts2_app_data->avrcp_inst.st)
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    USER_TRACE(" -- disconnect avrcp address: %04X:%02X:%06X\n",
+               bd->nap,
+               bd->uap,
+               bd->lap);
+
+    U8 idx;
+    for (U8 idx = 0; idx < CFG_MAX_AVRCP_CONN_NUM; idx++)
+    {
+        if (bd_eq(&(bts2_app_data->avrcp_inst.conn[idx].rmt_bd), bd))
+        {
+            break;
+        }
+    }
+
+    if (idx != CFG_MAX_AVRCP_CONN_NUM)
     {
         USER_TRACE(">> disconnect avrcp with remote device...\n");
-        avrcp_disc_req();
-        bts2_app_data->avrcp_inst.st = avrcp_idle;
+        avrcp_disc_req_ext(bd);
     }
     else
     {
-        USER_TRACE(">> disconnect avrcp,already idle\n");
+        USER_TRACE(">> can't find connected device\n");
     }
 }
 
@@ -254,80 +276,62 @@ void bt_avrcp_disc_2_dev(BTS2S_BD_ADDR *bd_addr)
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avrcp_pop(bts2_app_stru *bts2_app_data, U8 stateOpe)
+void bt_avrcp_pop(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR bd, U8 stateOpe)
 {
     U8 data[3] = {0x7c, stateOpe, 0x00}; /* pop*/
-    avrcp_cmd_data_req(bts2_app_data->phdl,
-                       ASSIGN_TLABEL,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_CTRL,
-                       AVRCP_PASS_THROUGH_SUBUNIT_TYPE,
-                       AVRCP_PASS_THROUGH_SUBUNIT_ID,
-                       3,
-                       data);
+    avrcp_cmd_data_req_ext(&bd,
+                           bts2_app_data->phdl,
+                           ASSIGN_TLABEL,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_CTRL,
+                           AVRCP_PASS_THROUGH_SUBUNIT_TYPE,
+                           AVRCP_PASS_THROUGH_SUBUNIT_ID,
+                           3,
+                           data);
 }
 
-void bt_avrcp_delay_pop(bts2_app_stru *bts2_app_data, int type)
-{
-    bts2_app_data->avrcp_inst.release_type = type;
-
-    if (!bts2_app_data->avrcp_inst.avrcp_time_handle)
-    {
-        bts2_app_data->avrcp_inst.avrcp_time_handle = rt_timer_create("avrcp_ti", bt_avrcp_timeout_handler, (void *)bts2_app_data,
-                rt_tick_from_millisecond(100), RT_TIMER_FLAG_SOFT_TIMER);
-    }
-    else
-    {
-        rt_timer_stop(bts2_app_data->avrcp_inst.avrcp_time_handle);
-    }
-    rt_timer_start(bts2_app_data->avrcp_inst.avrcp_time_handle);
-}
 
 void bt_avrcp_timeout_handler(void *parameter)
 {
-    bts2_app_stru *bts2_app_data = (bts2_app_stru *)parameter;
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    BTS2S_BD_ADDR *bd = (BTS2S_BD_ADDR *)parameter;
     U8 data[3] = {0x7c, 0x00, 0x00};
 
     data[1] = 0x80 | bts2_app_data->avrcp_inst.release_type;
 
-    avrcp_cmd_data_req(bts2_app_data->phdl,
-                       ASSIGN_TLABEL,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_CTRL,
-                       AVRCP_PASS_THROUGH_SUBUNIT_TYPE,
-                       AVRCP_PASS_THROUGH_SUBUNIT_ID,
-                       3,
-                       data);
+    avrcp_cmd_data_req_ext(bd,
+                           bts2_app_data->phdl,
+                           ASSIGN_TLABEL,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_CTRL,
+                           AVRCP_PASS_THROUGH_SUBUNIT_TYPE,
+                           AVRCP_PASS_THROUGH_SUBUNIT_ID,
+                           3,
+                           data);
 }
 
 void bt_avrcp_vol_timeout_handler(void *parameter)
 {
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    BTS2S_BD_ADDR *bd = (BTS2S_BD_ADDR *)parameter;
+    bt_avrcp_volume_register_request(bts2_app_data, bd);
     USER_TRACE("can't receive interim notify,re-try register volume changed\n");
-    bts2_app_stru *bts2_app_data = (bts2_app_stru *)parameter;
-    bt_avrcp_volume_register_request(bts2_app_data);
 }
 
 
-void bt_avrcp_ply(bts2_app_stru *bts2_app_data)
+void bt_avrcp_ply(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
 {
     U8 data[3] = {0x7c, 0x44, 0x00};/* ply*/
 
-    avrcp_cmd_data_req(bts2_app_data->phdl,
-                       ASSIGN_TLABEL,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_CTRL,
-                       AVRCP_PASS_THROUGH_SUBUNIT_TYPE,
-                       AVRCP_PASS_THROUGH_SUBUNIT_ID,
-                       3,
-                       data);
-
-
-    /*U8 *record;
-      U16 num_rec_bytes;
-      num_rec_bytes = sizeof(bts2s_sds_pan_panu_svc_record);
-      record = (U8 *) bmalloc(num_rec_bytes);
-      bmemcpy(record, bts2s_sds_pan_panu_svc_record, num_rec_bytes);
-      gap_sds_reg_req(bts2_app_data->phdl, record, num_rec_bytes); */
+    avrcp_cmd_data_req_ext(bd,
+                           bts2_app_data->phdl,
+                           ASSIGN_TLABEL,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_CTRL,
+                           AVRCP_PASS_THROUGH_SUBUNIT_TYPE,
+                           AVRCP_PASS_THROUGH_SUBUNIT_ID,
+                           3,
+                           data);
 }
 
 /*----------------------------------------------------------------------------*
@@ -344,25 +348,18 @@ void bt_avrcp_ply(bts2_app_stru *bts2_app_data)
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avrcp_rewind(bts2_app_stru *bts2_app_data)
+void bt_avrcp_rewind(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
 {
     U8 data[3] = {0x7c, 0x48, 0x00}; /*rewind*/
-    avrcp_cmd_data_req(bts2_app_data->phdl,
-                       ASSIGN_TLABEL,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_CTRL,
-                       AVRCP_PASS_THROUGH_SUBUNIT_TYPE,
-                       AVRCP_PASS_THROUGH_SUBUNIT_ID,
-                       3,
-                       data);
-
-
-    /*U8 *record;
-     U16 num_rec_bytes;
-     num_rec_bytes = sizeof(bts2s_sds_pan_gn_svc_record);
-     record = (U8 *) bmalloc(num_rec_bytes);
-     bmemcpy(record, bts2s_sds_pan_gn_svc_record, num_rec_bytes);
-     gap_sds_reg_req(bts2_app_data->phdl, record, num_rec_bytes);*/
+    avrcp_cmd_data_req_ext(bd,
+                           bts2_app_data->phdl,
+                           ASSIGN_TLABEL,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_CTRL,
+                           AVRCP_PASS_THROUGH_SUBUNIT_TYPE,
+                           AVRCP_PASS_THROUGH_SUBUNIT_ID,
+                           3,
+                           data);
 }
 
 /*----------------------------------------------------------------------------*
@@ -379,25 +376,18 @@ void bt_avrcp_rewind(bts2_app_stru *bts2_app_data)
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avrcp_record(bts2_app_stru *bts2_app_data)
+void bt_avrcp_record(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
 {
     U8 data[3] = {0x7c, 0x47, 0x00}; /*record*/
-    avrcp_cmd_data_req(bts2_app_data->phdl,
-                       ASSIGN_TLABEL,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_CTRL,
-                       AVRCP_PASS_THROUGH_SUBUNIT_TYPE,
-                       AVRCP_PASS_THROUGH_SUBUNIT_ID,
-                       3,
-                       data);
-
-
-    /*U8 *record;
-      U16 num_rec_bytes;
-      num_rec_bytes = sizeof(bts2s_sds_pan_nap_svc_record);
-      record = (U8 *) bmalloc(num_rec_bytes);
-      bmemcpy(record, bts2s_sds_pan_nap_svc_record, num_rec_bytes);
-      gap_sds_reg_req(bts2_app_data->phdl, record, num_rec_bytes);*/
+    avrcp_cmd_data_req_ext(bd,
+                           bts2_app_data->phdl,
+                           ASSIGN_TLABEL,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_CTRL,
+                           AVRCP_PASS_THROUGH_SUBUNIT_TYPE,
+                           AVRCP_PASS_THROUGH_SUBUNIT_ID,
+                           3,
+                           data);
 }
 
 /*----------------------------------------------------------------------------*
@@ -414,49 +404,20 @@ void bt_avrcp_record(bts2_app_stru *bts2_app_data)
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avrcp_select_sound(bts2_app_stru *bts2_app_data)
+void bt_avrcp_select_sound(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
 {
     U8 data[3] = {0x7c, 0x33, 0x00}; //record
-    avrcp_cmd_data_req(bts2_app_data->phdl,
-                       ASSIGN_TLABEL,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_CTRL,
-                       AVRCP_PASS_THROUGH_SUBUNIT_TYPE,
-                       AVRCP_PASS_THROUGH_SUBUNIT_ID,
-                       3,
-                       data);
+    avrcp_cmd_data_req_ext(bd,
+                           bts2_app_data->phdl,
+                           ASSIGN_TLABEL,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_CTRL,
+                           AVRCP_PASS_THROUGH_SUBUNIT_TYPE,
+                           AVRCP_PASS_THROUGH_SUBUNIT_ID,
+                           3,
+                           data);
 }
 
-void bt_avrcp_volume_up(bts2_app_stru *bts2_app_data)
-{
-    U8 data[3] = {0x7c, 0x41, 0x00}; //ply
-    avrcp_cmd_data_req(bts2_app_data->phdl,
-                       ASSIGN_TLABEL,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_CTRL,
-                       AVRCP_PASS_THROUGH_SUBUNIT_TYPE,
-                       AVRCP_PASS_THROUGH_SUBUNIT_ID,
-                       3,
-                       data);
-
-    bt_avrcp_delay_pop(bts2_app_data, 0x41);
-}
-
-void bt_avrcp_volume_down(bts2_app_stru *bts2_app_data)
-{
-    U8 data[3] = {0x7c, 0x42, 0x00}; //ply
-    avrcp_cmd_data_req(bts2_app_data->phdl,
-                       ASSIGN_TLABEL,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_CTRL,
-                       AVRCP_PASS_THROUGH_SUBUNIT_TYPE,
-                       AVRCP_PASS_THROUGH_SUBUNIT_ID,
-                       3,
-                       data);
-
-
-    bt_avrcp_delay_pop(bts2_app_data, 0x42);
-}
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
@@ -471,18 +432,19 @@ void bt_avrcp_volume_down(bts2_app_stru *bts2_app_data)
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avrcp_stop(bts2_app_stru *bts2_app_data)
+void bt_avrcp_stop(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
 {
     U8 data[3] = {0x7c, 0x45, 0x00}; //stop
 
-    avrcp_cmd_data_req(bts2_app_data->phdl,
-                       ASSIGN_TLABEL,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_CTRL,
-                       AVRCP_PASS_THROUGH_SUBUNIT_TYPE,
-                       AVRCP_PASS_THROUGH_SUBUNIT_ID,
-                       3,
-                       data);
+    avrcp_cmd_data_req_ext(bd,
+                           bts2_app_data->phdl,
+                           ASSIGN_TLABEL,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_CTRL,
+                           AVRCP_PASS_THROUGH_SUBUNIT_TYPE,
+                           AVRCP_PASS_THROUGH_SUBUNIT_ID,
+                           3,
+                           data);
 
 
 }
@@ -501,17 +463,18 @@ void bt_avrcp_stop(bts2_app_stru *bts2_app_data)
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avrcp_pause(bts2_app_stru *bts2_app_data)
+void bt_avrcp_pause(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
 {
     U8 data[3] = {0x7c, 0x46, 0x00}; //pause
-    avrcp_cmd_data_req(bts2_app_data->phdl,
-                       ASSIGN_TLABEL,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_CTRL,
-                       AVRCP_PASS_THROUGH_SUBUNIT_TYPE,
-                       AVRCP_PASS_THROUGH_SUBUNIT_ID,
-                       3,
-                       data);
+    avrcp_cmd_data_req_ext(bd,
+                           bts2_app_data->phdl,
+                           ASSIGN_TLABEL,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_CTRL,
+                           AVRCP_PASS_THROUGH_SUBUNIT_TYPE,
+                           AVRCP_PASS_THROUGH_SUBUNIT_ID,
+                           3,
+                           data);
 }
 
 /*----------------------------------------------------------------------------*
@@ -528,18 +491,19 @@ void bt_avrcp_pause(bts2_app_stru *bts2_app_data)
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avrcp_forward(bts2_app_stru *bts2_app_data)
+void bt_avrcp_forward(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
 {
     U8 data[3] = {0x7c, 0x4b, 0x00}; //forward
 
-    avrcp_cmd_data_req(bts2_app_data->phdl,
-                       ASSIGN_TLABEL,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_CTRL,
-                       AVRCP_PASS_THROUGH_SUBUNIT_TYPE,
-                       AVRCP_PASS_THROUGH_SUBUNIT_ID,
-                       3,
-                       data);
+    avrcp_cmd_data_req_ext(bd,
+                           bts2_app_data->phdl,
+                           ASSIGN_TLABEL,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_CTRL,
+                           AVRCP_PASS_THROUGH_SUBUNIT_TYPE,
+                           AVRCP_PASS_THROUGH_SUBUNIT_ID,
+                           3,
+                           data);
 
 
 }
@@ -558,33 +522,20 @@ void bt_avrcp_forward(bts2_app_stru *bts2_app_data)
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avrcp_backward(bts2_app_stru *bts2_app_data)
+void bt_avrcp_backward(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
 {
     //backward
     U8 data[3] = {0x7c, 0x4c, 0x00};
 
-    avrcp_cmd_data_req(bts2_app_data->phdl,
-                       ASSIGN_TLABEL,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_CTRL,
-                       AVRCP_PASS_THROUGH_SUBUNIT_TYPE,
-                       AVRCP_PASS_THROUGH_SUBUNIT_ID,
-                       3,
-                       data);
-
-
-
-    /* test for get capbality */
-    /*U8 data[9] = {0x00, 0x00, 0x19, 0x58, 0x10, 0x00, 0x00, 0x01, 0x01};
-    avrcp_cmd_data_req(bts2_app_data->phdl,
-                       ASSIGN_TLABEL,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_CTRL,
-                       AVRCP_PASS_THROUGH_SUBUNIT_TYPE,
-                       AVRCP_PASS_THROUGH_SUBUNIT_ID,
-                       9,
-                       data);*/
-
+    avrcp_cmd_data_req_ext(bd,
+                           bts2_app_data->phdl,
+                           ASSIGN_TLABEL,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_CTRL,
+                           AVRCP_PASS_THROUGH_SUBUNIT_TYPE,
+                           AVRCP_PASS_THROUGH_SUBUNIT_ID,
+                           3,
+                           data);
 }
 /*----------------------------------------------------------------------------*
  *
@@ -600,17 +551,18 @@ void bt_avrcp_backward(bts2_app_stru *bts2_app_data)
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avrcp_unitinfo(bts2_app_stru *bts2_app_data)
+void bt_avrcp_unitinfo(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
 {
     U8 data[64] = {0x30, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-    avrcp_cmd_data_req(bts2_app_data->phdl,
-                       ASSIGN_TLABEL,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_STS,
-                       AVRCP_UNIT_INFO_SUBUNIT_TYPE,
-                       AVRCP_UNIT_INFO_SUBUNIT_ID,
-                       64,
-                       data);
+    avrcp_cmd_data_req_ext(bd,
+                           bts2_app_data->phdl,
+                           ASSIGN_TLABEL,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_STS,
+                           AVRCP_UNIT_INFO_SUBUNIT_TYPE,
+                           AVRCP_UNIT_INFO_SUBUNIT_ID,
+                           64,
+                           data);
 }
 
 /*----------------------------------------------------------------------------*
@@ -627,17 +579,18 @@ void bt_avrcp_unitinfo(bts2_app_stru *bts2_app_data)
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avrcp_subunitinfo(bts2_app_stru *bts2_app_data)
+void bt_avrcp_subunitinfo(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
 {
     U8 data[6] = {0x31, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-    avrcp_cmd_data_req(bts2_app_data->phdl,
-                       ASSIGN_TLABEL,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_STS,
-                       AVRCP_SUBUNIT_INFO_SUBUNIT_TYPE,
-                       AVRCP_SUBUNIT_INFO_SUBUNIT_ID,
-                       6,
-                       data);
+    avrcp_cmd_data_req_ext(bd,
+                           bts2_app_data->phdl,
+                           ASSIGN_TLABEL,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_STS,
+                           AVRCP_SUBUNIT_INFO_SUBUNIT_TYPE,
+                           AVRCP_SUBUNIT_INFO_SUBUNIT_ID,
+                           6,
+                           data);
 }
 /*----------------------------------------------------------------------------*
  *
@@ -681,16 +634,8 @@ static void bt_avrcp_hdl_subunitinfo_cmd_ind(bts2_app_stru *bts2_app_data)
     {
         if (avrcmsg->prof_id == BT_UUID_AVRCP_CT)
         {
-            U8 vld_cmd = TRUE;
-//          if ((avrcmsg->subunit_id != AVRCP_SUBUNIT_INFO_SUBUNIT_TYPE)||
-//              (avrcmsg->subunit_type != AVRCP_SUBUNIT_INFO_SUBUNIT_ID))
-//          {
-//              vld_cmd = FALSE;
-//          }
-            /*send response */
-            if (vld_cmd == TRUE)
-            {
-                avrcp_cmd_data_rsp(bts2_app_data->phdl,
+            avrcp_cmd_data_rsp_ext(&avrcmsg->bd,
+                                   bts2_app_data->phdl,
                                    avrcmsg->tlabel,
                                    avrcmsg->prof_id,
                                    AVRCP_CR_STABLE,
@@ -698,18 +643,18 @@ static void bt_avrcp_hdl_subunitinfo_cmd_ind(bts2_app_stru *bts2_app_data)
                                    avrcmsg->subunit_id,
                                    (U16)6,
                                    data);
-            }
         }
         else
         {
-            avrcp_cmd_data_rsp(bts2_app_data->phdl,
-                               avrcmsg->tlabel,
-                               avrcmsg->prof_id,
-                               AVRCP_CR_INVLD_PID,
-                               avrcmsg->subunit_type,
-                               avrcmsg->subunit_id,
-                               0,
-                               NULL);
+            avrcp_cmd_data_rsp_ext(&avrcmsg->bd,
+                                   bts2_app_data->phdl,
+                                   avrcmsg->tlabel,
+                                   avrcmsg->prof_id,
+                                   AVRCP_CR_INVLD_PID,
+                                   avrcmsg->subunit_type,
+                                   avrcmsg->subunit_id,
+                                   0,
+                                   NULL);
         }
     }
 
@@ -744,16 +689,7 @@ static void bt_avrcp_hdl_unitinfo_cmd_ind(bts2_app_stru *bts2_app_data)
     {
         if (avrcmsg->prof_id == BT_UUID_AVRCP_CT)
         {
-            U8 vld_cmd = TRUE;
-//          if ((avrcmsg->subunit_id != AVRCP_UNIT_INFO_SUBUNIT_TYPE)||
-//              (avrcmsg->subunit_type != AVRCP_UNIT_INFO_SUBUNIT_ID))
-//          {
-//              vld_cmd = FALSE;
-//          }
-            /*send response */
-            if (vld_cmd == TRUE)
-            {
-                avrcp_cmd_data_rsp(bts2_app_data->phdl,
+            avrcp_cmd_data_rsp_ext(&avrcmsg->bd, bts2_app_data->phdl,
                                    avrcmsg->tlabel,
                                    avrcmsg->prof_id,
                                    AVRCP_CR_STABLE,
@@ -761,18 +697,17 @@ static void bt_avrcp_hdl_unitinfo_cmd_ind(bts2_app_stru *bts2_app_data)
                                    avrcmsg->subunit_id,
                                    (U16)64,
                                    data);
-            }
         }
         else
         {
-            avrcp_cmd_data_rsp(bts2_app_data->phdl,
-                               avrcmsg->tlabel,
-                               avrcmsg->prof_id,
-                               AVRCP_CR_INVLD_PID,
-                               avrcmsg->subunit_type,
-                               avrcmsg->subunit_id,
-                               0,
-                               NULL);
+            avrcp_cmd_data_rsp_ext(&avrcmsg->bd, bts2_app_data->phdl,
+                                   avrcmsg->tlabel,
+                                   avrcmsg->prof_id,
+                                   AVRCP_CR_INVLD_PID,
+                                   avrcmsg->subunit_type,
+                                   avrcmsg->subunit_id,
+                                   0,
+                                   NULL);
         }
     }
 
@@ -784,7 +719,7 @@ static void bt_avrcp_hdl_unitinfo_cmd_ind(bts2_app_stru *bts2_app_data)
 
 U8 VENDOR_DEPENDENT_BLUETOOTH_SIG_ID[4] = {0x00, 0x00, 0x19, 0x58};
 
-void bt_avrcp_get_capabilities_request(bts2_app_stru *bts2_app_data)
+void bt_avrcp_get_capabilities_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
 {
     U8 data_len = 9;
     U8 data[9];
@@ -798,17 +733,17 @@ void bt_avrcp_get_capabilities_request(bts2_app_stru *bts2_app_data)
 
     // parameter
     *(data + 8) = AVRCP_VENDOR_DEPENDENT_EVENT_CAPABILITY_FOR_EVENTS;
-    avrcp_cmd_data_req(bts2_app_data->phdl,
-                       ASSIGN_TLABEL,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_STS,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
-                       data_len,
-                       data);
+    avrcp_cmd_data_req_ext(bd, bts2_app_data->phdl,
+                           ASSIGN_TLABEL,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_STS,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
+                           data_len,
+                           data);
 }
 
-void bt_avrcp_get_capabilities_response(bts2_app_stru *bts2_app_data, int tlabel)
+void bt_avrcp_get_capabilities_response(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, int tlabel)
 {
     U8 data_len = 12;
     U8 data[12];
@@ -830,17 +765,17 @@ void bt_avrcp_get_capabilities_response(bts2_app_stru *bts2_app_data, int tlabel
     *(data + 10) = AVRCP_VENDOR_DEPENDENT_EVENT_PLAYBACK_STATUS_CHANGED;
     *(data + 11) = AVRCP_VENDOR_DEPENDENT_EVENT_VOLUME_CHANGED;
 
-    avrcp_cmd_data_rsp(bts2_app_data->phdl,
-                       tlabel,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_STABLE,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
-                       data_len,
-                       data);
+    avrcp_cmd_data_rsp_ext(bd, bts2_app_data->phdl,
+                           tlabel,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_STABLE,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
+                           data_len,
+                           data);
 }
 
-void bt_avrcp_get_play_status_response(bts2_app_stru *bts2_app_data, int tlabel)
+void bt_avrcp_get_play_status_response(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, int tlabel)
 {
     U8 data_len = 17;
     U8 data[17];
@@ -862,17 +797,17 @@ void bt_avrcp_get_play_status_response(bts2_app_stru *bts2_app_data, int tlabel)
     *(data + 14) = 0xFF;
     *(data + 15) = 0xFF;
     // play status
-    *(data + 16) = bt_av_get_a2dp_stream_state();
-    avrcp_cmd_data_rsp(bts2_app_data->phdl,
-                       tlabel,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_STABLE,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
-                       data_len,
-                       data);
+    *(data + 16) = bt_av_get_a2dp_stream_state(bd);
+    avrcp_cmd_data_rsp_ext(bd, bts2_app_data->phdl,
+                           tlabel,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_STABLE,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
+                           data_len,
+                           data);
 }
-void bt_avrcp_get_company_id_capabilities_response(bts2_app_stru *bts2_app_data, int tlabel)
+void bt_avrcp_get_company_id_capabilities_response(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, int tlabel)
 {
     U8 data_len = 13;
     U8 data[13];
@@ -891,16 +826,16 @@ void bt_avrcp_get_company_id_capabilities_response(bts2_app_stru *bts2_app_data,
     *(data + 10) = 0x00;
     *(data + 11) = 0x19;
     *(data + 12) = 0x58;
-    avrcp_cmd_data_rsp(bts2_app_data->phdl,
-                       tlabel,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_STABLE,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
-                       data_len,
-                       data);
+    avrcp_cmd_data_rsp_ext(bd, bts2_app_data->phdl,
+                           tlabel,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_STABLE,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
+                           data_len,
+                           data);
 }
-void bt_avrcp_get_element_attributes_response(bts2_app_stru *bts2_app_data, int tlabel)
+void bt_avrcp_get_element_attributes_response(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, int tlabel)
 {
     U16 data_len = 494;
     U8 *data = bmalloc(data_len);
@@ -933,18 +868,18 @@ void bt_avrcp_get_element_attributes_response(bts2_app_stru *bts2_app_data, int 
         *(data + 20) = 0x52;
         *(data + 21) = 0x4f;
         *(data + 22) = 0x52;
-        avrcp_cmd_data_rsp(bts2_app_data->phdl,
-                           tlabel,
-                           BT_UUID_AVRCP_CT,
-                           AVRCP_CR_STABLE,
-                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
-                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
-                           data_len,
-                           data);
+        avrcp_cmd_data_rsp_ext(bd, bts2_app_data->phdl,
+                               tlabel,
+                               BT_UUID_AVRCP_CT,
+                               AVRCP_CR_STABLE,
+                               AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
+                               AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
+                               data_len,
+                               data);
         bfree(data);
     }
 }
-void bt_avrcp_get_element_attributes_response_continue(bts2_app_stru *bts2_app_data, int tlabel)
+void bt_avrcp_get_element_attributes_response_continue(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, int tlabel)
 {
     U16 data_len = 35;
     U8 data[35];
@@ -956,16 +891,16 @@ void bt_avrcp_get_element_attributes_response_continue(bts2_app_stru *bts2_app_d
     *(data + 7) = 0x1b;
     *(data + 8) = 0x4d;
     *(data + 9) = 0x4d;
-    avrcp_cmd_data_rsp(bts2_app_data->phdl,
-                       tlabel,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_STABLE,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
-                       data_len,
-                       data);
+    avrcp_cmd_data_rsp_ext(bd, bts2_app_data->phdl,
+                           tlabel,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_STABLE,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
+                           data_len,
+                           data);
 }
-void bt_avrcp_get_element_attributes_response_abort(bts2_app_stru *bts2_app_data, int tlabel)
+void bt_avrcp_get_element_attributes_response_abort(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, int tlabel)
 {
     U16 data_len = 8;
     U8 data[8];
@@ -975,16 +910,16 @@ void bt_avrcp_get_element_attributes_response_abort(bts2_app_stru *bts2_app_data
     // parameter length
     *(data + 6) = 0x00;
     *(data + 7) = 0x00;
-    avrcp_cmd_data_rsp(bts2_app_data->phdl,
-                       tlabel,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_ACPT,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
-                       data_len,
-                       data);
+    avrcp_cmd_data_rsp_ext(bd, bts2_app_data->phdl,
+                           tlabel,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_ACPT,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
+                           data_len,
+                           data);
 }
-void bt_avrcp_reject_response(bts2_app_stru *bts2_app_data, int tlabel, int command, int error_code)
+void bt_avrcp_reject_response(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, int tlabel, int command, int error_code)
 {
     U8 data_len = 9;
     U8 data[9];
@@ -997,16 +932,16 @@ void bt_avrcp_reject_response(bts2_app_stru *bts2_app_data, int tlabel, int comm
     // parameter
     // capability
     *(data + 8) = error_code;
-    avrcp_cmd_data_rsp(bts2_app_data->phdl,
-                       tlabel,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_REJECT,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
-                       data_len,
-                       data);
+    avrcp_cmd_data_rsp_ext(bd, bts2_app_data->phdl,
+                           tlabel,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_REJECT,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
+                           data_len,
+                           data);
 }
-void bt_avrcp_playback_register_request(bts2_app_stru *bts2_app_data)
+void bt_avrcp_playback_register_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
 {
     U8 data_len = 13;
     U8 data[13];
@@ -1023,17 +958,17 @@ void bt_avrcp_playback_register_request(bts2_app_stru *bts2_app_data)
     *(data + 8) = AVRCP_VENDOR_DEPENDENT_EVENT_PLAYBACK_STATUS_CHANGED;
     bmemset(data + 9, 0, 4);
 
-    avrcp_cmd_data_req(bts2_app_data->phdl,
-                       ASSIGN_TLABEL,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_NOTIFY,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
-                       data_len,
-                       data);
+    avrcp_cmd_data_req_ext(bd, bts2_app_data->phdl,
+                           ASSIGN_TLABEL,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_NOTIFY,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
+                           data_len,
+                           data);
 }
 
-void bt_avrcp_playback_pos_register_request(bts2_app_stru *bts2_app_data)
+void bt_avrcp_playback_pos_register_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
 {
     U8 data_len = 13;
     U8 data[13];
@@ -1051,19 +986,19 @@ void bt_avrcp_playback_pos_register_request(bts2_app_stru *bts2_app_data)
     bmemset(data + 9, 0, 4);
     data[12] = 1;//interval :1s
 
-    avrcp_cmd_data_req(bts2_app_data->phdl,
-                       ASSIGN_TLABEL,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_NOTIFY,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
-                       data_len,
-                       data);
+    avrcp_cmd_data_req_ext(bd, bts2_app_data->phdl,
+                           ASSIGN_TLABEL,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_NOTIFY,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
+                           data_len,
+                           data);
 }
 
 
 
-void bt_avrcp_track_register_request(bts2_app_stru *bts2_app_data)
+void bt_avrcp_track_register_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
 {
     U8 data_len = 13;
     U8 data[13];
@@ -1080,14 +1015,14 @@ void bt_avrcp_track_register_request(bts2_app_stru *bts2_app_data)
     *(data + 8) = AVRCP_VENDOR_DEPENDENT_EVENT_TRACK_CHANGED;
     bmemset(data + 9, 0, 4);
 
-    avrcp_cmd_data_req(bts2_app_data->phdl,
-                       ASSIGN_TLABEL,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_NOTIFY,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
-                       data_len,
-                       data);
+    avrcp_cmd_data_req_ext(bd, bts2_app_data->phdl,
+                           ASSIGN_TLABEL,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_NOTIFY,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
+                           data_len,
+                           data);
 }
 
 void bt_avrcp_get_capabilities_confirm(bts2_app_stru *bts2_app_data, BTS2S_AVRCP_VENDOR_DEPEND_CMD_CFM *avrcmsg)
@@ -1112,26 +1047,26 @@ void bt_avrcp_get_capabilities_confirm(bts2_app_stru *bts2_app_data, BTS2S_AVRCP
             if (events_id)
             {
                 bmemcpy(events_id, avrcmsg->data + 10, capability_count);
-                U8 role = bt_avrcp_get_role_by_addr(bts2_app_data, &bts2_app_data->avrcp_inst.con[0].rmt_bd);
+                U8 role = bt_avrcp_get_role_by_addr(bts2_app_data, &avrcmsg->bd);
 
                 for (int i = 0; i < capability_count; i++)
                 {
                     U8 event = *(events_id + i);
                     if ((event == AVRCP_VENDOR_DEPENDENT_EVENT_PLAYBACK_STATUS_CHANGED) && (role == AVRCP_CT))
                     {
-                        bt_avrcp_playback_register_request(bts2_app_data);
+                        bt_avrcp_playback_register_request(bts2_app_data, &avrcmsg->bd);
                     }
                     else if ((event == AVRCP_VENDOR_DEPENDENT_EVENT_TRACK_CHANGED) && (role == AVRCP_CT))
                     {
-                        bt_avrcp_track_register_request(bts2_app_data);
+                        bt_avrcp_track_register_request(bts2_app_data, &avrcmsg->bd);
                     }
                     else if ((event == AVRCP_VENDOR_DEPENDENT_EVENT_VOLUME_CHANGED) && (role == AVRCP_TG))
                     {
-                        bt_avrcp_volume_register_request(bts2_app_data);
+                        bt_avrcp_volume_register_request(bts2_app_data, &avrcmsg->bd);
                     }
                     else if ((AVRCP_VENDOR_DEPENDENT_EVENT_PLAYBACK_POS_CHANGED == event) && (role == AVRCP_CT))
                     {
-                        bt_avrcp_playback_pos_register_request(bts2_app_data);
+                        bt_avrcp_playback_pos_register_request(bts2_app_data, &avrcmsg->bd);
                     }
                 }
 
@@ -1142,16 +1077,17 @@ void bt_avrcp_get_capabilities_confirm(bts2_app_stru *bts2_app_data, BTS2S_AVRCP
     }
 }
 
-bt_err_t bt_avrcp_change_volume(bts2_app_stru *bts2_app_data, U8 volume)
+bt_err_t bt_avrcp_change_volume(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, U8 volume)
 {
     BEGIN_ACCESS_VAR();
-    USER_TRACE("absolute volume abs_vol_support%x volume%x \n", bts2_app_data->avrcp_inst.abs_vol_support, volume);
+    U8 idx = bt_avrcp_get_connection_by_addr(bts2_app_data, bd);
+    USER_TRACE("absolute volume abs_vol_support%x volume%x \n", bts2_app_data->avrcp_inst.conn[idx].abs_vol_support, volume);
 
-    if (1 == bts2_app_data->avrcp_inst.abs_vol_support)
+    if (1 == bts2_app_data->avrcp_inst.conn[idx].abs_vol_support)
     {
-        bts2_app_data->avrcp_inst.ab_volume = volume;
-        bts2_app_data->avrcp_inst.abs_vol_support = 0;//the life cycle of volume change:(begin:CT register; end:TG changed)
-        bt_avrcp_volume_register_response(bts2_app_data, AVRCP_CR_CHANGED, volume);
+        bts2_app_data->avrcp_inst.conn[idx].ab_volume = volume;
+        bts2_app_data->avrcp_inst.conn[idx].abs_vol_support = 0;//the life cycle of volume change:(begin:CT register; end:TG changed)
+        bt_avrcp_volume_register_response(bts2_app_data, bd, AVRCP_CR_CHANGED, volume);
         END_ACCESS_VAR();
         return BT_EOK;
     }
@@ -1159,32 +1095,19 @@ bt_err_t bt_avrcp_change_volume(bts2_app_stru *bts2_app_data, U8 volume)
     {
         END_ACCESS_VAR();
         return BT_ERROR_AVRCP_NO_REG;
-        /* if (volume > (bts2_app_data->avrcp_inst.ab_volume))
-         {
-             USER_TRACE("volume up\n");
-             bt_avrcp_volume_up(bts2_app_data);
-         }
-         else if (volume < (bts2_app_data->avrcp_inst.ab_volume))
-         {
-             USER_TRACE("volume down\n");
-             bt_avrcp_volume_down(bts2_app_data);
-         }
-         else
-         {
-             return;
-         }*/
     }
 }
 
-bt_err_t bt_avrcp_change_play_status(bts2_app_stru *bts2_app_data, U8 play_status)
+bt_err_t bt_avrcp_change_play_status(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, U8 play_status)
 {
     BEGIN_ACCESS_VAR();
-    USER_TRACE("play status play_status_changed%x play_status%d \n", bts2_app_data->avrcp_inst.play_status_notify, play_status);
+    U8 idx = bt_avrcp_get_connection_by_addr(bts2_app_data, bd);
+    USER_TRACE("play status play_status_notify%x play_status%d \n", bts2_app_data->avrcp_inst.conn[idx].play_status_notify, play_status);
 
-    if (1 == bts2_app_data->avrcp_inst.play_status_notify)
+    if (1 == bts2_app_data->avrcp_inst.conn[idx].play_status_notify)
     {
-        bts2_app_data->avrcp_inst.play_status_notify = 0;//the life cycle of volume change:(begin:CT register; end:TG changed)
-        bt_avrcp_play_status_changed_register_response(bts2_app_data, AVRCP_CR_CHANGED, play_status);
+        bts2_app_data->avrcp_inst.conn[idx].play_status_notify = 0;//the life cycle of volume change:(begin:CT register; end:TG changed)
+        bt_avrcp_play_status_changed_register_response(bts2_app_data, bd, AVRCP_CR_CHANGED, play_status);
         END_ACCESS_VAR();
         return BT_EOK;
     }
@@ -1192,25 +1115,11 @@ bt_err_t bt_avrcp_change_play_status(bts2_app_stru *bts2_app_data, U8 play_statu
     {
         END_ACCESS_VAR();
         return BT_ERROR_AVRCP_NO_REG;
-        /* if (volume > (bts2_app_data->avrcp_inst.ab_volume))
-         {
-             USER_TRACE("volume up\n");
-             bt_avrcp_volume_up(bts2_app_data);
-         }
-         else if (volume < (bts2_app_data->avrcp_inst.ab_volume))
-         {
-             USER_TRACE("volume down\n");
-             bt_avrcp_volume_down(bts2_app_data);
-         }
-         else
-         {
-             return;
-         }*/
     }
 }
 
 
-void bt_avrcp_get_element_attributes_request(bts2_app_stru *bts2_app_data, U8 media_attribute)
+void bt_avrcp_get_element_attributes_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, U8 media_attribute)
 {
     U8 data_len = 21;
     U8 data[21];
@@ -1231,19 +1140,19 @@ void bt_avrcp_get_element_attributes_request(bts2_app_stru *bts2_app_data, U8 me
 
     *(data + 20) = media_attribute;
 
-    avrcp_cmd_data_req(bts2_app_data->phdl,
-                       ASSIGN_TLABEL,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_STS,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
-                       data_len,
-                       data);
+    avrcp_cmd_data_req_ext(bd, bts2_app_data->phdl,
+                           ASSIGN_TLABEL,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_STS,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
+                           data_len,
+                           data);
 }
 
 
 
-void bt_avrcp_get_play_status_request(bts2_app_stru *bts2_app_data)
+void bt_avrcp_get_play_status_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
 {
     U8 data_len = 8;
     U8 data[8];
@@ -1256,14 +1165,14 @@ void bt_avrcp_get_play_status_request(bts2_app_stru *bts2_app_data)
     *(data + 6) = 0;
     *(data + 7) = 0;
 
-    avrcp_cmd_data_req(bts2_app_data->phdl,
-                       ASSIGN_TLABEL,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_STS,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
-                       data_len,
-                       data);
+    avrcp_cmd_data_req_ext(bd, bts2_app_data->phdl,
+                           ASSIGN_TLABEL,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_STS,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
+                           data_len,
+                           data);
 }
 
 static void bt_avrcp_get_element_attributes_confirm(bts2_app_stru *bts2_app_data, BTS2S_AVRCP_VENDOR_DEPEND_CMD_CFM *avrcmsg)
@@ -1325,7 +1234,7 @@ static void bt_avrcp_get_element_attributes_confirm(bts2_app_stru *bts2_app_data
 #endif
         }
         music_detail_info.attri_req = AVRCP_MEDIA_ATTRIBUTES_ARTIST;
-        bt_avrcp_get_element_attributes_request(bts2_app_data, AVRCP_MEDIA_ATTRIBUTES_ARTIST);
+        bt_avrcp_get_element_attributes_request(bts2_app_data, &avrcmsg->bd, AVRCP_MEDIA_ATTRIBUTES_ARTIST);
         break;
     }
     case AVRCP_MEDIA_ATTRIBUTES_ARTIST:
@@ -1354,7 +1263,7 @@ static void bt_avrcp_get_element_attributes_confirm(bts2_app_stru *bts2_app_data
             music_detail_info.detail_info.singer_name.size = 0;
         }
         music_detail_info.attri_req = AVRCP_MEDIA_ATTRIBUTES_ALBUM;
-        bt_avrcp_get_element_attributes_request(bts2_app_data, AVRCP_MEDIA_ATTRIBUTES_ALBUM);
+        bt_avrcp_get_element_attributes_request(bts2_app_data, &avrcmsg->bd, AVRCP_MEDIA_ATTRIBUTES_ALBUM);
         break;
     }
     case AVRCP_MEDIA_ATTRIBUTES_ALBUM:
@@ -1382,7 +1291,7 @@ static void bt_avrcp_get_element_attributes_confirm(bts2_app_stru *bts2_app_data
             music_detail_info.detail_info.album_info.size = 0;
         }
         music_detail_info.attri_req = AVRCP_MEDIA_ATTRIBUTES_TITLE;
-        bt_avrcp_get_element_attributes_request(bts2_app_data, AVRCP_MEDIA_ATTRIBUTES_TITLE);
+        bt_avrcp_get_element_attributes_request(bts2_app_data, &avrcmsg->bd, AVRCP_MEDIA_ATTRIBUTES_TITLE);
         break;
     }
     case AVRCP_MEDIA_ATTRIBUTES_TITLE:
@@ -1410,7 +1319,7 @@ static void bt_avrcp_get_element_attributes_confirm(bts2_app_stru *bts2_app_data
             music_detail_info.detail_info.song_name.size = 0;
         }
         music_detail_info.attri_req = AVRCP_MEDIA_ATTRIBUTES_PLAYTIME;
-        bt_avrcp_get_element_attributes_request(bts2_app_data, AVRCP_MEDIA_ATTRIBUTES_PLAYTIME);
+        bt_avrcp_get_element_attributes_request(bts2_app_data, &avrcmsg->bd, AVRCP_MEDIA_ATTRIBUTES_PLAYTIME);
         break;
     }
     case AVRCP_MEDIA_ATTRIBUTES_PLAYTIME:
@@ -1460,7 +1369,7 @@ void bt_avrcp_get_play_status_confirm(bts2_app_stru *bts2_app_data, BTS2S_AVRCP_
     U8 play_status = 0;
     play_status = avrcmsg->data[16];
 
-    rt_kprintf("get play_status = %d\n", play_status);
+    USER_TRACE("get play_status = %d\n", play_status);
 
 #if defined(CFG_AVRCP)
     //solution 0x00:playing ;0x01:paused
@@ -1470,7 +1379,7 @@ void bt_avrcp_get_play_status_confirm(bts2_app_stru *bts2_app_data, BTS2S_AVRCP_
 }
 
 // register absolute voulume notify
-void bt_avrcp_volume_register_request(bts2_app_stru *bts2_app_data)
+void bt_avrcp_volume_register_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
 {
     U8 data_len = 13;
     U8 data[13];
@@ -1487,18 +1396,18 @@ void bt_avrcp_volume_register_request(bts2_app_stru *bts2_app_data)
     *(data + 8) = AVRCP_VENDOR_DEPENDENT_EVENT_VOLUME_CHANGED;
     bmemset(data + 9, 0, 4);
 
-    avrcp_cmd_data_req(bts2_app_data->phdl,
-                       ASSIGN_TLABEL,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_NOTIFY,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
-                       data_len,
-                       data);
+    avrcp_cmd_data_req_ext(bd, bts2_app_data->phdl,
+                           ASSIGN_TLABEL,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_NOTIFY,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
+                           data_len,
+                           data);
 }
 
 // response should be AVRCP_CR_INTERIM or AVRCP_CR_CHANGED
-void bt_avrcp_volume_register_response(bts2_app_stru *bts2_app_data, U8 response, U8 volume)
+void bt_avrcp_volume_register_response(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, U8 response, U8 volume)
 {
     U8 data_len = 10;
     U8 data[10];
@@ -1514,20 +1423,21 @@ void bt_avrcp_volume_register_response(bts2_app_stru *bts2_app_data, U8 response
     // parameter
     *(data + 8) = AVRCP_VENDOR_DEPENDENT_EVENT_VOLUME_CHANGED;
     *(data + 9) = volume;
-    avrcp_cmd_data_rsp(bts2_app_data->phdl,
-                       bts2_app_data->avrcp_inst.tgTlable,
-                       BT_UUID_AVRCP_CT,
-                       response,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
-                       data_len,
-                       data);
+    avrcp_cmd_data_rsp_ext(bd, bts2_app_data->phdl,
+                           bts2_app_data->avrcp_inst.tgTlable,
+                           BT_UUID_AVRCP_CT,
+                           response,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
+                           data_len,
+                           data);
 }
 
-void bt_avrcp_track_changed_register_response(bts2_app_stru *bts2_app_data, U8 response, U8 track_changed)
+void bt_avrcp_track_changed_register_response(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, U8 response, U8 track_changed)
 {
     U8 data_len = 17;
     U8 data[17];
+    U8 con_idx;
     memcpy(data, VENDOR_DEPENDENT_BLUETOOTH_SIG_ID, 4);
     *(data + 4) = AVRCP_VENDOR_DEPENDENT_PDU_ID_REGISTER_NOTIFICATION;
     *(data + 5) = 0;
@@ -1544,18 +1454,22 @@ void bt_avrcp_track_changed_register_response(bts2_app_stru *bts2_app_data, U8 r
     {
         memset(data + 9, 0, 8);
     }
-    avrcp_cmd_data_rsp(bts2_app_data->phdl,
-                       bts2_app_data->avrcp_inst.tgTlable_2,
-                       BT_UUID_AVRCP_CT,
-                       response,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
-                       data_len,
-                       data);
+
+    if (bt_avrcp_check_connection_by_addr(bts2_app_data, bd, &con_idx))
+    {
+        avrcp_cmd_data_rsp_ext(bd, bts2_app_data->phdl,
+                               bts2_app_data->avrcp_inst.conn[con_idx].tgTlable_2,
+                               BT_UUID_AVRCP_CT,
+                               response,
+                               AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
+                               AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
+                               data_len,
+                               data);
+    }
 }
 
 
-void bt_avrcp_play_status_changed_register_response(bts2_app_stru *bts2_app_data, U8 response, U8 play_status)
+void bt_avrcp_play_status_changed_register_response(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, U8 response, U8 play_status)
 {
     U8 data_len = 10;
     U8 data[10];
@@ -1569,23 +1483,27 @@ void bt_avrcp_play_status_changed_register_response(bts2_app_stru *bts2_app_data
     *(data + 8) = AVRCP_VENDOR_DEPENDENT_EVENT_PLAYBACK_STATUS_CHANGED;
     *(data + 9) = play_status;
 
-    avrcp_cmd_data_rsp(bts2_app_data->phdl,
-                       bts2_app_data->avrcp_inst.tgTlable_1,
-                       BT_UUID_AVRCP_CT,
-                       response,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
-                       data_len,
-                       data);
+    U8 idx = bt_avrcp_get_connection_by_addr(bts2_app_data, bd);
+    avrcp_cmd_data_rsp_ext(bd, bts2_app_data->phdl,
+                           bts2_app_data->avrcp_inst.conn[idx].tgTlable_1,
+                           BT_UUID_AVRCP_CT,
+                           response,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
+                           data_len,
+                           data);
 }
 
-bt_err_t bt_avrcp_set_absolute_volume_request(bts2_app_stru *bts2_app_data, U8 volume)
+bt_err_t bt_avrcp_set_absolute_volume_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, U8 volume)
 {
+    U8 idx = bt_avrcp_get_connection_by_addr(bts2_app_data, bd);
+
     if (bts2_app_data->avrcp_inst.abs_volume_pending == 1)
     {
         return BT_ERROR_STATE;
     }
-    else if (bts2_app_data->avrcp_inst.st != avrcp_conned)
+
+    if (idx == CFG_MAX_AVRCP_CONN_NUM)
     {
         USER_TRACE("avrcp is not connected\n");
         return BT_ERROR_DISCONNECTED;
@@ -1606,21 +1524,21 @@ bt_err_t bt_avrcp_set_absolute_volume_request(bts2_app_stru *bts2_app_data, U8 v
         // parameter
         *(data + 8) = volume;
 
-        avrcp_cmd_data_req(bts2_app_data->phdl,
-                           ASSIGN_TLABEL,
-                           BT_UUID_AVRCP_CT,
-                           AVRCP_CR_CTRL,
-                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
-                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
-                           data_len,
-                           data);
+        avrcp_cmd_data_req_ext(bd, bts2_app_data->phdl,
+                               ASSIGN_TLABEL,
+                               BT_UUID_AVRCP_CT,
+                               AVRCP_CR_CTRL,
+                               AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
+                               AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
+                               data_len,
+                               data);
         bts2_app_data->avrcp_inst.abs_volume_pending = 1;
         free(data);
         return BT_EOK;
     }
 }
 
-void bt_avrcp_set_absolute_volume_response(bts2_app_stru *bts2_app_data, U8 volume)
+void bt_avrcp_set_absolute_volume_response(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, U8 volume)
 {
     BTS2S_AVRCP_VENDOR_DEPEND_CMD_CFM *avrcmsg;
     avrcmsg = (BTS2S_AVRCP_VENDOR_DEPEND_CMD_CFM *)bts2_app_data->recv_msg;
@@ -1637,20 +1555,21 @@ void bt_avrcp_set_absolute_volume_response(bts2_app_stru *bts2_app_data, U8 volu
 
     // parameter
     *(data + 8) = volume;
-    avrcp_cmd_data_rsp(bts2_app_data->phdl,
-                       avrcmsg->tlabel,
-                       BT_UUID_AVRCP_CT,
-                       AVRCP_CR_ACPT,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
-                       AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
-                       data_len,
-                       data);
+    avrcp_cmd_data_rsp_ext(bd, bts2_app_data->phdl,
+                           avrcmsg->tlabel,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_ACPT,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
+                           data_len,
+                           data);
 }
 
 static void bt_avrcp_hdl_vendor_depend_cmd_ind(bts2_app_stru *bts2_app_data)
 {
     BTS2S_AVRCP_VENDOR_DEPEND_CMD_CFM *avrcmsg;
     avrcmsg = (BTS2S_AVRCP_VENDOR_DEPEND_CMD_CFM *)bts2_app_data->recv_msg;
+    U8 idx = bt_avrcp_get_connection_by_addr(bts2_app_data, &avrcmsg->bd);
     INFO_TRACE("<<avrcp vendor cmd ind\n");
 
     if (avrcmsg->c_type == AVRCP_CR_NOTIFY)
@@ -1681,14 +1600,14 @@ static void bt_avrcp_hdl_vendor_depend_cmd_ind(bts2_app_stru *bts2_app_data)
                 case AVRCP_VENDOR_DEPENDENT_EVENT_VOLUME_CHANGED:
                 {
                     BEGIN_ACCESS_VAR();
-                    U8 current_volume = bts2_app_data->avrcp_inst.ab_volume;
+                    U8 current_volume = bts2_app_data->avrcp_inst.conn[idx].ab_volume;
 
                     bts2_app_data->avrcp_inst.tgTlable  = avrcmsg->tlabel;
 
                     USER_TRACE("<< register notificaiton volume changed %d\n", current_volume);
 
-                    bts2_app_data->avrcp_inst.abs_vol_support = 1;
-                    bt_avrcp_volume_register_response(bts2_app_data, AVRCP_CR_INTERIM, current_volume);
+                    bts2_app_data->avrcp_inst.conn[idx].abs_vol_support = 1;
+                    bt_avrcp_volume_register_response(bts2_app_data, &avrcmsg->bd, AVRCP_CR_INTERIM, current_volume);
                     END_ACCESS_VAR();
 
 #if defined(CFG_AVRCP)
@@ -1698,40 +1617,40 @@ static void bt_avrcp_hdl_vendor_depend_cmd_ind(bts2_app_stru *bts2_app_data)
                 }
                 case AVRCP_VENDOR_DEPENDENT_EVENT_TRACK_CHANGED:
                 {
-                    bts2_app_data->avrcp_inst.tgTlable_2  = avrcmsg->tlabel;
+                    bts2_app_data->avrcp_inst.conn[idx].tgTlable_2  = avrcmsg->tlabel;
 #ifdef BSP_BQB_TEST
                     switch (BQB_TEST_CASE)
                     {
                     case AVRCP_TG_NFY_BV_05_C:
                     case AVRCP_TG_NFY_BV_08_C:
-                        bt_avrcp_track_changed_register_response(bts2_app_data, AVRCP_CR_INTERIM, 1);
+                        bt_avrcp_track_changed_register_response(bts2_app_data, &avrcmsg->bd, AVRCP_CR_INTERIM, 1);
                         break;
                     default:
-                        bt_avrcp_track_changed_register_response(bts2_app_data, AVRCP_CR_INTERIM, 0);
+                        bt_avrcp_track_changed_register_response(bts2_app_data, &avrcmsg->bd, AVRCP_CR_INTERIM, 0);
                         break;
                     }
 #else
-                    bt_avrcp_track_changed_register_response(bts2_app_data, AVRCP_CR_INTERIM, 0);
+                    bt_avrcp_track_changed_register_response(bts2_app_data, &avrcmsg->bd, AVRCP_CR_INTERIM, 0);
 #endif
                     break;
                 }
                 case AVRCP_VENDOR_DEPENDENT_EVENT_PLAYBACK_STATUS_CHANGED:
                 {
                     BEGIN_ACCESS_VAR();
-                    U8 play_status = bt_av_get_a2dp_stream_state();
+                    U8 play_status = bt_av_get_a2dp_stream_state(&avrcmsg->bd);
 
-                    bts2_app_data->avrcp_inst.tgTlable_1  = avrcmsg->tlabel;
+                    bts2_app_data->avrcp_inst.conn[idx].tgTlable_1  = avrcmsg->tlabel;
 
                     USER_TRACE("<< register play status changed %d\n", play_status);
 
-                    bts2_app_data->avrcp_inst.play_status_notify = 1;
-                    bt_avrcp_play_status_changed_register_response(bts2_app_data, AVRCP_CR_INTERIM, play_status);
+                    bts2_app_data->avrcp_inst.conn[idx].play_status_notify = 1;
+                    bt_avrcp_play_status_changed_register_response(bts2_app_data, &avrcmsg->bd, AVRCP_CR_INTERIM, play_status);
                     END_ACCESS_VAR();
                     break;
                 }
                 default:
                 {
-                    bt_avrcp_reject_response(bts2_app_data, avrcmsg->tlabel, AVRCP_VENDOR_DEPENDENT_PDU_ID_REGISTER_NOTIFICATION, AVRCP_REJECT_ERROR_INVALID_PARAMETER);
+                    bt_avrcp_reject_response(bts2_app_data, &avrcmsg->bd, avrcmsg->tlabel, AVRCP_VENDOR_DEPENDENT_PDU_ID_REGISTER_NOTIFICATION, AVRCP_REJECT_ERROR_INVALID_PARAMETER);
                 }
 
                 }
@@ -1739,14 +1658,14 @@ static void bt_avrcp_hdl_vendor_depend_cmd_ind(bts2_app_stru *bts2_app_data)
         }
         else
         {
-            avrcp_cmd_data_rsp(bts2_app_data->phdl,
-                               avrcmsg->tlabel,
-                               avrcmsg->prof_id,
-                               AVRCP_CR_INVLD_PID,
-                               avrcmsg->subunit_type,
-                               avrcmsg->subunit_id,
-                               0,
-                               NULL);
+            avrcp_cmd_data_rsp_ext(&avrcmsg->bd, bts2_app_data->phdl,
+                                   avrcmsg->tlabel,
+                                   avrcmsg->prof_id,
+                                   AVRCP_CR_INVLD_PID,
+                                   avrcmsg->subunit_type,
+                                   avrcmsg->subunit_id,
+                                   0,
+                                   NULL);
         }
     }
     else if (avrcmsg->c_type == AVRCP_CR_CTRL)
@@ -1779,32 +1698,32 @@ static void bt_avrcp_hdl_vendor_depend_cmd_ind(bts2_app_stru *bts2_app_data)
 
                 if (para_len == 0)
                 {
-                    bt_avrcp_reject_response(bts2_app_data, avrcmsg->tlabel, AVRCP_VENDOR_DEPENDENT_PDU_ID_SET_ABSOLUTE_VOLUME, AVRCP_REJECT_ERROR_INVALID_PARAMETER);
+                    bt_avrcp_reject_response(bts2_app_data, &avrcmsg->bd, avrcmsg->tlabel, AVRCP_VENDOR_DEPENDENT_PDU_ID_SET_ABSOLUTE_VOLUME, AVRCP_REJECT_ERROR_INVALID_PARAMETER);
                     break;
                 }
 
                 // TODO: set volume
-                bts2_app_data->avrcp_inst.ab_volume = volume;
+                bts2_app_data->avrcp_inst.conn[idx].ab_volume = volume;
 
                 bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_ABSOLUTE_VOLUME, &volume, sizeof(uint8_t));
                 USER_TRACE("<< set absolute volume %d \n", volume);
 
-                bt_avrcp_set_absolute_volume_response(bts2_app_data, volume);
+                bt_avrcp_set_absolute_volume_response(bts2_app_data, &avrcmsg->bd, volume);
                 break;
             }
             case AVRCP_VENDOR_DEPENDENT_PDU_ID_REQUEST_CONTINUING_RESPONSE:
             {
-                bt_avrcp_get_element_attributes_response_continue(bts2_app_data, avrcmsg->tlabel);
+                bt_avrcp_get_element_attributes_response_continue(bts2_app_data, &avrcmsg->bd, avrcmsg->tlabel);
                 break;
             }
             case AVRCP_VENDOR_DEPENDENT_PDU_ID_ABORT_CONTINUING_RESPONSE:
             {
-                bt_avrcp_get_element_attributes_response_abort(bts2_app_data, avrcmsg->tlabel);
+                bt_avrcp_get_element_attributes_response_abort(bts2_app_data, &avrcmsg->bd, avrcmsg->tlabel);
                 break;
             }
             case AVRCP_VENDOR_DEPENDENT_PDU_ID_INVALD:
             {
-                bt_avrcp_reject_response(bts2_app_data, avrcmsg->tlabel, AVRCP_VENDOR_DEPENDENT_PDU_ID_INVALD, AVRCP_REJECT_ERROR_INVALID_COMMAND);
+                bt_avrcp_reject_response(bts2_app_data, &avrcmsg->bd, avrcmsg->tlabel, AVRCP_VENDOR_DEPENDENT_PDU_ID_INVALD, AVRCP_REJECT_ERROR_INVALID_COMMAND);
                 break;
             }
             }
@@ -1842,31 +1761,31 @@ static void bt_avrcp_hdl_vendor_depend_cmd_ind(bts2_app_stru *bts2_app_data)
                 {
                 case AVRCP_VENDOR_DEPENDENT_EVENT_CAPABILITY_COMPANY_ID:
                 {
-                    bt_avrcp_get_company_id_capabilities_response(bts2_app_data, avrcmsg->tlabel);
+                    bt_avrcp_get_company_id_capabilities_response(bts2_app_data, &avrcmsg->bd, avrcmsg->tlabel);
                     break;
                 }
                 case AVRCP_VENDOR_DEPENDENT_EVENT_CAPABILITY_FOR_EVENTS:
                 {
-                    bt_avrcp_get_capabilities_response(bts2_app_data, avrcmsg->tlabel);
+                    bt_avrcp_get_capabilities_response(bts2_app_data, &avrcmsg->bd, avrcmsg->tlabel);
                     break;
                 }
                 default:
-                    bt_avrcp_reject_response(bts2_app_data, avrcmsg->tlabel, AVRCP_VENDOR_DEPENDENT_PDU_ID_GET_CAPABILITIES, AVRCP_REJECT_ERROR_INVALID_PARAMETER);
+                    bt_avrcp_reject_response(bts2_app_data, &avrcmsg->bd, avrcmsg->tlabel, AVRCP_VENDOR_DEPENDENT_PDU_ID_GET_CAPABILITIES, AVRCP_REJECT_ERROR_INVALID_PARAMETER);
                 }
                 break;
             }
             case AVRCP_VENDOR_DEPENDENT_PDU_ID_GET_PLAY_STATUS:
             {
-                bt_avrcp_get_play_status_response(bts2_app_data, avrcmsg->tlabel);
+                bt_avrcp_get_play_status_response(bts2_app_data, &avrcmsg->bd, avrcmsg->tlabel);
                 break;
             }
             case AVRCP_VENDOR_DEPENDENT_PDU_ID_GET_ELEMENT_ATTRIBUTES:
             {
-                bt_avrcp_get_element_attributes_response(bts2_app_data, avrcmsg->tlabel);
+                bt_avrcp_get_element_attributes_response(bts2_app_data, &avrcmsg->bd, avrcmsg->tlabel);
                 break;
             }
             default:
-                bt_avrcp_reject_response(bts2_app_data, avrcmsg->tlabel, pdu_id, AVRCP_REJECT_ERROR_INVALID_COMMAND);
+                bt_avrcp_reject_response(bts2_app_data, &avrcmsg->bd, avrcmsg->tlabel, pdu_id, AVRCP_REJECT_ERROR_INVALID_COMMAND);
             }
         }
     }
@@ -1886,7 +1805,7 @@ static void bt_avrcp_hdl_pass_through_cmd_cfm(bts2_app_stru *bts2_app_data)
     if (avrcmsg->c_type == AVRCP_CR_ACPT && !(avrcmsg->data[1] & 0x80))
     {
         U8 statePop = 0x80 + avrcmsg->data[1];//0x80:pop
-        bt_avrcp_pop(bts2_app_data, statePop);
+        bt_avrcp_pop(bts2_app_data, avrcmsg->bd, statePop);
     }
 
 #ifndef RT_USING_UTEST
@@ -1901,6 +1820,7 @@ static void bt_avrcp_hdl_vendor_depend_cmd_cfm(bts2_app_stru *bts2_app_data)
 {
     BTS2S_AVRCP_VENDOR_DEPEND_CMD_CFM *avrcmsg;
     avrcmsg = (BTS2S_AVRCP_VENDOR_DEPEND_CMD_CFM *)bts2_app_data->recv_msg;
+    U8 idx = bt_avrcp_get_connection_by_addr(bts2_app_data, &avrcmsg->bd);
     INFO_TRACE("<< avrcp vndor cmd cfm\n");
 
     if (avrcmsg->c_type == AVRCP_CR_INTERIM || avrcmsg->c_type == AVRCP_CR_CHANGED)
@@ -1945,25 +1865,24 @@ static void bt_avrcp_hdl_vendor_depend_cmd_cfm(bts2_app_stru *bts2_app_data)
 
                     if (avrcmsg->c_type == AVRCP_CR_CHANGED)
                     {
-                        bt_avrcp_volume_register_request(bts2_app_data);
+                        bt_avrcp_volume_register_request(bts2_app_data, &avrcmsg->bd);
 
-                        if (!bts2_app_data->avrcp_inst.avrcp_vol_time_handle)
+                        if (!bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle)
                         {
-                            bts2_app_data->avrcp_inst.avrcp_vol_time_handle = rt_timer_create("avrcp_vol", bt_avrcp_vol_timeout_handler, (void *)bts2_app_data,
-                                    rt_tick_from_millisecond(500), RT_TIMER_FLAG_SOFT_TIMER);
+                            os_timer_create(bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle, bt_avrcp_vol_timeout_handler, (void *)&avrcmsg->bd, OS_TIMER_FLAG_SOFT);
                         }
                         else
                         {
-                            rt_timer_stop(bts2_app_data->avrcp_inst.avrcp_vol_time_handle);
+                            os_timer_stop(bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle);
                         }
-                        rt_timer_start(bts2_app_data->avrcp_inst.avrcp_vol_time_handle);
+                        os_timer_start(bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle, rt_tick_from_millisecond(500));
                     }
                     else if (avrcmsg->c_type == AVRCP_CR_INTERIM)
                     {
-                        if (bts2_app_data->avrcp_inst.avrcp_vol_time_handle)
+                        if (bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle)
                         {
-                            rt_timer_stop(bts2_app_data->avrcp_inst.avrcp_vol_time_handle);
-                            bts2_app_data->avrcp_inst.avrcp_vol_time_handle = NULL;
+                            os_timer_stop(bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle);
+                            bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle = NULL;
                         }
                     }
                     break;
@@ -1977,7 +1896,7 @@ static void bt_avrcp_hdl_vendor_depend_cmd_cfm(bts2_app_stru *bts2_app_data)
 
                     if (avrcmsg->c_type == AVRCP_CR_CHANGED)
                     {
-                        bt_avrcp_playback_register_request(bts2_app_data);
+                        bt_avrcp_playback_register_request(bts2_app_data, &avrcmsg->bd);
 #if defined(CFG_AVRCP)
                         //solution 0x00:playing ;0x01:paused
                         uint8_t play_status_notify = play_status - 1;
@@ -1986,7 +1905,7 @@ static void bt_avrcp_hdl_vendor_depend_cmd_cfm(bts2_app_stru *bts2_app_data)
                     }
 
                     bts2_app_stru *bts2_app_data = bts2g_app_p;
-                    bts2_app_data->avrcp_inst.playback_status = play_status;
+                    bts2_app_data->avrcp_inst.conn[idx].playback_status = play_status;
                     INFO_TRACE("<<PLAYBACK_STATUS_CHANGED  play_status%x\n", play_status);
 
                     break;
@@ -1998,7 +1917,7 @@ static void bt_avrcp_hdl_vendor_depend_cmd_cfm(bts2_app_stru *bts2_app_data)
 
                     if (avrcmsg->c_type == AVRCP_CR_CHANGED)
                     {
-                        bt_avrcp_playback_pos_register_request(bts2_app_data);
+                        bt_avrcp_playback_pos_register_request(bts2_app_data, &avrcmsg->bd);
                     }
                     if (0xffffffff == play_pos)
                     {
@@ -2045,7 +1964,7 @@ static void bt_avrcp_hdl_vendor_depend_cmd_cfm(bts2_app_stru *bts2_app_data)
                         memset(&music_detail_info, 0x00, sizeof(bt_avrcp_music_detail_t));
                         music_detail_info.track_id = value;
                         music_detail_info.attri_req = AVRCP_MEDIA_ATTRIBUTES_GENRE;
-                        bt_avrcp_get_element_attributes_request(bts2_app_data, AVRCP_MEDIA_ATTRIBUTES_GENRE);
+                        bt_avrcp_get_element_attributes_request(bts2_app_data, &avrcmsg->bd, AVRCP_MEDIA_ATTRIBUTES_GENRE);
                     }
                     else if (identifier_result == 1)
                     {
@@ -2054,7 +1973,7 @@ static void bt_avrcp_hdl_vendor_depend_cmd_cfm(bts2_app_stru *bts2_app_data)
 
                     if (avrcmsg->c_type == AVRCP_CR_CHANGED)
                     {
-                        bt_avrcp_track_register_request(bts2_app_data);
+                        bt_avrcp_track_register_request(bts2_app_data, &avrcmsg->bd);
                     }
                     break;
                 }
@@ -2336,26 +2255,26 @@ static void bt_avrcp_hdl_pass_through_cmd_ind(bts2_app_stru *bts2_app_data)
             /*send response */
             if (vld_cmd == TRUE)
             {
-                avrcp_cmd_data_rsp(bts2_app_data->phdl,
-                                   avrcmsg->tlabel,
-                                   avrcmsg->prof_id,
-                                   AVRCP_CR_ACPT,
-                                   avrcmsg->subunit_type,
-                                   avrcmsg->subunit_id,
-                                   avrcmsg->data_len,
-                                   avrcmsg->data);
+                avrcp_cmd_data_rsp_ext(&avrcmsg->bd, bts2_app_data->phdl,
+                                       avrcmsg->tlabel,
+                                       avrcmsg->prof_id,
+                                       AVRCP_CR_ACPT,
+                                       avrcmsg->subunit_type,
+                                       avrcmsg->subunit_id,
+                                       avrcmsg->data_len,
+                                       avrcmsg->data);
             }
         }
         else
         {
-            avrcp_cmd_data_rsp(bts2_app_data->phdl,
-                               avrcmsg->tlabel,
-                               avrcmsg->prof_id,
-                               AVRCP_CR_INVLD_PID,
-                               avrcmsg->subunit_type,
-                               avrcmsg->subunit_id,
-                               0,
-                               NULL);
+            avrcp_cmd_data_rsp_ext(&avrcmsg->bd, bts2_app_data->phdl,
+                                   avrcmsg->tlabel,
+                                   avrcmsg->prof_id,
+                                   AVRCP_CR_INVLD_PID,
+                                   avrcmsg->subunit_type,
+                                   avrcmsg->subunit_id,
+                                   0,
+                                   NULL);
         }
     }
 
@@ -2386,28 +2305,36 @@ static void bt_avrcp_hdl_conn_cfm(bts2_app_stru *bts2_app_data)
     msg = (BTS2S_AVRCP_CONN_CFM *)bts2_app_data->recv_msg;
     if (msg->res == BTS2_SUCC)
     {
-        USER_TRACE("<< confirmation connect successed \n");
-        bts2_app_data->avrcp_inst.st = avrcp_conned;
-        bts2_app_data->avrcp_inst.con[0].rmt_bd.lap = msg->bd.lap;
-        bts2_app_data->avrcp_inst.con[0].rmt_bd.nap = msg->bd.nap;
-        bts2_app_data->avrcp_inst.con[0].rmt_bd.uap = msg->bd.uap;
+        U8 idx = bt_avrcp_get_available_connection(bts2_app_data);
+
+        if (idx != CFG_MAX_AVRCP_CONN_NUM)
+        {
+            bd_copy(&bts2_app_data->avrcp_inst.conn[idx].rmt_bd, &msg->bd);
+
+            USER_TRACE("<< confirmation connect successed \n");
+
 #if defined(CFG_AVRCP)
-        bt_notify_profile_state_info_t profile_state;
-        bt_addr_convert(&msg->bd, profile_state.mac.addr);
-        profile_state.profile_type = BT_NOTIFY_AVRCP;
-        profile_state.res = BTS2_SUCC;
-        bt_profile_update_connection_state(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_PROFILE_CONNECTED, &profile_state);
-        INFO_TRACE("URC avrcp conn,cfm\n");
+            bt_notify_profile_state_info_t profile_state;
+            bt_addr_convert(&msg->bd, profile_state.mac.addr);
+            profile_state.profile_type = BT_NOTIFY_AVRCP;
+            profile_state.res = BTS2_SUCC;
+            bt_profile_update_connection_state(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_PROFILE_CONNECTED, &profile_state);
+            INFO_TRACE("URC avrcp conn,cfm\n");
 #endif
 
-        U8 role = bt_avrcp_get_role_by_addr(bts2_app_data, &bts2_app_data->avrcp_inst.con[0].rmt_bd);
-        bt_avrcp_get_capabilities_request(bts2_app_data);
-        if (role == AVRCP_CT)
-        {
-            bt_avrcp_get_play_status_request(bts2_app_data);
-            bts2_app_data->avrcp_inst.abs_volume_pending = 0;
+            //!How to determine the avrcp role of the local device
+            U8 role = bt_avrcp_get_role_by_addr(bts2_app_data, &msg->bd);
+            bt_avrcp_get_capabilities_request(bts2_app_data, &msg->bd);
+            if (role == AVRCP_CT)
+            {
+                bt_avrcp_get_play_status_request(bts2_app_data, &msg->bd);
+                bts2_app_data->avrcp_inst.abs_volume_pending = 0;
+            }
         }
-
+        else
+        {
+            USER_TRACE("<< Maximum number of connections reached\n");
+        }
     }
     else
     {
@@ -2432,8 +2359,12 @@ void bt_avrcp_close_boundary_condition(bts2_app_stru *bts2_app_data)
     {
     case BTS2MU_AVRCP_DISB_CFM:
     {
-        bts2_app_data->avrcp_inst.abs_vol_support = 0;
-        bts2_app_data->avrcp_inst.play_status_notify = 0;
+        for (U8 idx = 0; idx < CFG_MAX_AVRCP_CONN_NUM; idx++)
+        {
+            bts2_app_data->avrcp_inst.conn[idx].abs_vol_support = 0;
+            bts2_app_data->avrcp_inst.conn[idx].play_status_notify = 0;
+        }
+
 #if defined(CFG_AVRCP)
         bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_CLOSE_COMPLETE, NULL, 0);
         INFO_TRACE("<< URC av had been disabled \n");
@@ -2508,41 +2439,57 @@ void bt_avrcp_msg_handler(bts2_app_stru *bts2_app_data)
     {
         BTS2S_AVRCP_CONN_IND *msg;
         msg = (BTS2S_AVRCP_CONN_IND *)bts2_app_data->recv_msg;
-        bts2_app_data->avrcp_inst.con[0].rmt_bd.lap = msg->bd.lap;
-        bts2_app_data->avrcp_inst.con[0].rmt_bd.nap = msg->bd.nap;
-        bts2_app_data->avrcp_inst.con[0].rmt_bd.uap = msg->bd.uap;
 
-        bts2_app_data->avrcp_inst.st = avrcp_conned;
-        USER_TRACE("<< avrcp indicate to connect with remote device\n");
-#if defined(CFG_AVRCP)
-        bt_notify_profile_state_info_t profile_state;
-        bt_addr_convert(&msg->bd, profile_state.mac.addr);
-        profile_state.profile_type = BT_NOTIFY_AVRCP;
-        profile_state.res = BTS2_SUCC;
-        bt_profile_update_connection_state(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_PROFILE_CONNECTED, &profile_state);
-        INFO_TRACE("URC avrcp conn,ind\n");
-#endif
-        U8 role = bt_avrcp_get_role_by_addr(bts2_app_data, &bts2_app_data->avrcp_inst.con[0].rmt_bd);
-        bt_avrcp_get_capabilities_request(bts2_app_data);
-        if (role == AVRCP_CT)
+        U8 idx = bt_avrcp_get_available_connection(bts2_app_data);
+
+        if (idx != CFG_MAX_AVRCP_CONN_NUM)
         {
-            bt_avrcp_get_play_status_request(bts2_app_data);
-            bts2_app_data->avrcp_inst.abs_volume_pending = 0;
+            bd_copy(&bts2_app_data->avrcp_inst.conn[idx].rmt_bd, &msg->bd);
+
+            USER_TRACE("<< avrcp indicate to connect with remote device\n");
+
+#if defined(CFG_AVRCP)
+            bt_notify_profile_state_info_t profile_state;
+            bt_addr_convert(&msg->bd, profile_state.mac.addr);
+            profile_state.profile_type = BT_NOTIFY_AVRCP;
+            profile_state.res = BTS2_SUCC;
+            bt_profile_update_connection_state(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_PROFILE_CONNECTED, &profile_state);
+            INFO_TRACE("URC avrcp conn,ind\n");
+#endif
+            //!How to determine the avrcp role of the local device
+            U8 role = bt_avrcp_get_role_by_addr(bts2_app_data, &msg->bd);
+            bt_avrcp_get_capabilities_request(bts2_app_data, &msg->bd);
+            if (role == AVRCP_CT)
+            {
+                bt_avrcp_get_play_status_request(bts2_app_data, &msg->bd);
+                bts2_app_data->avrcp_inst.abs_volume_pending = 0;
+            }
+        }
+        else
+        {
+            USER_TRACE("<< Maximum number of connections reached\n");
         }
         break;
     }
     case BTS2MU_AVRCP_DISC_IND:
     {
         BTS2S_AVRCP_DISC_IND *msg;
-        bts2_app_data->avrcp_inst.st = avrcp_idle;
         msg = (BTS2S_AVRCP_DISC_IND *)bts2_app_data->recv_msg;
-        bd_set_empty(&bts2_app_data->avrcp_inst.con[0].rmt_bd);
-
-        bts2_app_data->avrcp_inst.abs_vol_support = 0;
-        bts2_app_data->avrcp_inst.play_status_notify = 0;
         bts2_app_data->avrcp_inst.abs_volume_pending = 0;
         USER_TRACE("bd : %4lx %4x %4x\n", msg->bd.lap, msg->bd.nap, msg->bd.uap);
         USER_TRACE("<< avrcp indicate to disconnect with remote device\n");
+
+        for (U8 idx = 0; idx < CFG_MAX_AVRCP_CONN_NUM; idx++)
+        {
+            if (bd_eq(&bts2_app_data->avrcp_inst.conn[idx].rmt_bd, &msg->bd))
+            {
+                bd_set_empty(&bts2_app_data->avrcp_inst.conn[idx].rmt_bd);
+                bts2_app_data->avrcp_inst.conn[idx].abs_vol_support = 0;
+                bts2_app_data->avrcp_inst.conn[idx].play_status_notify = 0;
+                break;
+            }
+        }
+
 #if defined(CFG_AVRCP)
         bt_notify_profile_state_info_t profile_state;
         bt_addr_convert(&msg->bd, profile_state.mac.addr);
@@ -2571,8 +2518,11 @@ void bt_avrcp_msg_handler(bts2_app_stru *bts2_app_data)
     }
     case BTS2MU_AVRCP_DISB_CFM:
     {
-        bts2_app_data->avrcp_inst.abs_vol_support = 0;
-        bts2_app_data->avrcp_inst.play_status_notify = 0;
+        for (U8 idx = 0; idx < CFG_MAX_AVRCP_CONN_NUM; idx++)
+        {
+            bts2_app_data->avrcp_inst.conn[idx].abs_vol_support = 0;
+            bts2_app_data->avrcp_inst.conn[idx].play_status_notify = 0;
+        }
         INFO_TRACE("BTS2MU_AVRCP_DISB_CFM\n");
         break;
     }
@@ -2588,7 +2538,10 @@ void bt_avrcp_msg_handler(bts2_app_stru *bts2_app_data)
     }
     case BTS2MU_AVRCP_VENDOR_DEPEND_CMD_CFM:
     {
-        //INFO_TRACE("BTS2MU_AVRCP_VENDOR_DEPEND_CMD_CFM\n");
+        // USER_TRACE("BTS2MU_AVRCP_VENDOR_DEPEND_CMD_CFM\n");
+        BTS2S_AVRCP_VENDOR_DEPEND_CMD_CFM *avrcmsg;
+        avrcmsg = (BTS2S_AVRCP_VENDOR_DEPEND_CMD_CFM *)bts2_app_data->recv_msg;
+
         bt_avrcp_hdl_vendor_depend_cmd_cfm(bts2_app_data);
         break;
     }
@@ -2601,6 +2554,64 @@ void bt_avrcp_msg_handler(bts2_app_stru *bts2_app_data)
     default:
         break;
     }
+}
+
+/************************Public API********************************************/
+U8 bt_avrcp_get_available_connection(bts2_app_stru *bts2_app_data)
+{
+    for (U8 idx = 0; idx < CFG_MAX_AVRCP_CONN_NUM; idx++)
+    {
+        if (bd_is_empty(&bts2_app_data->avrcp_inst.conn[idx].rmt_bd))
+        {
+            return idx;
+        }
+    }
+
+    DBG_OUT()
+    return CFG_MAX_AVRCP_CONN_NUM;
+}
+
+BOOL bt_avrcp_check_connection_by_addr(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, U8 *idx)
+{
+    for (U8 i = 0; i < CFG_MAX_AVRCP_CONN_NUM; i++)
+    {
+        if (bd_eq(&bts2_app_data->avrcp_inst.conn[i].rmt_bd, bd))
+        {
+            *idx = i;
+            return TRUE;
+        }
+    }
+
+    return FALSE;
+}
+
+U8 bt_avrcp_get_connection_by_addr(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
+{
+    for (U8 idx = 0; idx < CFG_MAX_AVRCP_CONN_NUM; idx++)
+    {
+        if (bd_eq(&bts2_app_data->avrcp_inst.conn[idx].rmt_bd, bd))
+        {
+            return idx;
+        }
+    }
+
+    DBG_OUT()
+    return CFG_MAX_AVRCP_CONN_NUM;
+}
+
+void bt_avrcp_dump_connection_info(bts2_app_stru *bts2_app_data)
+{
+    USER_TRACE("***********************************************************\n");
+
+    for (U8 idx = 0; idx < CFG_MAX_AVRCP_CONN_NUM; idx++)
+    {
+        USER_TRACE("********idx = %d,bd addr = %x-%x-%x**********\n",
+                   idx, bts2_app_data->avrcp_inst.conn[idx].rmt_bd.nap,
+                   bts2_app_data->avrcp_inst.conn[idx].rmt_bd.uap,
+                   bts2_app_data->avrcp_inst.conn[idx].rmt_bd.lap);
+    }
+
+    USER_TRACE("***********************************************************\n");
 }
 
 #endif

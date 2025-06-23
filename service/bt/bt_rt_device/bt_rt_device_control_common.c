@@ -224,7 +224,7 @@ bt_err_t bt_sifli_control_common(struct rt_bt_device *bt_handle, int cmd, void *
         }
         else
         {
-            ret = bt_interface_hfp_hf_start_connecting((unsigned char *)(mac->addr));
+            ret = bt_interface_hfp_hf_start_connecting((bt_notify_device_mac_t *)mac);
         }
     }
     break;
@@ -245,9 +245,9 @@ bt_err_t bt_sifli_control_common(struct rt_bt_device *bt_handle, int cmd, void *
             memcpy(&conn_dev.mac, &info->mac, sizeof(bt_mac_t));
             rt_bt_add_connect_dev(bt_handle, &conn_dev);
             if (BT_LINK_EARPHONE == conn->link_type)
-                ret =  bt_interface_conn_to_source_ext((unsigned char *)(mac->addr), info->profile);
+                ret =  bt_interface_conn_to_source_ext((bt_notify_device_mac_t *)(mac->addr), info->profile);
             else
-                ret = bt_interface_conn_ext((unsigned char *)(mac->addr), info->profile);
+                ret = bt_interface_conn_ext((bt_notify_device_mac_t *)mac, info->profile);
         }
         else
         {
@@ -258,13 +258,13 @@ bt_err_t bt_sifli_control_common(struct rt_bt_device *bt_handle, int cmd, void *
             {
                 conn_dev.link_type = BT_LINK_EARPHONE;
                 rt_bt_add_connect_dev(bt_handle, &conn_dev);
-                ret =  bt_interface_conn_to_source_ext((unsigned char *)(mac->addr), info->profile);
+                ret =  bt_interface_conn_to_source_ext((bt_notify_device_mac_t *)(mac->addr), info->profile);
             }
             else if (BT_ROLE_SLAVE == bt_handle->role && !bt_sifli_get_role_connect(bt_handle, BT_LINK_PHONE))
             {
                 conn_dev.link_type = BT_LINK_PHONE;
                 rt_bt_add_connect_dev(bt_handle, &conn_dev);
-                ret = bt_interface_conn_ext((unsigned char *)(mac->addr), info->profile);
+                ret = bt_interface_conn_ext((bt_notify_device_mac_t *)(mac->addr), info->profile);
             }
             else
                 ret = BT_ERROR_STATE;
@@ -370,7 +370,7 @@ bt_err_t bt_sifli_control_common(struct rt_bt_device *bt_handle, int cmd, void *
     {
         bt_mac_t *mac = (bt_mac_t *)args;
         bt_sifli_set_bt_event(BT_SET_RD_LOCAL_RSSI_EVENT);
-        bt_interface_rd_local_rssi((unsigned char *)(mac->addr));
+        bt_interface_rd_local_rssi((bt_notify_device_mac_t *)mac);
     }
     break;
 

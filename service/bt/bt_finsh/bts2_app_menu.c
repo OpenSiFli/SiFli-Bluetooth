@@ -410,8 +410,14 @@ static void bt_hdl_menu_gen(bts2_app_stru *bts2_app_data)
         bd.uap = (U8)mac[2];
         bd.nap = (U16)((mac[0] << 8) | mac[1]);
         bt_send_switch_role(&bd, 0);
+        break;
     }
-    break;
+    case 'c':
+    {
+        int mode = atoi((const char *)bts2_app_data->input_str + 1);
+        hcia_wr_inquiry_mode(mode, NULL);
+        break;
+    }
 
     case 's':
         bt_disply_menu(bts2_app_data);
@@ -3692,42 +3698,87 @@ static void bt_hdl_menu_avrcp(bts2_app_stru *bts2_app_data)
     switch (bts2_app_data->input_str[0])
     {
     case '4':
-        bt_avrcp_record(bts2_app_data);
-        break;
+    {
+        U8 idx = bts2_app_data->input_str[1] - '0';
+        bt_avrcp_record(bts2_app_data, &(bts2_app_data->avrcp_inst.conn[idx].rmt_bd));
+    }
+    break;
     case '5':
-        bt_avrcp_rewind(bts2_app_data);
-        break;
+    {
+        U8 idx = bts2_app_data->input_str[1] - '0';
+        bt_avrcp_rewind(bts2_app_data, &(bts2_app_data->avrcp_inst.conn[idx].rmt_bd));
+    }
+    break;
     case '6':
-        bt_avrcp_ply(bts2_app_data);
-        break;
+    {
+        U8 idx = bts2_app_data->input_str[1] - '0';
+        bt_avrcp_ply(bts2_app_data, &(bts2_app_data->avrcp_inst.conn[idx].rmt_bd));
+    }
+    break;
     case '7':
-        bt_avrcp_stop(bts2_app_data);
-        break;
+    {
+        U8 idx = bts2_app_data->input_str[1] - '0';
+        bt_avrcp_stop(bts2_app_data, &(bts2_app_data->avrcp_inst.conn[idx].rmt_bd));
+    }
+    break;
     case '8':
-        bt_avrcp_pause(bts2_app_data);
-        break;
+    {
+        U8 idx = bts2_app_data->input_str[1] - '0';
+        bt_avrcp_pause(bts2_app_data, &(bts2_app_data->avrcp_inst.conn[idx].rmt_bd));
+    }
+    break;
     case '9':
-        bt_avrcp_forward(bts2_app_data);
-        break;
+    {
+        U8 idx = bts2_app_data->input_str[1] - '0';
+        bt_avrcp_forward(bts2_app_data, &(bts2_app_data->avrcp_inst.conn[idx].rmt_bd));
+    }
+    break;
     case 'a':
-        bt_avrcp_backward(bts2_app_data);
-        break;
+    {
+        U8 idx = bts2_app_data->input_str[1] - '0';
+        bt_avrcp_backward(bts2_app_data, &(bts2_app_data->avrcp_inst.conn[idx].rmt_bd));
+    }
+    break;
     case 'b':
+    {
         bts2_app_data->menu_id = menu_avrcp_a;
         bt_disply_menu_avrcp_a();
-        break;
+    }
+    break;
     case 'c':
-        bt_avrcp_conn_2_dev(&(bts2_app_data->last_conn_bd), FALSE);
-        break;
+    {
+        BTS2S_BD_ADDR bd;
+        int reuslt = 0;
+        uint32_t mac[6];
+        reuslt = sscanf((const char *)bts2_app_data->input_str + 1, "%02X%02X%02X%02X%02X%02X", \
+                        &mac[0], &mac[1], \
+                        &mac[2], &mac[3], \
+                        &mac[4], &mac[5]);
+        bd.lap = (mac[3] << 16) | (mac[4] << 8) | mac[5];
+        bd.uap = (U8)mac[2];
+        bd.nap = (U16)((mac[0] << 8) | mac[1]);
+
+        bt_avrcp_conn_2_dev(&bd, FALSE);
+    }
+    break;
     case 'd':
-        bt_avrcp_disc_2_dev(&(bts2_app_data->last_conn_bd));
-        break;
+    {
+        U8 idx = bts2_app_data->input_str[1] - '0';
+        bt_avrcp_disc_2_dev(&(bts2_app_data->avrcp_inst.conn[idx].rmt_bd));
+    }
+    break;
     case 'e':
-        bt_avrcp_unitinfo(bts2_app_data);
-        break;
+    {
+        U8 idx = bts2_app_data->input_str[1] - '0';
+        bt_avrcp_unitinfo(bts2_app_data, &(bts2_app_data->avrcp_inst.conn[idx].rmt_bd));
+    }
+    break;
     case 'f':
-        bt_avrcp_subunitinfo(bts2_app_data);
-        break;
+    {
+        U8 idx = bts2_app_data->input_str[1] - '0';
+        bt_avrcp_subunitinfo(bts2_app_data, &(bts2_app_data->avrcp_inst.conn[idx].rmt_bd));
+    }
+    break;
     case 'g':
         avrcp_enb_req(bts2_app_data->phdl, AVRCP_CT);
         break;
@@ -3735,7 +3786,13 @@ static void bt_hdl_menu_avrcp(bts2_app_stru *bts2_app_data)
         avrcp_disb_req();
         break;
     case 'j':
-        bt_avrcp_get_play_status_request(bts2_app_data);
+    {
+        U8 idx = bts2_app_data->input_str[1] - '0';
+        bt_avrcp_get_play_status_request(bts2_app_data, &(bts2_app_data->avrcp_inst.conn[idx].rmt_bd));
+    }
+    break;
+    case 'p':
+        bt_avrcp_dump_connection_info(bts2_app_data);
         break;
     case 's':
         bt_disply_menu(bts2_app_data);
@@ -3771,20 +3828,12 @@ static void bt_hdl_menu_avrcp_a(bts2_app_stru *bts2_app_data)
         bts2_app_data->menu_id = menu_avrcp;
         bt_disply_menu(bts2_app_data);
     }
-    else if (bts2_app_data->input_str_len == 1 && bts2_app_data->input_str[0] == '2') //volume up
-    {
-        bt_avrcp_volume_up(bts2_app_data);
-    }
-    else if (bts2_app_data->input_str_len == 1 && bts2_app_data->input_str[0] == '3') //volume down
-    {
-        bt_avrcp_volume_down(bts2_app_data);
-    }
     else  //set absolute volume
     {
         U8   volume;
         volume  = atoi((const char *)bts2_app_data->input_str);
 
-        bt_avrcp_change_volume(bts2_app_data, volume);
+        bt_avrcp_change_volume(bts2_app_data, &(bts2_app_data->bd_list[bts2_app_data->dev_idx]), volume);
     }
 }
 #endif

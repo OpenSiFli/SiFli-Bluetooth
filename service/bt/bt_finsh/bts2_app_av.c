@@ -1757,11 +1757,11 @@ static void bt_av_hdl_start_cfm(bts2_app_stru *bts2_app_data)
 #ifdef CFG_AV_SRC
             bt_avsrc_set_start_flag(TRUE);
             bt_avsrc_hdl_streaming_start(inst, con_idx);
-            U8 play_status = bt_av_get_a2dp_stream_state();
+            U8 play_status = bt_av_get_a2dp_stream_state(&inst->con[con_idx].av_rmt_addr);
 #ifdef CFG_AVRCP
-            bt_avrcp_change_play_status(bts2_app_data, play_status);
+            bt_avrcp_change_play_status(bts2_app_data, &inst->con[con_idx].av_rmt_addr, play_status);
 #ifdef BSP_BQB_TEST
-            bt_avrcp_track_changed_register_response(bts2_app_data, AVRCP_CR_CHANGED, 1);
+            bt_avrcp_track_changed_register_response(bts2_app_data, &inst->con[con_idx].av_rmt_addr, AVRCP_CR_CHANGED, 0);
 #endif
 #endif
 #endif // CFG_AV_SRC
@@ -1889,9 +1889,9 @@ static void bt_av_hdl_suspend_cfm(bts2_app_stru *bts2_app_data)
         inst->con[con_idx].st = avconned_open;
 #ifdef CFG_AV_SRC
         inst->src_data.stream_frm_time_begin = 0;
-        U8 play_status = bt_av_get_a2dp_stream_state();
+        U8 play_status = bt_av_get_a2dp_stream_state(&inst->con[con_idx].av_rmt_addr);
 #ifdef  CFG_AVRCP
-        bt_avrcp_change_play_status(bts2_app_data, play_status);
+        bt_avrcp_change_play_status(bts2_app_data, &inst->con[con_idx].av_rmt_addr, play_status);
 #endif
 #endif
 #if defined(CFG_AV)
@@ -2578,9 +2578,9 @@ void bt_av_msg_handler(bts2_app_stru *bts2_app_data)
             // bt_av_recovery_local_seid(inst, inst->con[con_idx].cfg);
         }
 
-        U8 play_status = bt_av_get_a2dp_stream_state();
+        U8 play_status = bt_av_get_a2dp_stream_state(&inst->con[con_idx].av_rmt_addr);
 #ifdef CFG_AVRCP
-        bt_avrcp_change_play_status(bts2_app_data, play_status);
+        bt_avrcp_change_play_status(bts2_app_data, &inst->con[con_idx].av_rmt_addr, play_status);
 #endif
         break;
     }
@@ -2860,19 +2860,22 @@ U8 bt_av_get_slience_filter_enable(U8 con_idx)
     #define AVRCP_PLAY_STATUS_PLAYING 0x01
     #define AVRCP_PLAY_STATUS_PAUSED 0x02
 #endif
-U8 bt_av_get_a2dp_stream_state(void)
+U8 bt_av_get_a2dp_stream_state(BTS2S_BD_ADDR *bd_addr)
 {
     bts2s_av_inst_data *inst = bt_av_get_inst_data();
 
-    if (inst->con[0].cfg == AV_AUDIO_SRC)
+    for (U8 i = 0; i < MAX_CONNS; i++)
     {
-        if (inst->con[0].st == avconned_streaming)
+        if ((inst->con[i].cfg == AV_AUDIO_SRC) && (bd_eq(bd_addr, &inst->con[i].av_rmt_addr)))
         {
-            return AVRCP_PLAY_STATUS_PLAYING;
-        }
-        else if (inst->con[0].st == avconned_open)
-        {
-            return AVRCP_PLAY_STATUS_PAUSED;
+            if (inst->con[i].st == avconned_streaming)
+            {
+                return AVRCP_PLAY_STATUS_PLAYING;
+            }
+            else if (inst->con[i].st == avconned_open)
+            {
+                return AVRCP_PLAY_STATUS_PAUSED;
+            }
         }
     }
 

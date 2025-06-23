@@ -76,7 +76,6 @@ extern "C" {
 
 #define CFG_PIN_CODE               "0000"
 
-#define AVRCP_MAX_CONNS 1
 
 typedef enum
 {
@@ -214,34 +213,28 @@ typedef struct
 } bts2_pan_inst_data;
 #endif
 #ifdef CFG_AVRCP
-typedef enum
-{
-    avrcp_idle,
-    avrcp_conned
-} bts2_avrcp_st;
 
 typedef struct
 {
-    BTS2S_BD_ADDR rmt_bd;
-    U8            role;
+    BTS2S_BD_ADDR  rmt_bd;
+    U8             role;
+    ot_timer_id_t     avrcp_vol_time_handle;
+    U8             play_status_notify;
+    U8             ab_volume;//the absolute volue be set.
+    U8             tgTlable_1;
+    U8             playback_status;
+    U8             abs_vol_support;//0:TG has not register absolute volume; 1:TG has register absolute volume.
+    U8             tgTlable_2;
+    U8             abs_volume_pending;
 } bts2_avrcp_conn;
 
 typedef struct
 {
-    bts2_avrcp_st  st;
-    bts2_avrcp_conn con[AVRCP_MAX_CONNS];
-    U8             release_type;
-    rt_timer_t     avrcp_time_handle;
-    rt_timer_t     avrcp_vol_time_handle;
-    rt_sem_t       volume_change_sem;
-    U8             abs_vol_support;//0:TG has not register absolute volume; 1:TG has register absolute volume.
-    U8             play_status_notify;
-    U8             ab_volume;//the absolute volue be set.
-    U8             tgTlable;
-    U8             tgTlable_1;
-    U8             tgTlable_2;
+    bts2_avrcp_conn conn[CFG_MAX_ACL_CONN_NUM];
+    os_semaphore_t       volume_change_sem;
     U8             abs_volume_pending;
-    U8             playback_status;
+    U8             release_type;
+    U8             tgTlable;
 } bts2_avrcp_inst_data;
 #endif
 

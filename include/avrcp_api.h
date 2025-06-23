@@ -14,6 +14,7 @@ extern "C" {
 #define AVRCP_FIXED_MEDIA_PKT_HDR_SIZE    12
 
 /* service capabilities */
+//?not used
 typedef enum
 {
     AVRCP_SC_MEDIA_TRS = 1,
@@ -108,6 +109,13 @@ typedef enum BTS2E_AVRCP_MSG_TAG
     BTS2MD_AVRCP_CMD_FRM_REQ,
     BTS2MD_AVRCP_CMD_FRM_RSP,
     BTS2MD_AVRCP_RESET_REQ,
+    //!Only used for multiple connections
+    BTS2MD_AVRCP_DISC_REQ_EXT,
+    BTS2MD_AVRCP_CMD_FRM_REQ_EXT,
+    BTS2MD_AVRCP_CMD_FRM_RSP_EXT,
+
+    //New messages must be added before this
+    BTS2M_AVRCP_APP_MAX_MSG_NUM,
 
     BTS2MU_AVRCP_CONN_IND = BTS2MU_START,
     BTS2MU_AVRCP_DISC_IND,
@@ -128,8 +136,8 @@ typedef enum BTS2E_AVRCP_MSG_TAG
     BTS2M_AVRCP_MAX_MSG_NUM
 } AVRCPMSG;
 
-#define BTS2MD_HIGHEST_AVRCP_RECV_MSG_NUM (BTS2MD_AVRCP_RESET_REQ + 1)
-#define AVRCP_RECV_MSG_NUM    (BTS2MD_AVRCP_RESET_REQ - BTS2MD_START + 1)
+#define BTS2MD_HIGHEST_AVRCP_RECV_MSG_NUM (BTS2M_AVRCP_APP_MAX_MSG_NUM + 1)
+#define AVRCP_RECV_MSG_NUM    (BTS2M_AVRCP_APP_MAX_MSG_NUM - BTS2MD_START + 1)
 #define AVRCP_SEND_MSG_NUM    (BTS2M_AVRCP_MAX_MSG_NUM - BTS2MU_START)
 
 typedef struct
@@ -188,6 +196,12 @@ typedef struct
 {
     U16 type;
     BTS2S_BD_ADDR bd;
+} BTS2S_AVRCP_DISC_REQ_EXT;
+
+typedef struct
+{
+    U16 type;
+    BTS2S_BD_ADDR bd;
     U8      res;
 } BTS2S_AVRCP_DISC_IND;
 
@@ -199,6 +213,14 @@ typedef struct
     U8  *cmd_ptr;
 } BTS2S_AVRCP_CMD_FRM_REQ;
 
+typedef struct
+{
+    U16 type;
+    U16 tid;
+    U16 cmd_len;
+    U8  *cmd_ptr;
+    BTS2S_BD_ADDR bd;
+} BTS2S_AVRCP_CMD_FRM_REQ_EXT;
 
 typedef struct
 {
@@ -207,6 +229,7 @@ typedef struct
 
 
 typedef BTS2S_AVRCP_CMD_FRM_REQ BTS2S_AVRCP_CMD_FRM_RSP;
+typedef BTS2S_AVRCP_CMD_FRM_REQ_EXT BTS2S_AVRCP_CMD_FRM_RSP_EXT;
 
 typedef struct
 {
@@ -219,6 +242,7 @@ typedef struct
     U8    subunit_id;
     U16   data_len;
     U8    *data;
+    BTS2S_BD_ADDR bd;
 } BTS2S_AVRCP_UNIT_INFO_CMD_IND;
 
 typedef BTS2S_AVRCP_UNIT_INFO_CMD_IND BTS2S_AVRCP_SUBUNIT_INFO_CMD_IND;
@@ -300,7 +324,7 @@ void avrcp_disb_req(void);
  *
  *----------------------------------------------------------------------------*/
 void avrcp_conn_req(U16 tid,
-                    BTS2S_BD_ADDR bd,
+                    BTS2S_BD_ADDR *bd,
                     U16 rmt_role,
                     U16 local_role);
 
@@ -320,6 +344,23 @@ void avrcp_conn_req(U16 tid,
  *
  *----------------------------------------------------------------------------*/
 void avrcp_disc_req(void);
+
+/*----------------------------------------------------------------------------*
+ *
+ * DESCRIPTION:
+ *      Disconnect the specified device.
+ *
+ * INPUT:
+ *      void.
+ *
+ * OUTPUT:
+ *      void.
+ *
+ * NOTE:
+ *      none.
+ *
+ *----------------------------------------------------------------------------*/
+void avrcp_disc_req_ext(BTS2S_BD_ADDR *bd);
 
 /*----------------------------------------------------------------------------*
  *
@@ -351,6 +392,16 @@ void avrcp_cmd_data_req(U16 tid,
                         U8 subunit_id,
                         U16 data_len,
                         U8 *data);
+
+void avrcp_cmd_data_req_ext(BTS2S_BD_ADDR *bd,
+                            U16 tid,
+                            U8 tlable,
+                            U16 prof_id,
+                            U8 c_type,
+                            U8 subunit_type,
+                            U8 subunit_id,
+                            U16 data_len,
+                            U8 *data);
 
 /*----------------------------------------------------------------------------*
  *
@@ -384,6 +435,15 @@ void avrcp_cmd_data_rsp(U16 tid,
                         U16 data_len,
                         U8 *data);
 
+void avrcp_cmd_data_rsp_ext(BTS2S_BD_ADDR *bd,
+                            U16 tid,
+                            U8 tlable,
+                            U16 prof_id,
+                            U8 rsp,
+                            U8 subunit_type,
+                            U8 subunit_id,
+                            U16 data_len,
+                            U8 *data);
 
 void avrcp_reset_req(void);
 

@@ -40,11 +40,11 @@ bt_err_t bt_sifli_set_avrcp_volume(rt_bt_device_t *dev, bt_volume_set_t *set)
     {
         if (BT_ROLE_MASTER == dev->role)
         {
-            ret = bt_interface_avrcp_set_absolute_volume_as_tg_role(volume);
+            ret = bt_interface_avrcp_set_absolute_volume_as_tg_role_ext((bt_notify_device_mac_t *)&set->peer_addr, volume);
         }
         else
         {
-            ret = bt_interface_avrcp_set_absolute_volume_as_ct_role(volume);
+            ret = bt_interface_avrcp_set_absolute_volume_as_ct_role_ext((bt_notify_device_mac_t *)&set->peer_addr, volume);
         }
     }
 
@@ -98,43 +98,36 @@ bt_err_t bt_sifli_control_avrcp(struct rt_bt_device *bt_handle, int cmd, void *a
     break;
     case BT_CONTROL_PHONE_PLAY_NEXT:
     {
-        bt_interface_avrcp_next();
+        bt_mac_t *mac = (bt_mac_t *)args;
+        bt_interface_avrcp_next_ext((bt_notify_device_mac_t *)mac);
     }
     break;
 
     case BT_CONTROL_PHONE_PLAY:
     {
-        bt_interface_avrcp_play();
+        bt_mac_t *mac = (bt_mac_t *)args;
+        bt_interface_avrcp_play_ext((bt_notify_device_mac_t *)mac);
     }
     break;
 
     case BT_CONTROL_PHONE_PLAY_SUSPEND:
     {
-        bt_interface_avrcp_pause();
+        bt_mac_t *mac = (bt_mac_t *)args;
+        bt_interface_avrcp_pause_ext((bt_notify_device_mac_t *)mac);
     }
     break;
 
     case BT_CONTROL_PHONE_PLAY_STOP:
     {
-        bt_interface_avrcp_stop();
-    }
-    break;
-
-    case BT_CONTROL_AVRCP_VOLUME_UP:
-    {
-        bt_interface_avrcp_volume_up();
-    }
-    break;
-
-    case BT_CONTROL_AVRCP_VOLUME_DOWN:
-    {
-        bt_interface_avrcp_volume_down();
+        bt_mac_t *mac = (bt_mac_t *)args;
+        bt_interface_avrcp_stop_ext((bt_notify_device_mac_t *)mac);
     }
     break;
 
     case BT_CONTROL_PHONE_PLAY_PREVIOUS:
     {
-        bt_interface_avrcp_previous();
+        bt_mac_t *mac = (bt_mac_t *)args;
+        bt_interface_avrcp_previous_ext((bt_notify_device_mac_t *)mac);
     }
     break;
 

@@ -87,6 +87,7 @@
 //#define CFG_OPEN_SDKRECONN
 #ifdef CFG_AVRCP
     #define CFG_OPEN_AVRCP
+    #define CFG_MAX_AVRCP_CONN_NUM 2
 #endif
 
 #ifdef CFG_HID

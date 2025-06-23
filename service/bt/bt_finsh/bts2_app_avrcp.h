@@ -116,7 +116,7 @@ typedef struct
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avrcp_int(bts2_app_stru *bts2_app_data);
+void bt_avrcp_init(bts2_app_stru *bts2_app_data);
 
 /*----------------------------------------------------------------------------*
  *
@@ -166,7 +166,7 @@ int bt_avrcp_controller_connect_request(BTS2S_BD_ADDR *bd);
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avrcp_disc_2_dev(BTS2S_BD_ADDR *bd_addr);
+void bt_avrcp_disc_2_dev(BTS2S_BD_ADDR *bd);
 
 /*----------------------------------------------------------------------------*
  *
@@ -182,39 +182,37 @@ void bt_avrcp_disc_2_dev(BTS2S_BD_ADDR *bd_addr);
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avrcp_pop(bts2_app_stru *bts2_app_data, U8 stateOpe);
+void bt_avrcp_pop(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR bd, U8 stateOpe);
 
-void bt_avrcp_ply(bts2_app_stru *bts2_app_data);
-
-void bt_avrcp_delay_pop(bts2_app_stru *bts2_app_data, int type);
+void bt_avrcp_ply(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
 
 void bt_avrcp_timeout_handler(void *parameter);
 
 void bt_avrcp_vol_timeout_handler(void *parameter);
 
-void bt_avrcp_volume_register_request(bts2_app_stru *bts2_app_data);
+void bt_avrcp_volume_register_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
 
-void bt_avrcp_volume_register_response(bts2_app_stru *bts2_app_data, U8 response, U8 volume);
+void bt_avrcp_volume_register_response(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, U8 response, U8 volume);
 
-bt_err_t bt_avrcp_set_absolute_volume_request(bts2_app_stru *bts2_app_data, U8 volume);
+bt_err_t bt_avrcp_set_absolute_volume_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, U8 volume);
 
-bt_err_t bt_avrcp_change_volume(bts2_app_stru *bts2_app_data, U8 volume);
+bt_err_t bt_avrcp_change_volume(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, U8 volume);
 
-bt_err_t bt_avrcp_change_play_status(bts2_app_stru *bts2_app_data, U8 play_status);
+bt_err_t bt_avrcp_change_play_status(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, U8 play_status);
 
-void bt_avrcp_get_play_status_request(bts2_app_stru *bts2_app_data);
+void bt_avrcp_get_play_status_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
 
-void bt_avrcp_play_status_changed_register_response(bts2_app_stru *bts2_app_data, U8 response, U8 play_status);
+void bt_avrcp_play_status_changed_register_response(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, U8 response, U8 play_status);
 
-void bt_avrcp_track_changed_register_response(bts2_app_stru *bts2_app_data, U8 response, U8 track_changed);
+void bt_avrcp_track_changed_register_response(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, U8 response, U8 track_changed);
 
-void bt_avrcp_get_element_attributes_request(bts2_app_stru *bts2_app_data, U8 media_attribute);
+void bt_avrcp_get_element_attributes_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, U8 media_attribute);
 
-void bt_avrcp_playback_register_request(bts2_app_stru *bts2_app_data);
+void bt_avrcp_playback_register_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
 
-void bt_avrcp_playback_pos_register_request(bts2_app_stru *bts2_app_data);
+void bt_avrcp_playback_pos_register_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
 
-void bt_avrcp_track_register_request(bts2_app_stru *bts2_app_data);
+void bt_avrcp_track_register_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
 
 
 /*----------------------------------------------------------------------------*
@@ -231,7 +229,7 @@ void bt_avrcp_track_register_request(bts2_app_stru *bts2_app_data);
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avrcp_rewind(bts2_app_stru *bts2_app_data);
+void bt_avrcp_rewind(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
 
 /*----------------------------------------------------------------------------*
 *
@@ -247,7 +245,7 @@ void bt_avrcp_rewind(bts2_app_stru *bts2_app_data);
 *      none.
 *
 *----------------------------------------------------------------------------*/
-void bt_avrcp_record(bts2_app_stru *bts2_app_data);
+void bt_avrcp_record(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
 
 /*----------------------------------------------------------------------------*
 *
@@ -263,25 +261,7 @@ void bt_avrcp_record(bts2_app_stru *bts2_app_data);
 *      none.
 *
 *----------------------------------------------------------------------------*/
-void bt_avrcp_select_sound(bts2_app_stru *bts2_app_data);
-
-void bt_avrcp_volume_up(bts2_app_stru *bts2_app_data);
-void bt_avrcp_volume_down(bts2_app_stru *bts2_app_data);
-/*----------------------------------------------------------------------------*
- *
- * DESCRIPTION:
- *
- * INPUT:
- *      bts2_app_stru *bts2_app_data:
- *
- * OUTPUT:
- *      void.
- *
- * NOTE:
- *      none.
- *
- *----------------------------------------------------------------------------*/
-void bt_avrcp_stop(bts2_app_stru *bts2_app_data);
+void bt_avrcp_select_sound(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
 
 /*----------------------------------------------------------------------------*
  *
@@ -297,7 +277,7 @@ void bt_avrcp_stop(bts2_app_stru *bts2_app_data);
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avrcp_pause(bts2_app_stru *bts2_app_data);
+void bt_avrcp_stop(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
 
 /*----------------------------------------------------------------------------*
  *
@@ -313,7 +293,7 @@ void bt_avrcp_pause(bts2_app_stru *bts2_app_data);
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avrcp_forward(bts2_app_stru *bts2_app_data);
+void bt_avrcp_pause(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
 
 /*----------------------------------------------------------------------------*
  *
@@ -329,7 +309,23 @@ void bt_avrcp_forward(bts2_app_stru *bts2_app_data);
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avrcp_backward(bts2_app_stru *bts2_app_data);
+void bt_avrcp_forward(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
+
+/*----------------------------------------------------------------------------*
+ *
+ * DESCRIPTION:
+ *
+ * INPUT:
+ *      bts2_app_stru *bts2_app_data:
+ *
+ * OUTPUT:
+ *      void.
+ *
+ * NOTE:
+ *      none.
+ *
+ *----------------------------------------------------------------------------*/
+void bt_avrcp_backward(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
@@ -360,7 +356,7 @@ void bt_avrcp_msg_handler(bts2_app_stru *bts2_app_data);
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avrcp_subunitinfo(bts2_app_stru *bts2_app_data);
+void bt_avrcp_subunitinfo(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
 
 /*----------------------------------------------------------------------------*
  *
@@ -376,39 +372,44 @@ void bt_avrcp_subunitinfo(bts2_app_stru *bts2_app_data);
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avrcp_unitinfo(bts2_app_stru *bts2_app_data);
+void bt_avrcp_unitinfo(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
 
 void bt_avrcp_open(void);
 void bt_avrcp_close(void);
 void bt_avrcp_close_boundary_condition(bts2_app_stru *bts2_app_data);
+
+U8 bt_avrcp_get_available_connection(bts2_app_stru *bts2_app_data);
+
+BOOL bt_avrcp_check_connection_by_addr(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, U8 *idx);
+
+U8 bt_avrcp_get_connection_by_addr(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
+
+void bt_avrcp_dump_connection_info(bts2_app_stru *bts2_app_data);
 #else
 
-#define bt_avrcp_int(bts2_app_data)
+#define bt_avrcp_init(bts2_app_data)
 #define bt_avrcp_conn_2_dev(BTS2S_BD_ADDR,is_target)
 #define bt_avrcp_disc_2_dev(BTS2S_BD_ADDR)
-#define bt_avrcp_pop(bts2_app_data,stateOpe)
-#define bt_avrcp_ply(bts2_app_data)
-#define bt_avrcp_delay_pop(bts2_app_data,type)
+#define bt_avrcp_pop(bts2_app_data,BTS2S_BD_ADDR,stateOpe)
+#define bt_avrcp_ply(bts2_app_data,BTS2S_BD_ADDR)
 #define bt_avrcp_timeout_handler()
-#define bt_avrcp_volume_register_request(bts2_app_data)
-#define bt_avrcp_volume_register_response(bts2_app_data,response,volume)
-#define bt_avrcp_set_absolute_volume_request(bts2_app_data,volume)
-#define bt_avrcp_change_volume(bts2_app_data,volume) (-BT_ERROR_INPARAM)
-#define bt_avrcp_change_play_status(bts2_app_data,play_status) (-BT_ERROR_INPARAM)
-#define bt_avrcp_get_play_status_request(bts2_app_data)
-#define bt_avrcp_play_status_changed_register_response(bts2_app_data,response,play_status)
-#define bt_avrcp_rewind(bts2_app_data)
-#define bt_avrcp_record(bts2_app_data)
-#define bt_avrcp_select_sound(bts2_app_data)
-#define bt_avrcp_volume_up(bts2_app_data)
-#define bt_avrcp_volume_down(bts2_app_data)
-#define bt_avrcp_stop(bts2_app_data)
-#define bt_avrcp_pause(bts2_app_data)
-#define bt_avrcp_forward(bts2_app_data)
-#define bt_avrcp_backward(bts2_app_data)
+#define bt_avrcp_volume_register_request(bts2_app_data,BTS2S_BD_ADDR)
+#define bt_avrcp_volume_register_response(bts2_app_data,BTS2S_BD_ADDR,response,volume)
+#define bt_avrcp_set_absolute_volume_request(bts2_app_data,BTS2S_BD_ADDR,volume)
+#define bt_avrcp_change_volume(bts2_app_data,BTS2S_BD_ADDR,volume) (-BT_ERROR_INPARAM)
+#define bt_avrcp_change_play_status(bts2_app_data,BTS2S_BD_ADDR,play_status) (-BT_ERROR_INPARAM)
+#define bt_avrcp_get_play_status_request(bts2_app_data,BTS2S_BD_ADDR)
+#define bt_avrcp_play_status_changed_register_response(bts2_app_data,BTS2S_BD_ADDR,response,play_status)
+#define bt_avrcp_rewind(bts2_app_data,BTS2S_BD_ADDR)
+#define bt_avrcp_record(bts2_app_data,BTS2S_BD_ADDR)
+#define bt_avrcp_select_sound(bts2_app_data,BTS2S_BD_ADDR)
+#define bt_avrcp_stop(bts2_app_data,BTS2S_BD_ADDR)
+#define bt_avrcp_pause(bts2_app_data,BTS2S_BD_ADDR)
+#define bt_avrcp_forward(bts2_app_data,BTS2S_BD_ADDR)
+#define bt_avrcp_backward(bts2_app_data,BTS2S_BD_ADDR)
 #define bt_avrcp_msg_handler(bts2_app_data)
-#define bt_avrcp_subunitinfo(bts2_app_data)
-#define bt_avrcp_unitinfo(bts2_app_data)
+#define bt_avrcp_subunitinfo(bts2_app_data,BTS2S_BD_ADDR)
+#define bt_avrcp_unitinfo(bts2_app_data,BTS2S_BD_ADDR)
 #define bt_avrcp_open()
 #define bt_avrcp_close()
 #define bt_avrcp_close_boundary_condition(bts2_app_data)

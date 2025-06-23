@@ -25,6 +25,7 @@ extern "C" {
 
 #include "bts2_global.h"
 #include "bf0_ble_common.h"
+#include "os_adaptor.h"
 
 /* standard library */
 #include <stdio.h>

@@ -363,7 +363,7 @@ extern void bt_av_msg_handler(bts2_app_stru *bts2_app_data);
 extern void bt_av_conn(BTS2S_BD_ADDR *bd_addr, uint8_t peer_role);
 void bt_av_set_slience_filter_enable(U8 enable, U8 con_idx);
 U8 bt_av_get_slience_filter_enable(U8 con_idx);
-U8 bt_av_get_a2dp_stream_state(void);
+U8 bt_av_get_a2dp_stream_state(BTS2S_BD_ADDR *bd_addr);
 void bt_av_hdl_set_bqb_test(U8 value);
 void bt_av_hdl_reset_bqb_test(void);
 U8 bt_av_get_idx_from_cid(bts2s_av_inst_data *inst, U16 sought_cid);
@@ -386,7 +386,7 @@ U8 bt_av_get_sink_streaming_number(void);
 #define bt_av_conn(bd_addr,peer_role)
 #define bt_av_set_slience_filter_enable(enable)
 #define bt_av_get_slience_filter_enable() 0
-#define bt_av_get_a2dp_stream_state() 0
+#define bt_av_get_a2dp_stream_state(BTS2S_BD_ADDR) 0
 #define bt_av_hdl_set_bqb_test(value)
 #define bt_av_hdl_reset_bqb_test()
 

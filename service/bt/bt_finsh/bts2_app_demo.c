@@ -93,7 +93,7 @@ void bt_init_profile(bts2_app_stru *bts2_app_data)
 #endif
 
 #ifdef CFG_AVRCP
-    bt_avrcp_int(bts2_app_data);
+    bt_avrcp_init(bts2_app_data);
 #endif
 
 #ifdef CFG_HID

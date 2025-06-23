@@ -1142,13 +1142,16 @@ void gap_reg_bts2_data_info_callback(bts2_data_info_cb_fn_type *fn);
 
 
 void gap_set_receive_avdtp_connect_request(BOOL flag);
-void gap_set_receive_avdtp_connect_addr(BTS2S_BD_ADDR bd);
+void gap_set_receive_avdtp_connect_addr(BTS2S_BD_ADDR *bd);
 void gap_reset_receive_avdtp_connect_addr(void);
 BOOL gap_get_receive_avdtp_connect_request(void);
 BOOL gap_check_receive_avdtp_connect_addr(BTS2S_BD_ADDR *bd);
 void gap_set_sco_res_by_app_flag(U8 flag);
 void gap_set_receive_avrcp_connect_request(BOOL flag);
+void gap_set_receive_avrcp_connect_addr(BTS2S_BD_ADDR *bd);
+void gap_reset_receive_avrcp_connect_addr(void);
 BOOL gap_get_receive_avrcp_connect_request(void);
+BOOL gap_check_receive_avrcp_connect_addr(BTS2S_BD_ADDR *bd);
 void gap_enable_pincode_pair_mode(U8 enable);
 BOOL gap_check_pincode_pair_mode(void);
 #ifdef __cplusplus
