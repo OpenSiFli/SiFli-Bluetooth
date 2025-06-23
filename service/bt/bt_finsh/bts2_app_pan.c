@@ -1,16 +1,10 @@
 /*
-*********************************************************************************************************
-* Copyright (C) 2006-2021 Lianway Corporation
-*
-* Introduction:
-*       The purpose of design is to provide PAN app.
-*
-* File : bts2_app_pan.c
-*
-* History:
-*
-*********************************************************************************************************
-*/
+ * SPDX-FileCopyrightText: 2006-2021 Lianway Corporation
+ * SPDX-FileCopyrightText: 2019-2025 SiFli Technologies(Nanjing) Co., Ltd
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include "bts2_app_inc.h"
 #include "bts2_app_pan.h"
 #include "bts2_task.h"

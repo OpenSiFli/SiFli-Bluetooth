@@ -1,7 +1,11 @@
+/*
+ * SPDX-FileCopyrightText: 2019-2025 SiFli Technologies(Nanjing) Co., Ltd
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #ifndef _BTS2_APP_HID_H_
 #define _BTS2_APP_HID_H_
-
-
 
 #ifdef __cplusplus
 extern "C" {
@@ -147,4 +151,3 @@ void bt_hid_mouse_test9(bts2_app_stru *bts2_app_data);
 #endif
 
 #endif
-/************************ (C) COPYRIGHT Sifli Technology *******END OF FILE****/
