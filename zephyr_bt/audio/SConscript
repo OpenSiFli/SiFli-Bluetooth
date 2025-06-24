@@ -123,6 +123,6 @@ if GetDepend(['BT_PBP']):
 
 CPPPATH = [cwd]
 
-group = DefineGroup('zbt_audio', src, depend = ['BT_AUDIO'], CPPPATH=CPPPATH, LIBRARY='zbt_audio')
+group = DefineGroup('zbt_audio', src, depend = ['BT_AUDIO'], CPPPATH=CPPPATH)
 
 Return('group')

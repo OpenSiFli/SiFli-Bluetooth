@@ -31,6 +31,6 @@ if GetDepend("TINYCRYPT_AES_CMAC"):
       
 CPPPATH = [cwd+"../include"]
 
-group = DefineGroup('zbt_tinycrypt', src, depend = ['TINYCRYPT'],CPPPATH = CPPPATH,LIBRARY='zbt_tinycrypt')
+group = DefineGroup('zbt_tinycrypt', src, depend = ['TINYCRYPT'],CPPPATH = CPPPATH)
 
 Return('group')

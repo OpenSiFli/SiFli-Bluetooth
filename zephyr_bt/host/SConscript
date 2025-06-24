@@ -62,6 +62,8 @@ if GetDepend('BT_CHANNEL_SOUNDING'):
 if GetDepend('BT_DF'):
     src+=['direction.c']
 
-group = DefineGroup('zbt_host', src, depend = ['ZBT'],CPPPATH = CPPPATH, LIBRARY='zbt_host')
+src=list(set(src))
+
+group = DefineGroup('zbt_host', src, depend = ['ZBT'],CPPPATH = CPPPATH)
 
 Return('group')

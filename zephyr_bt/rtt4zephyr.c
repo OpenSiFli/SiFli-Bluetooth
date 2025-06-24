@@ -176,34 +176,36 @@ int k_mem_slab_alloc(struct rt_mempool *slab, void **mem,
         return RT_EOK;
 }
 
-__USED struct net_buf_pool _net_buf_pool_list_start SPACE1("._net_buf_pool.static.00_start");
-__USED struct net_buf_pool _net_buf_pool_list_end SPACE1("._net_buf_pool.static.zz_end");
+#ifdef __ARMCC_VERSION
+    __USED struct net_buf_pool _net_buf_pool_list_start SPACE1("._net_buf_pool.static.00_start");
+    __USED struct net_buf_pool _net_buf_pool_list_end SPACE1("._net_buf_pool.static.zz_end");
 
-#ifdef BT_CONN
-    __USED const struct bt_conn_cb _bt_conn_cb_list_start SPACE1("._bt_conn_cb.static.00_start");
-    __USED const struct bt_conn_cb _bt_conn_cb_list_end SPACE1("._bt_conn_cb.static.zz_end");
-    __USED const struct bt_l2cap_fixed_chan _bt_l2cap_fixed_chan_list_start SPACE1("._bt_l2cap_fixed_chan.static.00_start");
-    __USED const struct bt_l2cap_fixed_chan _bt_l2cap_fixed_chan_list_end  SPACE1("._bt_l2cap_fixed_chan.static.zz_end");
-    __USED const struct bt_gatt_service_static _bt_gatt_service_static_list_start  SPACE1("._bt_gatt_service_static.static.00_start");
-    __USED const struct bt_gatt_service_static _bt_gatt_service_static_list_end  SPACE1("._bt_gatt_service_static.static.zz_end");
-#endif
+    #ifdef BT_CONN
+        __USED const struct bt_conn_cb _bt_conn_cb_list_start SPACE1("._bt_conn_cb.static.00_start");
+        __USED const struct bt_conn_cb _bt_conn_cb_list_end SPACE1("._bt_conn_cb.static.zz_end");
+        __USED const struct bt_l2cap_fixed_chan _bt_l2cap_fixed_chan_list_start SPACE1("._bt_l2cap_fixed_chan.static.00_start");
+        __USED const struct bt_l2cap_fixed_chan _bt_l2cap_fixed_chan_list_end  SPACE1("._bt_l2cap_fixed_chan.static.zz_end");
+        __USED const struct bt_gatt_service_static _bt_gatt_service_static_list_start  SPACE1("._bt_gatt_service_static.static.00_start");
+        __USED const struct bt_gatt_service_static _bt_gatt_service_static_list_end  SPACE1("._bt_gatt_service_static.static.zz_end");
+    #endif
 
-#ifdef BT_IAS
-    __USED const struct bt_ias_cb _bt_ias_cb_list_start  SPACE1("._bt_ias_cb.static.00_start");
-    __USED const struct bt_ias_cb _bt_ias_cb_list_end  SPACE1("._bt_ias_cb.static.zz_end");
-#endif
+    #ifdef BT_IAS
+        __USED const struct bt_ias_cb _bt_ias_cb_list_start  SPACE1("._bt_ias_cb.static.00_start");
+        __USED const struct bt_ias_cb _bt_ias_cb_list_end  SPACE1("._bt_ias_cb.static.zz_end");
+    #endif
 
-#ifdef BT_MESH
-    __USED const struct bt_mesh_subnet_cb _bt_mesh_subnet_cb_list_start SPACE1("._bt_conn_cb.static.00_start");
-    __USED const struct bt_mesh_subnet_cb  _bt_mesh_subnet_cb_list_end SPACE1("._bt_conn_cb.static.zz_end");
-    __USED const struct bt_mesh_app_key_cb  _bt_mesh_app_key_cb_list_start SPACE1("._bt_mesh_app_key_cb.static.00_start");
-    __USED const struct bt_mesh_app_key_cb  _bt_mesh_app_key_cb_list_end SPACE1("._bt_mesh_app_key_cb.static.zz_end");
-    __USED const struct bt_mesh_hb_cb    _bt_mesh_hb_cb_list_start SPACE1("._bt_mesh_hb_cb.static.00_start");
-    __USED const struct bt_mesh_hb_cb    _bt_mesh_hb_cb_list_end SPACE1("._bt_mesh_hb_cb.static.zz_end");
-    __USED const struct bt_mesh_friend_cb    _bt_mesh_friend_cb_list_start SPACE1("._bt_mesh_friend_cb.static.00_start");
-    __USED const struct bt_mesh_friend_cb    _bt_mesh_friend_cb_list_end SPACE1("._bt_mesh_friend_cb.static.zz_end");
-    __USED const struct bt_mesh_proxy_cb    _bt_mesh_proxy_cb_list_start SPACE1("._bt_mesh_proxy_cb.static.00_start");
-    __USED const struct bt_mesh_proxy_cb    _bt_mesh_proxy_cb_list_end SPACE1("._bt_mesh_proxy_cb.static.zz_end");
+    #ifdef BT_MESH
+        __USED const struct bt_mesh_subnet_cb _bt_mesh_subnet_cb_list_start SPACE1("._bt_conn_cb.static.00_start");
+        __USED const struct bt_mesh_subnet_cb  _bt_mesh_subnet_cb_list_end SPACE1("._bt_conn_cb.static.zz_end");
+        __USED const struct bt_mesh_app_key_cb  _bt_mesh_app_key_cb_list_start SPACE1("._bt_mesh_app_key_cb.static.00_start");
+        __USED const struct bt_mesh_app_key_cb  _bt_mesh_app_key_cb_list_end SPACE1("._bt_mesh_app_key_cb.static.zz_end");
+        __USED const struct bt_mesh_hb_cb    _bt_mesh_hb_cb_list_start SPACE1("._bt_mesh_hb_cb.static.00_start");
+        __USED const struct bt_mesh_hb_cb    _bt_mesh_hb_cb_list_end SPACE1("._bt_mesh_hb_cb.static.zz_end");
+        __USED const struct bt_mesh_friend_cb    _bt_mesh_friend_cb_list_start SPACE1("._bt_mesh_friend_cb.static.00_start");
+        __USED const struct bt_mesh_friend_cb    _bt_mesh_friend_cb_list_end SPACE1("._bt_mesh_friend_cb.static.zz_end");
+        __USED const struct bt_mesh_proxy_cb    _bt_mesh_proxy_cb_list_start SPACE1("._bt_mesh_proxy_cb.static.00_start");
+        __USED const struct bt_mesh_proxy_cb    _bt_mesh_proxy_cb_list_end SPACE1("._bt_mesh_proxy_cb.static.zz_end");
+    #endif
 #endif
 
 /********************FIFO ***********************************************/

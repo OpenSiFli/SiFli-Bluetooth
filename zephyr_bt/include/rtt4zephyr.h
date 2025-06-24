@@ -11,7 +11,6 @@
 #include "zephyr/autoconf.h"
 #include "bf0_hal_def.h"
 
-
 extern struct bt_dev bt_dev;
 struct arch_esf
 {
@@ -117,12 +116,14 @@ enum
 #undef IS_ALIGNED
 
 #define BUILD_ASSERT(...)
-#define ALWAYS_INLINE __INLINE
+#define ALWAYS_INLINE __inline
 #define __noasan
 #define __fallthrough
 #define __noinit
 #define __maybe_unused
-#define __aligned(x) __ALIGNED(x)
+#ifndef __aligned
+    #define __aligned(x) __ALIGNED(x)
+#endif
 #define __syscall
 #define __subsystem
 #define unlikely(x) x
@@ -136,6 +137,10 @@ enum
 
 #ifndef INT_MAX
     #define INT_MAX (0x7FFFFFFF)
+#endif
+
+#ifndef ESHUTDOWN
+    #define ESHUTDOWN 110
 #endif
 
 /**
@@ -231,7 +236,9 @@ enum
 #include "zephyr/sys/__assert.h"
 #include "zephyr/sys/atomic.h"
 #include "zephyr/sys_clock.h"
-#define __used __USED
+#ifndef __used
+    #define __used __USED
+#endif
 
 /* Unaligned access */
 #define UNALIGNED_GET(g)                        \

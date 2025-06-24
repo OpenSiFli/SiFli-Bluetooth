@@ -10,6 +10,6 @@ else:
 
 CPPPATH = [cwd]
 
-group = DefineGroup('zbt_crypto', src, depend = ['ZBT'],CPPPATH = CPPPATH,  LIBRARY='zbt_crypto')
+group = DefineGroup('zbt_crypto', src, depend = ['ZBT'],CPPPATH = CPPPATH)
 
 Return('group')
