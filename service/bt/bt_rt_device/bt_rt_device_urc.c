@@ -47,6 +47,7 @@ void urc_func_inq_sifli(uint8_t *adrr, uint32_t nameSize, char *name, uint32_t d
         memcpy(bt_name, name, nameSize);
         bt_device_info.bt_name = bt_name;
         bt_device_info.rssi = 0xff;//temp
+        bt_device_info.dev_cls = dev_cls;
 
         bt_notify_t args;
         args.event = BT_EVENT_INQ;
@@ -74,7 +75,7 @@ void urc_func_profile_conn_sifli(uint8_t *addr, uint8_t profile)
     bt_connect_info_t info;
     rt_memcpy(info.mac.addr, addr, BT_MAX_MAC_LEN);
     info.profile = profile;
-    info.conn_idx = bt_cm_find_conn_index_by_addr((uint8_t *)info.mac.addr);
+    info.conn_idx = rt_bt_get_connect_idx_by_mac(bt_device, &info.mac);
     args.event = BT_EVENT_CONNECT_COMPLETE;
     args.args = &info;
     rt_bt_event_notify(&args);
@@ -91,7 +92,7 @@ void urc_func_profile_disc_sifli(uint8_t *addr, bt_profile_t profile, uint8_t re
     info.reason = reason;
     info.profile = profile;
     rt_memcpy(info.peer_addr.addr, addr, BT_MAX_MAC_LEN);
-    info.conn_idx = bt_cm_find_conn_index_by_addr((uint8_t *)info.peer_addr.addr);
+    info.conn_idx = rt_bt_get_connect_idx_by_mac(bt_device, &info.peer_addr);
     args.args = &info;
     rt_bt_event_notify(&args);
 
@@ -117,11 +118,12 @@ void urc_func_disc_sifli(uint8_t *addr, uint8_t reason)
     bt_acl_disconnect_info_t info;
     info.reason = reason;
     rt_memcpy(info.peer_addr.addr, addr, BT_MAX_MAC_LEN);
-    info.conn_idx = bt_cm_find_conn_index_by_addr((uint8_t *)info.peer_addr.addr);
+    info.conn_idx = rt_bt_get_connect_idx_by_mac(bt_device, &info.peer_addr);
     args.event = BT_EVENT_DISCONNECT;
     args.args = &info;
     rt_bt_event_notify(&args);
     LOG_I("URC disc ind:%d idx:%d", reason, info.conn_idx);
+    rt_bt_delete_connect_by_mac(bt_device, (bt_mac_t *)addr);
     return;
 }
 
@@ -130,7 +132,7 @@ void urc_func_key_missing_sifli(uint8_t *addr)
     bt_notify_t args;
     bt_key_missing_info_t info;
     rt_memcpy(info.peer_addr.addr, addr, BT_MAX_MAC_LEN);
-    info.conn_idx = bt_cm_find_conn_index_by_addr((uint8_t *)info.peer_addr.addr);
+    info.conn_idx = rt_bt_get_connect_idx_by_mac(bt_device, &info.peer_addr);
     args.event = BT_EVENT_KEY_MISSING;
     args.args = &info;
     rt_bt_event_notify(&args);
@@ -143,7 +145,7 @@ void urc_func_encryption_sifli(uint8_t *addr)
     bt_notify_t args;
     bt_encryption_info_t info;
     rt_memcpy(info.peer_addr.addr, addr, BT_MAX_MAC_LEN);
-    info.conn_idx = bt_cm_find_conn_index_by_addr((uint8_t *)info.peer_addr.addr);
+    info.conn_idx = rt_bt_get_connect_idx_by_mac(bt_device, &info.peer_addr);
     args.event = BT_EVENT_ENCRYPTION;
     args.args = &info;
     rt_bt_event_notify(&args);
@@ -153,15 +155,15 @@ void urc_func_encryption_sifli(uint8_t *addr)
 
 
 
-void urc_func_call_link_ested_sifli(uint8_t res)
+void urc_func_call_link_ested_sifli(bt_notify_device_sco_info_t *sco_info)
 {
     bt_notify_t args;
     //LOG_I("sifli state%x", bt_state_sifli);
     args.event = BT_EVENT_CALL_lINK_ESTABLISHED;
-    args.args = &res;
+    args.args = sco_info;
     rt_bt_event_notify(&args);
     //bt_profile_state_set(BT_PROFILE_HFP, BT_STATE_ON_CALL);
-    LOG_I("URC call link established");
+    LOG_I("URC call link established res:%d", sco_info->sco_res);
     return;
 }
 
@@ -286,7 +288,7 @@ void urc_func_acl_opened_ind_sifli(uint8_t *addr, uint8_t res, uint8_t incoming,
     ind.incoming = incoming;
     rt_memcpy(ind.mac_addr.addr, addr, BT_MAX_MAC_LEN);
     ind.dev_cls = dev_cls;  //0x001f00 audio box
-    ind.conn_idx = bt_cm_find_conn_index_by_addr((uint8_t *)ind.mac_addr.addr);
+    ind.conn_idx = rt_bt_get_connect_idx_by_mac(bt_device, &ind.mac_addr);
     args.event = BT_EVENT_ACL_OPENED_IND;
     args.args = &ind;
     if (HCI_SUCC != res)
@@ -304,7 +306,7 @@ void urc_func_pair_ind_sifli(uint8_t *addr, uint8_t result)
     bt_pair_ind_t ind;
     ind.res = result;
     rt_memcpy(ind.mac_addr.addr, addr, BT_MAX_MAC_LEN);
-    ind.conn_idx = bt_cm_find_conn_index_by_addr((uint8_t *)ind.mac_addr.addr);
+    ind.conn_idx = rt_bt_get_connect_idx_by_mac(bt_device, &ind.mac_addr);
     args.event = BT_EVENT_PAIR_IND;
     args.args = &ind;
     rt_bt_event_notify(&args);
@@ -361,7 +363,7 @@ void urc_func_key_overlaid_sifli(uint8_t *addr)
     bt_notify_t args;
     bt_key_missing_info_t info;
     rt_memcpy(info.peer_addr.addr, addr, BT_MAX_MAC_LEN);
-    info.conn_idx = bt_cm_find_conn_index_by_addr((uint8_t *)info.peer_addr.addr);
+    info.conn_idx = rt_bt_get_connect_idx_by_mac(bt_device, &info.peer_addr);
     args.event = BT_EVENT_KEY_OVERLAID;
     args.args = &info;
     rt_bt_event_notify(&args);
@@ -473,6 +475,7 @@ static int bt_sifli_notify_common_event_hdl(uint16_t event_id, uint8_t *data, ui
     }
     case BT_NOTIFY_COMMON_ACL_CONNECT_IND:
     {
+        urc_func_bt_notify_handle(BT_EVENT_ACL_CONNECT_IND, data);
         break;
     }
     case BT_NOTIFY_COMMON_ACL_CONNECTED:
@@ -490,7 +493,7 @@ static int bt_sifli_notify_common_event_hdl(uint16_t event_id, uint8_t *data, ui
     case BT_NOTIFY_COMMON_SCO_CONNECTED:
     {
         bt_notify_device_sco_info_t *sco_info = (bt_notify_device_sco_info_t *)data;
-        urc_func_call_link_ested_sifli(sco_info->sco_res);
+        urc_func_call_link_ested_sifli(sco_info);
         break;
     }
     case BT_NOTIFY_COMMON_SCO_DISCONNECTED:

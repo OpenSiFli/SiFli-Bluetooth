@@ -124,7 +124,7 @@ void bt_pbapc_hdl_vcardlist(BTS2S_PBAP_CLT_PULL_VCARD_LIST_BEGIN_IND *msg);
  *      none.
  *
  *----------------------------------------------------------------------------*/
-bt_err_t bt_pbap_client_connect(BTS2S_BD_ADDR *bd, BOOL auth_flag);
+bt_err_t bt_pbap_client_connect_request(BTS2S_BD_ADDR *bd, BOOL auth_flag);
 bt_err_t bt_pbap_client_disconnect(BTS2S_BD_ADDR *bd);
 bt_err_t bt_pbap_client_pull_pb(BTS2E_PBAP_PHONE_REPOSITORY repos, U8 phone_book, U8 max_size);
 bt_err_t bt_pbap_client_set_pb(BTS2E_PBAP_PHONE_REPOSITORY repos, U8 phone_book);

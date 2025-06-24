@@ -640,7 +640,7 @@ static void stop_audio_playback_temporarily(bts2s_av_inst_data *inst)
  *      none.
  *
  *----------------------------------------------------------------------------*/
-bt_err_t bt_avsnk_conn_2_src(BTS2S_BD_ADDR *bd)
+bt_err_t bt_a2dp_source_connect_request(BTS2S_BD_ADDR *bd)
 {
     BTS2S_BD_ADDR temp = {0xffffff, 0xff, 0xffff};
     bt_err_t res = BT_EOK;

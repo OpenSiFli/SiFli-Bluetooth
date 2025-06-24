@@ -840,7 +840,7 @@ static U8 bt_pbapc_get_curr_path(U8 *curr_path)
  * @return status ERROR_CODE_SUCCESS on success, otherwise BTSTACK_MEMORY_ALLOC_FAILED if PBAP or GOEP connection already exists.
  */
 
-bt_err_t bt_pbap_client_connect(BTS2S_BD_ADDR *bd, BOOL auth_flag)
+bt_err_t bt_pbap_client_connect_request(BTS2S_BD_ADDR *bd, BOOL auth_flag)
 {
     bt_err_t ret = BT_ERROR_STATE;
     if (local_inst->pbap_clt_st == BT_PBAPC_IDLE_ST)
@@ -1145,8 +1145,7 @@ void bt_pbap_clt_hdl_msg(bts2_app_stru *bts2_app_data)
             bt_addr_convert(&msg->bd, profile_state.mac.addr);
             profile_state.profile_type = BT_NOTIFY_PBAP;
             profile_state.res = BTS2_SUCC;
-            bt_interface_bt_event_notify(BT_NOTIFY_PBAP, BT_NOTIFY_PBAP_PROFILE_CONNECTED,
-                                         &profile_state, sizeof(bt_notify_profile_state_info_t));
+            bt_profile_update_connection_state(BT_NOTIFY_PBAP, BT_NOTIFY_PBAP_PROFILE_CONNECTED, &profile_state);
             USER_TRACE(">> Pbap client connect success\n");
         }
         else
@@ -1157,8 +1156,7 @@ void bt_pbap_clt_hdl_msg(bts2_app_stru *bts2_app_data)
             bt_addr_convert(&msg->bd, profile_state.mac.addr);
             profile_state.profile_type = BT_NOTIFY_PBAP;
             profile_state.res = msg->res;
-            bt_interface_bt_event_notify(BT_NOTIFY_PBAP, BT_NOTIFY_PBAP_PROFILE_DISCONNECTED,
-                                         &profile_state, sizeof(bt_notify_profile_state_info_t));
+            bt_profile_update_connection_state(BT_NOTIFY_PBAP, BT_NOTIFY_PBAP_PROFILE_DISCONNECTED, &profile_state);
             INFO_TRACE(">> Connect fail, result = %d\n", msg->res);
         }
         break;
@@ -1173,8 +1171,7 @@ void bt_pbap_clt_hdl_msg(bts2_app_stru *bts2_app_data)
         bt_addr_convert(&msg->bd, profile_state.mac.addr);
         profile_state.profile_type = BT_NOTIFY_PBAP;
         profile_state.res = msg->res;
-        bt_interface_bt_event_notify(BT_NOTIFY_PBAP, BT_NOTIFY_PBAP_PROFILE_DISCONNECTED,
-                                     &profile_state, sizeof(bt_notify_profile_state_info_t));
+        bt_profile_update_connection_state(BT_NOTIFY_PBAP, BT_NOTIFY_PBAP_PROFILE_DISCONNECTED, &profile_state);
 
         local_inst->pbap_clt_st = BT_PBAPC_IDLE_ST;
         USER_TRACE(">> Connection disconnect indcation\n");

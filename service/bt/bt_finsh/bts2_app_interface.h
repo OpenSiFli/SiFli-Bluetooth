@@ -95,6 +95,7 @@ int8_t bt_interface_start_inquiry_ex(bt_start_inquiry_ex_t *param);
  **/
 void bt_interface_stop_inquiry(void);
 
+bt_err_t bt_interface_profile_connect_request(unsigned char *mac, uint8_t profile, uint8_t role);
 /**
  * @brief            Initiate connect with the specified device and profile(hf sink)
  * @param[in] mac    Remote device address

@@ -7,6 +7,8 @@
 #ifndef _BTS2_APP_HID_H_
 #define _BTS2_APP_HID_H_
 
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -79,7 +81,7 @@ void bt_hid_open(void);
 void bt_hid_cmpose_hid_descriptor(void);
 void bt_hid_add_descriptor(const U8 *data, U8 len);
 void bt_hid_close(void);
-void bt_hid_conn_2_dev(BTS2S_BD_ADDR *bd);
+void bt_hid_connect_requset(BTS2S_BD_ADDR *bd);
 void bt_hid_disc_2_dev(BTS2S_BD_ADDR *bd_addr);
 
 void bt_hid_mouse_reset(bts2_app_stru *bts2_app_data);

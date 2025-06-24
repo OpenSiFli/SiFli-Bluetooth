@@ -31,6 +31,27 @@
 
 static bd_addr_t g_custom_bt_addr = {0};
 
+uint8_t bt_sifli_get_role_profile_connect_status(rt_bt_device_t *dev, bt_cm_link_type_t link_type, bt_profile_t profile)
+{
+#if defined(BT_CONNECT_SUPPORT_MULTI_LINK) && (BT_CM_DEVICE_MAX_CONN > 1)
+    uint32_t i;
+    for (i = 0; i < BT_CM_DEVICE_MAX_CONN; i++)
+    {
+        if (rt_bt_get_connect_dev_by_idx(dev, i)->link_type == link_type &&
+                BT_STATE_CONNECTED == rt_bt_get_connect_state_by_conn_idx(dev, i, profile))
+        {
+            return 1;
+        }
+    }
+#else
+    if (BT_STATE_CONNECTED == rt_bt_get_connect_state(dev, profile))
+    {
+        return 1;
+    }
+#endif
+    return 0;
+}
+extern void set_speaker_volume(uint8_t volume);
 static bt_err_t bt_sifli_set_speaker_volume(rt_bt_device_t *dev, bt_volume_set_t *set)
 {
     bt_err_t ret = BT_ERROR_STATE;
@@ -43,15 +64,12 @@ static bt_err_t bt_sifli_set_speaker_volume(rt_bt_device_t *dev, bt_volume_set_t
     {
         volume =  set->volume.call_volume;
     }
-#ifdef BT_CONNECT_SUPPORT_MULTI_LINK
+    if (!bt_sifli_get_role_profile_connect_status(dev, BT_LINK_PHONE, BT_PROFILE_HFP))
+        return ret;
     if (!bt_sifli_check_bt_event(BT_SET_VGS_EVENT))
-#else
-    if (!(bt_sifli_check_bt_event(BT_SET_VGS_EVENT)) && BT_STATE_CONNECTED == rt_bt_get_connect_state(dev, BT_PROFILE_HFP))
-#endif
     {
         bt_sifli_set_bt_event(BT_SET_VGS_EVENT);
-        bt_interface_set_speaker_volume(volume);
-        ret = BT_EOK;
+        ret = bt_interface_set_speaker_volume(volume);
     }
 
 #ifdef AUDIO_USING_MANAGER
@@ -103,6 +121,19 @@ static bt_err_t bt_sifli_control_open(void)
     return ret;
 }
 
+static uint8_t bt_sifli_get_role_connect(struct rt_bt_device *bt_handle, bt_cm_link_type_t link_type)
+{
+    uint8_t i;
+    for (i = 0; i < BT_MAX_ACL_NUM; i ++)
+    {
+        if (BT_STATE_ACL_CONNECTED == rt_bt_get_acl_state_by_conn_idx(bt_handle, i) &&
+                rt_bt_get_connect_dev_by_idx(bt_handle, i)->link_type == link_type)
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
 bt_err_t bt_sifli_control_common(struct rt_bt_device *bt_handle, int cmd, void *args)
 {
     bt_err_t ret = BT_EOK;
@@ -141,7 +172,13 @@ bt_err_t bt_sifli_control_common(struct rt_bt_device *bt_handle, int cmd, void *
 
     case BT_CONTROL_EXIT_SNIFF:
     {
-        bt_interface_exit_sniff_mode();
+        bt_interface_exit_sniff_mode((unsigned char *)args);
+    }
+    break;
+    case BT_CONTROL_SET_LINK_POLICY:
+    {
+        bt_set_link_policy_t *info = (bt_set_link_policy_t *)args;
+        bt_interface_wr_link_policy_setting((unsigned char *)&info->mac, info->mode);
     }
     break;
 
@@ -194,26 +231,45 @@ bt_err_t bt_sifli_control_common(struct rt_bt_device *bt_handle, int cmd, void *
 
     case BT_CONTROL_CONNECT_DEVICE_EX:
     {
+        ret = BT_EOK;
         bt_connect_info_t *info = (bt_connect_info_t *)args;
         bt_mac_t *mac = &(info->mac);
-        gap_wr_scan_enb_req(bts2_task_get_app_task_id(), 0, 0);
-        bt_cm_conn_info_t *conn = bt_cm_find_bonded_dev_by_addr((uint8_t *)&info->mac);
-        LOG_D("[%s] conn:%p role:%d", __func__, conn, conn->role);
+        bt_interface_set_scan_mode(bts2_task_get_app_task_id(), 0, 0);
+        bt_cm_dev_info_t *conn = bt_cm_get_bonded_dev_by_addr((uint8_t *)&info->mac);
+        LOG_D("[%s] conn:%p type:%d", __func__, conn, conn->link_type);
         if (conn)
         {
-            if (BT_CM_MASTER == conn->role)
+            bt_connect_dev_t conn_dev;
+            conn_dev.link_type = conn->link_type;
+            conn_dev.connect = 1;
+            memcpy(&conn_dev.mac, &info->mac, sizeof(bt_mac_t));
+            rt_bt_add_connect_dev(bt_handle, &conn_dev);
+            if (BT_LINK_EARPHONE == conn->link_type)
                 ret =  bt_interface_conn_to_source_ext((unsigned char *)(mac->addr), info->profile);
             else
                 ret = bt_interface_conn_ext((unsigned char *)(mac->addr), info->profile);
         }
         else
         {
-            if (BT_ROLE_MASTER == bt_handle->role)
+            bt_connect_dev_t conn_dev;
+            memcpy(&conn_dev.mac, &info->mac, sizeof(bt_mac_t));
+            conn_dev.connect = 1;
+            if (BT_ROLE_MASTER == bt_handle->role && !bt_sifli_get_role_connect(bt_handle, BT_LINK_EARPHONE))
+            {
+                conn_dev.link_type = BT_LINK_EARPHONE;
+                rt_bt_add_connect_dev(bt_handle, &conn_dev);
                 ret =  bt_interface_conn_to_source_ext((unsigned char *)(mac->addr), info->profile);
-            else
+            }
+            else if (BT_ROLE_SLAVE == bt_handle->role && !bt_sifli_get_role_connect(bt_handle, BT_LINK_PHONE))
+            {
+                conn_dev.link_type = BT_LINK_PHONE;
+                rt_bt_add_connect_dev(bt_handle, &conn_dev);
                 ret = bt_interface_conn_ext((unsigned char *)(mac->addr), info->profile);
+            }
+            else
+                ret = BT_ERROR_STATE;
         }
-        info->conn_idx = bt_cm_find_conn_index_by_addr((uint8_t *)info->mac.addr);
+        info->conn_idx = rt_bt_get_connect_idx_by_mac(bt_handle, &info->mac);
     }
     break;
 
@@ -226,7 +282,19 @@ bt_err_t bt_sifli_control_common(struct rt_bt_device *bt_handle, int cmd, void *
     case BT_CONTROL_DISCONNECT_EX:
     {
         bt_profile_t *profile = (bt_profile_t *)args;
-        ret = bt_interface_disc_ext(NULL, *profile);
+        ret = bt_interface_disc_ext((unsigned char *)&rt_bt_get_connect_dev_by_idx(bt_handle, 0)->mac, *profile);
+    }
+    break;
+    case BT_CONTROL_DISCONNECT_PROFILE:
+    {
+        bt_profile_info_t *info = (bt_profile_info_t *)args;
+        bt_connect_dev_t *dev_conn = rt_bt_get_connect_dev_by_idx(bt_handle, info->conn_idx);
+        if (dev_conn == NULL)
+        {
+            ret = BT_ERROR_INPARAM;
+            break;
+        }
+        ret = bt_interface_disc_ext((unsigned char *)&dev_conn->mac, info->profile);
     }
     break;
 
@@ -243,9 +311,10 @@ bt_err_t bt_sifli_control_common(struct rt_bt_device *bt_handle, int cmd, void *
     case BT_CONTROL_AUDIO_TRANSFER_EX:
     {
         bt_hfp_audio_switch_t *set = (bt_hfp_audio_switch_t *)args;
-        LOG_I("role 0x%x 0x%0x flag:%d", bt_handle->role, BT_ROLE_MASTER, set->type);
+        bt_cm_dev_info_t *conn = bt_cm_get_bonded_dev_by_addr((uint8_t *)&set->peer_addr);
+        LOG_I("[%s] conn:%p link_type:%d type:%d", __func__, conn, conn->link_type, set->type);
 #ifdef BT_USING_AG
-        if (BT_ROLE_MASTER == bt_handle->role)
+        if (conn && conn->link_type == BT_LINK_EARPHONE)
         {
             BTS2S_BD_ADDR dest_addr;
             bt_addr_convert_to_bts((bd_addr_t *)set->peer_addr.addr, &dest_addr);
@@ -253,6 +322,12 @@ bt_err_t bt_sifli_control_common(struct rt_bt_device *bt_handle, int cmd, void *
                 bt_hfp_disconnect_audio(&dest_addr);
             else
                 bt_hfp_connect_audio(&dest_addr);
+        }
+#endif
+#ifdef BT_USING_HF
+        if (conn && conn->link_type == BT_LINK_PHONE)
+        {
+            bt_interface_audio_switch(set->type);
         }
 #endif
     }
@@ -342,16 +417,24 @@ bt_err_t bt_sifli_control_common(struct rt_bt_device *bt_handle, int cmd, void *
             ble_get_public_address(&addr);
             sibles_change_bd_addr(SIBLES_CH_BD_TYPE_BT, SIBLES_CH_BD_METHOD_CUSTOMIZE, &addr);
 #ifdef BT_FINSH_PAN
-            bt_interface_update_pan_addr_ext((bt_notify_device_mac_t *)addr);
+            BTS2S_BD_ADDR     bd_addr;
+            bt_addr_convert_to_bts(&addr, &bd_addr);
+            bt_interface_update_pan_addr(&bd_addr);
 #endif
+            LOG_I("change bd_addr:%02X:%02X:%02X:%02X:%02X:%02X", addr.addr[0], addr.addr[1], addr.addr[2],
+                  addr.addr[3], addr.addr[4], addr.addr[5]);
         }
         else
         {
             rt_memcpy(&g_custom_bt_addr, args, sizeof(bd_addr_t));
             sibles_change_bd_addr(SIBLES_CH_BD_TYPE_BT, SIBLES_CH_BD_METHOD_CUSTOMIZE, args);
 #ifdef BT_FINSH_PAN
-            bt_interface_update_pan_addr_ext((bt_notify_device_mac_t *)g_custom_bt_addr);
+            BTS2S_BD_ADDR     bd_addr;
+            bt_addr_convert_to_bts(&g_custom_bt_addr, &bd_addr);
+            bt_interface_update_pan_addr(&bd_addr);
 #endif
+            LOG_I("change bd_addr:%02X:%02X:%02X:%02X:%02X:%02X", g_custom_bt_addr.addr[0], g_custom_bt_addr.addr[1], g_custom_bt_addr.addr[2],
+                  g_custom_bt_addr.addr[3], g_custom_bt_addr.addr[4], g_custom_bt_addr.addr[5]);
         }
     }
     break;
@@ -364,10 +447,7 @@ bt_err_t bt_sifli_control_common(struct rt_bt_device *bt_handle, int cmd, void *
 
     case BT_CONTROL_CANCEL_PAGE_BY_ADDR:
     {
-        BTS2S_BD_ADDR addr = {0};
-        bt_mac_t *mac = (bt_mac_t *)args;
-        bt_addr_convert_to_bts((bd_addr_t *)mac, &addr);
-        gap_cancel_connect_req(&addr);
+        bt_interface_cancel_connect_req((unsigned char *)args);
     }
     break;
 
@@ -424,8 +504,9 @@ bt_err_t bt_sifli_control_common(struct rt_bt_device *bt_handle, int cmd, void *
     {
         BTS2S_BD_ADDR addr = {0};
         uint8_t *conn_idx = (uint8_t *)args;
-        bt_cm_find_addr_by_conn_index(*conn_idx, &addr);
-
+        bt_connect_dev_t *dev_conn = rt_bt_get_connect_dev_by_idx(bt_handle, *conn_idx);
+        bt_addr_convert_to_bts((bd_addr_t *)&dev_conn->mac, &addr);
+        LOG_I("[%s] conn_idx:%d, bd addr:%04x-%02x-%06x", __func__, *conn_idx, addr.nap, addr.uap, addr.lap);
         gap_disconnect_req(&addr);
     }
     break;
@@ -439,6 +520,23 @@ bt_err_t bt_sifli_control_common(struct rt_bt_device *bt_handle, int cmd, void *
     }
     break;
 
+    case BT_CONTROL_ACPT_CONNECT:
+    {
+        bt_acpt_connect_t *info = (bt_acpt_connect_t *)args;
+        bt_connect_dev_t dev_info;
+        memcpy(&dev_info.mac, &info->addr, sizeof(bt_mac_t));
+        dev_info.link_type = info->link_type;
+        dev_info.connect = 1;
+        rt_bt_add_connect_dev(bt_handle, &dev_info);
+        ret = bt_interface_acpt_connect_req((unsigned char *)&info->addr, info->link_role, info->link_type);
+    }
+    break;
+    case BT_CONTROL_REJECT_CONNECT:
+    {
+        bt_reject_connect_t *info = (bt_reject_connect_t *)args;
+        ret = bt_interface_reject_connect_req((unsigned char *)&info->addr, info->reason);
+    }
+    break;
     default:
         ret = BT_ERROR_UNSUPPORTED;
         break;

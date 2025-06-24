@@ -875,8 +875,7 @@ void bt_spp_msg_hdl(bts2_app_stru *bts2_app_data)
             bt_addr_convert(&bts2_spp_srv_inst->bd_addr, profile_state.mac.addr);
             profile_state.profile_type = BT_NOTIFY_SPP;
             profile_state.res = BTS2_SUCC;
-            bt_interface_bt_event_notify(BT_NOTIFY_SPP, BT_NOTIFY_SPP_PROFILE_CONNECTED,
-                                         &profile_state, sizeof(bt_notify_profile_state_info_t));
+            bt_profile_update_connection_state(BT_NOTIFY_SPP, BT_NOTIFY_SPP_PROFILE_CONNECTED, &profile_state);
 
             bt_notify_spp_conn_ind_t spp_conn_ind;
             spp_conn_ind.srv_chl = my_msg->srv_chnl;
@@ -1028,8 +1027,7 @@ void bt_spp_msg_hdl(bts2_app_stru *bts2_app_data)
             bt_addr_convert(&my_msg->bd, profile_state.mac.addr);
             profile_state.profile_type = BT_NOTIFY_SPP;
             profile_state.res = my_msg->res;
-            bt_interface_bt_event_notify(BT_NOTIFY_SPP, BT_NOTIFY_SPP_PROFILE_DISCONNECTED,
-                                         &profile_state, sizeof(bt_notify_profile_state_info_t));
+            bt_profile_update_connection_state(BT_NOTIFY_SPP, BT_NOTIFY_SPP_PROFILE_DISCONNECTED, &profile_state);
 
             bt_notify_spp_disc_ind_t spp_disc_ind;
             spp_disc_ind.srv_chl = my_msg->srv_chl;
@@ -1098,8 +1096,8 @@ void bt_spp_msg_hdl(bts2_app_stru *bts2_app_data)
 
         uint8_t addr1[6];
         bt_addr_convert(&my_msg->bd, addr1);
-        bt_cm_conn_info_t *bonded_dev = bt_cm_find_bonded_dev_by_addr(addr1);
-        if (bonded_dev->role == BT_CM_MASTER)
+        bt_cm_dev_info_t *bonded_dev = bt_cm_get_bonded_dev_by_addr(addr1);
+        if (bonded_dev->role == BT_LINK_MASTER)
         {
             INFO_TRACE(">>earphone connect spp,should reject\n");
             bt_spp_srv_rfc_conn_rej_hdl(bts2_app_data, my_msg->srv_chnl, my_msg->bd);

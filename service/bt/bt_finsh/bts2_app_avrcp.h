@@ -144,8 +144,9 @@ U8 bt_avrcp_get_role_by_addr(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd_add
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avrcp_conn_2_dev(BTS2S_BD_ADDR *bd, BOOL is_target);
-
+int bt_avrcp_conn_2_dev(BTS2S_BD_ADDR *bd, BOOL is_target);
+int bt_avrcp_target_connect_request(BTS2S_BD_ADDR *bd);
+int bt_avrcp_controller_connect_request(BTS2S_BD_ADDR *bd);
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:

@@ -206,7 +206,7 @@ U8 bt_hfp_hf_get_ring_type(void)
  *      none.
  *
  *----------------------------------------------------------------------------*/
-bt_err_t bt_hfp_hf_start_connecting(BTS2S_BD_ADDR *bd)
+bt_err_t bt_hfp_hf_connect_request(BTS2S_BD_ADDR *bd)
 {
     bts2_hfp_hf_inst_data *hfp_context = bt_hfp_hf_get_context();
     bt_err_t ret = BT_ERROR_STATE;
@@ -229,7 +229,7 @@ bt_err_t bt_hfp_hf_start_connecting(BTS2S_BD_ADDR *bd)
         break;
     }
     }
-    USER_TRACE("bt_hfp_hf_start_connecting 0x%2x\n", ret);
+    USER_TRACE("bt_hfp_hf_connect_request 0x%2x\n", ret);
     return ret;
 }
 
@@ -1402,8 +1402,7 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
             bt_addr_convert(&msg->bd, profile_state.mac.addr);
             profile_state.profile_type = BT_NOTIFY_HFP_HF;
             profile_state.res = BTS2_SUCC;
-            bt_interface_bt_event_notify(BT_NOTIFY_HFP_HF, BT_NOTIFY_HF_PROFILE_CONNECTED,
-                                         &profile_state, sizeof(bt_notify_profile_state_info_t));
+            bt_profile_update_connection_state(BT_NOTIFY_HFP_HF, BT_NOTIFY_HF_PROFILE_CONNECTED, &profile_state);
 
             memset(&(inst_data->cind_status), 0x00, sizeof(bts2_hfp_hf_cind));
             bts2_app_data->bd_list[bts2_app_data->dev_idx] = msg->bd;
@@ -1437,8 +1436,7 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
             bt_addr_convert(&msg->bd, profile_state.mac.addr);
             profile_state.profile_type = BT_NOTIFY_HFP_HF;
             profile_state.res = msg->res;
-            bt_interface_bt_event_notify(BT_NOTIFY_HFP_HF, BT_NOTIFY_HF_PROFILE_DISCONNECTED,
-                                         &profile_state, sizeof(bt_notify_profile_state_info_t));
+            bt_profile_update_connection_state(BT_NOTIFY_HFP_HF, BT_NOTIFY_HF_PROFILE_DISCONNECTED, &profile_state);
         }
 
         break;
@@ -1454,8 +1452,7 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
         bt_addr_convert(&msg->cur_bd, profile_state.mac.addr);
         profile_state.profile_type = BT_NOTIFY_HFP_HF;
         profile_state.res = msg->res;
-        bt_interface_bt_event_notify(BT_NOTIFY_HFP_HF, BT_NOTIFY_HF_PROFILE_DISCONNECTED,
-                                     &profile_state, sizeof(bt_notify_profile_state_info_t));
+        bt_profile_update_connection_state(BT_NOTIFY_HFP_HF, BT_NOTIFY_HF_PROFILE_DISCONNECTED,  &profile_state);
 
 #if defined(AUDIO_USING_MANAGER) && !defined(BT_USING_HF)
         hfp_audio_close_path();
@@ -1477,8 +1474,7 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
         bt_addr_convert(&msg->cur_bd, profile_state.mac.addr);
         profile_state.profile_type = BT_NOTIFY_HFP_HF;
         profile_state.res = msg->res;
-        bt_interface_bt_event_notify(BT_NOTIFY_HFP_HF, BT_NOTIFY_HF_PROFILE_DISCONNECTED,
-                                     &profile_state, sizeof(bt_notify_profile_state_info_t));
+        bt_profile_update_connection_state(BT_NOTIFY_HFP_HF, BT_NOTIFY_HF_PROFILE_DISCONNECTED, &profile_state);
 
 #if defined(AUDIO_USING_MANAGER) && !defined(BT_USING_HF)
         hfp_audio_close_path();

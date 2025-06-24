@@ -20,8 +20,7 @@ static void bt_gatt_device_state_change(bts2_app_stru *bts2_app_data, BTS2S_BT_G
         bt_addr_convert(&con_msg->bd, profile_state.mac.addr);
         profile_state.profile_type = BT_NOTIFY_GATT;
         profile_state.res = BTS2_SUCC;
-        bt_interface_bt_event_notify(BT_NOTIFY_GATT, BT_NOTIFY_GATT_PROFILE_CONNECTED,
-                                     &profile_state, sizeof(bt_notify_profile_state_info_t));
+        bt_profile_update_connection_state(BT_NOTIFY_GATT, BT_NOTIFY_GATT_PROFILE_CONNECTED, &profile_state);
     }
     else if (con_msg->device_state == BT_GATT_DISCONNECTED)
     {
@@ -29,8 +28,7 @@ static void bt_gatt_device_state_change(bts2_app_stru *bts2_app_data, BTS2S_BT_G
         bt_addr_convert(&con_msg->bd, profile_state.mac.addr);
         profile_state.profile_type = BT_NOTIFY_GATT;
         profile_state.res = con_msg->res;
-        bt_interface_bt_event_notify(BT_NOTIFY_GATT, BT_NOTIFY_GATT_PROFILE_DISCONNECTED,
-                                     &profile_state, sizeof(bt_notify_profile_state_info_t));
+        bt_profile_update_connection_state(BT_NOTIFY_GATT, BT_NOTIFY_GATT_PROFILE_DISCONNECTED, &profile_state);
     }
 }
 

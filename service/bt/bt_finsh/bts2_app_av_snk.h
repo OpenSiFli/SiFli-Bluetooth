@@ -66,7 +66,7 @@ void bt_avsnk_rel(bts2s_av_inst_data *inst);
  *      none.
  *
  *----------------------------------------------------------------------------*/
-bt_err_t bt_avsnk_conn_2_src(BTS2S_BD_ADDR *bd);
+bt_err_t bt_a2dp_source_connect_request(BTS2S_BD_ADDR *bd);
 
 /*----------------------------------------------------------------------------*
  *
@@ -169,7 +169,7 @@ void bt_avsnk_msg_handler(bts2_app_stru *bts2_app_data);
 #define bt_avsnk_open(inst)
 #define bt_avsnk_close(inst)
 #define bt_avsnk_rel(inst)
-#define bt_avsnk_conn_2_src(bts2_app_data) (-BT_ERROR_INPARAM)
+#define bt_a2dp_source_connect_request(bts2_app_data) (-BT_ERROR_INPARAM)
 #define bt_avsnk_abort_stream(bts2_app_data)
 #define bt_avsnk_disc_2_src(is_close)
 #define bt_avsnk_start_stream(bts2_app_data)

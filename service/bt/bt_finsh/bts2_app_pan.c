@@ -181,7 +181,7 @@ void bt_pan_set_nap_route(char *string)
 static int bt_pan_notify_connection_state(bt_notify_profile_state_info_t *info, uint16_t event_id)
 {
     bt_pan_connect_event_handle(event_id);
-    bt_interface_bt_event_notify(BT_NOTIFY_PAN, event_id, info, sizeof(bt_notify_profile_state_info_t));
+    bt_profile_update_connection_state(BT_NOTIFY_PAN, event_id, info);
     return 0;
 }
 
@@ -283,7 +283,7 @@ void bt_pan_enable(bts2_app_stru *bts2_app_data)
 }
 
 extern bts2_app_stru *bts2g_app_p;
-int bt_pan_conn(BTS2S_BD_ADDR *remote_addr)
+int bt_pan_connect_request(BTS2S_BD_ADDR *remote_addr)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
     bts2_pan_inst_data *ptr = NULL;

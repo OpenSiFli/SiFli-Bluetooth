@@ -438,7 +438,7 @@ Author:zhengyu
 
 Modify:
 */
-void bt_hid_conn_2_dev(BTS2S_BD_ADDR *bd)
+void bt_hid_connect_requset(BTS2S_BD_ADDR *bd)
 {
     bts2_app_stru *bts2_app_data = getApp();
     USER_TRACE(" -- address: %04X:%02X:%06lX\n",
@@ -489,7 +489,7 @@ static void bt_hid_hdl_conn_cfm(bts2_app_stru *bts2_app_data)
         if (msg->local_psm == BT_PSM_HID_CTRL)
         {
             USER_TRACE("[L-U]HID control channel connect success\n");
-            bt_hid_conn_2_dev(&msg->bd);
+            bt_hid_connect_requset(&msg->bd);
         }
         else if (msg->local_psm == BT_PSM_HID_INTR)
         {
@@ -499,8 +499,7 @@ static void bt_hid_hdl_conn_cfm(bts2_app_stru *bts2_app_data)
             bt_addr_convert(&msg->bd, profile_state.mac.addr);
             profile_state.profile_type = BT_NOTIFY_HID;
             profile_state.res = BTS2_SUCC;
-            bt_interface_bt_event_notify(BT_NOTIFY_HID, BT_NOTIFY_HID_PROFILE_CONNECTED,
-                                         &profile_state, sizeof(bt_notify_profile_state_info_t));
+            bt_profile_update_connection_state(BT_NOTIFY_HID, BT_NOTIFY_HID_PROFILE_CONNECTED, &profile_state);
 
             USER_TRACE("[L-U]HID interrupt channel connect success\n");
 #endif
@@ -523,8 +522,7 @@ static void bt_hid_hdl_conn_cfm(bts2_app_stru *bts2_app_data)
         bt_addr_convert(&msg->bd, profile_state.mac.addr);
         profile_state.profile_type = BT_NOTIFY_HID;
         profile_state.res = msg->res;
-        bt_interface_bt_event_notify(BT_NOTIFY_HID, BT_NOTIFY_HID_PROFILE_DISCONNECTED,
-                                     &profile_state, sizeof(bt_notify_profile_state_info_t));
+        bt_profile_update_connection_state(BT_NOTIFY_HID, BT_NOTIFY_HID_PROFILE_DISCONNECTED, &profile_state);
 #endif
     }
 }
@@ -555,8 +553,7 @@ static void bt_hid_hdl_disconn_cfm(bts2_app_stru *bts2_app_data)
         bt_addr_convert(&msg->bd, profile_state.mac.addr);
         profile_state.profile_type = BT_NOTIFY_HID;
         profile_state.res = msg->res;
-        bt_interface_bt_event_notify(BT_NOTIFY_HID, BT_NOTIFY_HID_PROFILE_DISCONNECTED,
-                                     &profile_state, sizeof(bt_notify_profile_state_info_t));
+        bt_profile_update_connection_state(BT_NOTIFY_HID, BT_NOTIFY_HID_PROFILE_DISCONNECTED, &profile_state);
 
         USER_TRACE("[L-U]HID control channel disconnect success\n");
 #endif
@@ -591,8 +588,7 @@ static void bt_hid_hdl_disconn_ind(bts2_app_stru *bts2_app_data)
         bt_addr_convert(&msg->bd, profile_state.mac.addr);
         profile_state.profile_type = BT_NOTIFY_HID;
         profile_state.res = msg->res;
-        bt_interface_bt_event_notify(BT_NOTIFY_HID, BT_NOTIFY_HID_PROFILE_DISCONNECTED,
-                                     &profile_state, sizeof(bt_notify_profile_state_info_t));
+        bt_profile_update_connection_state(BT_NOTIFY_HID, BT_NOTIFY_HID_PROFILE_DISCONNECTED, &profile_state);
 
         USER_TRACE("[L-U]receive remote disconnect control channel...\n\n");
 #endif
@@ -1777,8 +1773,7 @@ void bt_hid_msg_handler(bts2_app_stru *bts2_app_data)
             bt_addr_convert(&msg->bd, profile_state.mac.addr);
             profile_state.profile_type = BT_NOTIFY_HID;
             profile_state.res = BTS2_SUCC;
-            bt_interface_bt_event_notify(BT_NOTIFY_HID, BT_NOTIFY_HID_PROFILE_CONNECTED,
-                                         &profile_state, sizeof(bt_notify_profile_state_info_t));
+            bt_profile_update_connection_state(BT_NOTIFY_HID, BT_NOTIFY_HID_PROFILE_CONNECTED, &profile_state);
 
             USER_TRACE("[L-U]remote connect HID interrupt channel success\n");
 #endif

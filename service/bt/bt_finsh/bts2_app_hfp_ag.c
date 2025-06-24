@@ -225,8 +225,7 @@ static void bt_hfp_ag_app_device_state_changed(bts2_app_stru *bts2_app_data, BTS
             profile_state.profile_type = BT_NOTIFY_HFP_AG;
             profile_state.res = BTS2_SUCC;
             profile_state.profile_channel = con_msg->mux_id;
-            bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_PROFILE_CONNECTED,
-                                         &profile_state, sizeof(bt_notify_profile_state_info_t));
+            bt_profile_update_connection_state(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_PROFILE_CONNECTED, &profile_state);
 #ifndef BT_USING_AG
             if (g_flag_auto_answer_call)
             {
@@ -247,8 +246,7 @@ static void bt_hfp_ag_app_device_state_changed(bts2_app_stru *bts2_app_data, BTS
             profile_state.profile_type = BT_NOTIFY_HFP_AG;
             profile_state.res = con_msg->res;
             profile_state.profile_channel = con_msg->mux_id;
-            bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_PROFILE_DISCONNECTED,
-                                         &profile_state, sizeof(bt_notify_profile_state_info_t));
+            bt_profile_update_connection_state(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_PROFILE_DISCONNECTED,&profile_state);
 #ifdef AUDIO_USING_MANAGER
             BTS2S_HF_AUDIO_INFO msg;
             hfp_ag_audio_opt(&msg, 0);
@@ -731,7 +729,7 @@ void bt_hfp_stop_profile_service(bts2_app_stru *bts2_app_data)
     {
         if (ptr->profile_state != HFP_DEVICE_DISCONNECTED)
         {
-            bt_hfp_disconnect_profile(NULL);
+            bt_hfp_ag_disconnect_request(NULL);
         }
         else
         {
@@ -749,12 +747,13 @@ void bt_hfp_stop_profile_service(bts2_app_stru *bts2_app_data)
     }
 }
 
-void bt_hfp_connect_profile(BTS2S_BD_ADDR *bd)
+int bt_hfp_ag_connect_request(BTS2S_BD_ADDR *bd)
 {
     hfp_ag_connect(bd, 0);
+    return 0;
 }
 
-void bt_hfp_disconnect_profile(BTS2S_BD_ADDR *bd)
+void bt_hfp_ag_disconnect_request(BTS2S_BD_ADDR *bd)
 {
     //BTS2S_BD_ADDR temp = {0xffffff, 0xff, 0xffff};
     hfp_ag_disconnect(bd);

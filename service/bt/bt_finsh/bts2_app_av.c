@@ -2074,8 +2074,7 @@ static void bt_av_hdl_stream_mtu_size_ind(bts2_app_stru *bts2_app_data)
     bt_addr_convert(&inst->con[con_idx].av_rmt_addr, profile_state.mac.addr);
     profile_state.profile_type = BT_NOTIFY_A2DP;
     profile_state.res = BTS2_SUCC;
-    bt_interface_bt_event_notify(BT_NOTIFY_A2DP, BT_NOTIFY_A2DP_PROFILE_CONNECTED,
-                                 &profile_state, sizeof(bt_notify_profile_state_info_t));
+    bt_profile_update_connection_state(BT_NOTIFY_A2DP, BT_NOTIFY_A2DP_PROFILE_CONNECTED, &profile_state);
 #endif
 }
 
@@ -2106,8 +2105,7 @@ static void bt_av_hdl_conn_cfm(bts2_app_stru *bts2_app_data)
         bt_addr_convert(&msg->bd, profile_state.mac.addr);
         profile_state.profile_type = BT_NOTIFY_A2DP;
         profile_state.res = msg->res;
-        bt_interface_bt_event_notify(BT_NOTIFY_A2DP, BT_NOTIFY_A2DP_PROFILE_DISCONNECTED,
-                                     &profile_state, sizeof(bt_notify_profile_state_info_t));
+        bt_profile_update_connection_state(BT_NOTIFY_A2DP, BT_NOTIFY_A2DP_PROFILE_DISCONNECTED, &profile_state);
 #endif
         USER_TRACE(" -- a2dp connect failed %x\n", msg->res);
         return;
@@ -2243,8 +2241,7 @@ static void bt_av_hdl_disc_ind(bts2_app_stru *bts2_app_data)
             bt_addr_convert(&msg->bd, profile_state.mac.addr);
             profile_state.profile_type = BT_NOTIFY_A2DP;
             profile_state.res = msg->res;
-            bt_interface_bt_event_notify(BT_NOTIFY_A2DP, BT_NOTIFY_A2DP_PROFILE_DISCONNECTED,
-                                         &profile_state, sizeof(bt_notify_profile_state_info_t));
+            bt_profile_update_connection_state(BT_NOTIFY_A2DP, BT_NOTIFY_A2DP_PROFILE_DISCONNECTED, &profile_state);
             USER_TRACE("<< urc av disc\n");
 #endif
             bt_avsnk_hdl_disc_handler(inst, con_idx);
@@ -2261,8 +2258,7 @@ static void bt_av_hdl_disc_ind(bts2_app_stru *bts2_app_data)
             bt_addr_convert(&msg->bd, profile_state.mac.addr);
             profile_state.profile_type = BT_NOTIFY_A2DP;
             profile_state.res = msg->res;
-            bt_interface_bt_event_notify(BT_NOTIFY_A2DP, BT_NOTIFY_A2DP_PROFILE_DISCONNECTED,
-                                         &profile_state, sizeof(bt_notify_profile_state_info_t));
+            bt_profile_update_connection_state(BT_NOTIFY_A2DP, BT_NOTIFY_A2DP_PROFILE_DISCONNECTED, &profile_state);
             USER_TRACE("<< urc av disc\n");
 #endif
             bt_avsrc_hdl_disc_handler(inst, con_idx);

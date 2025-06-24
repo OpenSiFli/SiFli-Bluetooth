@@ -123,13 +123,6 @@ void bt_stop_inquiry(bts2_app_stru *bts2_app_data)
     gap_esc_discov_req(bts2_app_data->phdl);
     USER_TRACE(">> inquiry esc...\n");
 }
-
-
-void bt_register_receive_connect_req_handler(BOOL (*cb)(BTS2S_BD_ADDR *p_bd, U24 dev_cls))
-{
-    hcia_register_receive_connect_req_handler(cb);
-}
-
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
@@ -197,6 +190,29 @@ __WEAK void bt_sc_io_capability_rsp(BTS2S_BD_ADDR *bd)
     bt_io_capability_rsp(bd, IO_CAPABILITY_DISPLAY_YES_NO, FALSE, TRUE);
 }
 
+__WEAK uint8_t bt_is_auto_request_connect(void)
+{
+    return 1; // 0:it doesn't need check 
+}
+
+__WEAK uint8_t bt_open_bt_request(void)
+{
+    gap_open_req();
+    gap_wr_scan_enb_req(bts2_task_get_app_task_id(), TRUE, TRUE);
+    return 0;
+}
+
+__WEAK uint8_t bt_close_bt_request(void)
+{
+    gap_close_req(NULL);
+    bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_CLOSE_COMPLETE, NULL, 0);
+    return 0;
+}
+
+__WEAK void bt_profile_update_connection_state(uint16_t type, uint16_t event_id, bt_notify_profile_state_info_t *profile_state)
+{
+    bt_interface_bt_event_notify(type, event_id, profile_state, sizeof(bt_notify_profile_state_info_t));
+}
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
@@ -1474,6 +1490,15 @@ void bt_hdl_gap_msg(bts2_app_stru *bts2_app_data)
 #endif
             bts2_app_data->state = BTS_APP_STACK_READY;
         }
+        break;
+    }
+    case BTS2MU_GAP_ENCRYPTION_IND:
+    {
+        BTS2S_GAP_ENCRYPTION_IND *ind = (BTS2S_GAP_ENCRYPTION_IND *)bts2_app_data->recv_msg;
+        LOG_I("BTS2MU_GAP_ENCRYPTION_IND");
+        uint8_t addr[6];
+        bt_addr_convert(&ind->bd, addr);
+        bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_ENCRYPTION, addr, 6);
         break;
     }
     case BTS2MU_GAP_KEYMISSING_IND:

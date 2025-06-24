@@ -20,7 +20,7 @@ bt_err_t bt_hfp_hf_start_enb(bts2_app_stru *bts2_app_data);
 bt_err_t bt_hfp_hf_start_disb(bts2_app_stru *bts2_app_data);
 void bt_hfp_hf_clean_flag();
 U8 bt_hfp_hf_get_ring_type(void);
-bt_err_t bt_hfp_hf_start_connecting(BTS2S_BD_ADDR *bd);
+bt_err_t bt_hfp_hf_connect_request(BTS2S_BD_ADDR *bd);
 bt_err_t bt_hfp_hf_start_disc(BTS2S_BD_ADDR *bd);
 bt_err_t bt_hfp_hf_audio_transfer(U8 type);
 bt_err_t bt_hfp_hf_voice_recog_send(U8 active);
@@ -55,7 +55,7 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data);
 #define bt_hfp_hf_start_disb(bts2_app_data) (-BT_ERROR_INPARAM)
 #define bt_hfp_hf_clean_flag()
 #define bt_hfp_hf_get_ring_type()           0
-#define bt_hfp_hf_start_connecting(bd)      (-BT_ERROR_INPARAM)
+#define bt_hfp_hf_connect_request(bd)      (-BT_ERROR_INPARAM)
 #define bt_hfp_hf_start_disc(bd)            (-BT_ERROR_INPARAM)
 #define bt_hfp_hf_audio_transfer(type)      (-BT_ERROR_INPARAM)
 #define bt_hfp_hf_voice_recog_send(active)  (-BT_ERROR_INPARAM)
@@ -79,7 +79,7 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data);
 #define bt_hfp_hf_at_dtmf_send(key)         (-BT_ERROR_INPARAM)
 #define bt_hfp_hf_at_nrec_send()            (-BT_ERROR_INPARAM)
 #define bt_hfp_hf_update_batt_send(batt_val)    (-BT_ERROR_INPARAM)
-#define bt_hfp_hf_start_connecting(bd)      (-BT_ERROR_INPARAM)
+#define bt_hfp_hf_connect_request(bd)      (-BT_ERROR_INPARAM)
 
 #endif
 

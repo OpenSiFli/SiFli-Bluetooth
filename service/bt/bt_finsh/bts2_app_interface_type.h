@@ -161,6 +161,13 @@ typedef enum
 ///  these type are BT_NOTIFY_A2DP event id
 typedef enum
 {
+    BT_NOTIFY_HFP_ROLE_HF,
+    BT_NOTIFY_HFP_ROLE_AG
+} bt_notify_hfp_role_t;
+
+///  these type are BT_NOTIFY_A2DP event id
+typedef enum
+{
     ///  A2DP sink function close complete event
     BT_NOTIFY_AVSNK_CLOSE_COMPLETE,
     ///  A2DP sink function open complete event
@@ -178,6 +185,12 @@ typedef enum
     ///  receive a2dp suspend response from remote device indication event
     BT_NOTIFY_A2DP_SUSPEND_CFM,
 } bt_notify_a2dp_event_id_t;
+
+typedef enum
+{
+    BT_NOTIFY_A2DP_ROLE_SINK,
+    BT_NOTIFY_A2DP_ROLE_SOURCE
+} bt_notify_a2dp_role_t;
 
 ///  these type are BT_NOTIFY_AVRCP event id
 typedef enum
@@ -205,6 +218,12 @@ typedef enum
     ///  get media attribute confirm event
     BT_NOTIFY_AVRCP_MEDIA_ATTRIBUTE_CFM,
 } bt_notify_avrcp_event_id_t;
+
+typedef enum
+{
+    BT_NOTIFY_AVRCP_ROLE_CT,
+    BT_NOTIFY_AVRCP_ROLE_TG,
+} bt_notify_avrcp_role_t;
 
 ///  these type are BT_NOTIFY_AVRCP event id
 typedef enum
@@ -299,7 +318,30 @@ typedef enum
     BT_NOTIFY_PBAP_VCARD_LIST_CMPL,
 } bt_notify_pbap_event_id_t;
 
+typedef enum
+{
+    BT_NOTIFY_PBAP_ROLE_CLIENT,
+    BT_NOTIFY_PBAP_ROLE_SERVER,
+} bt_notify_pbap_role_t;
 
+typedef enum
+{
+    BT_NOTIFY_HFP_PROFILE,
+    BT_NOTIFY_AVRCP_PROFILE,
+    BT_NOTIFY_A2DP_PROFILE,
+    BT_NOTIFY_PAN_PROFILE,
+    BT_NOTIFY_HID_PROFILE,
+    BT_NOTIFY_SPP_PROFILE,
+    BT_NOTIFY_BT_GATT_PROFILE,
+    BT_NOTIFY_PBAP_PROFILE,
+    BT_NOTIFY_PROFILE_MAX
+} bt_notify_profile_type_t;
+
+typedef enum
+{
+    BT_NOTIFY_LINK_PHONE,
+    BT_NOTIFY_LINK_EARPHONE,
+} bt_notify_link_type_t;
 
 /// Inquiry parameters
 typedef struct
@@ -418,6 +460,8 @@ typedef struct
 {
     ///  remote device mac
     bt_notify_device_mac_t mac;
+    ///  acl connection handle
+    uint16_t handle;
     ///  reason
     uint8_t res;
 } bt_notify_device_base_info_t;
@@ -442,13 +486,29 @@ typedef struct
 {
     ///  remote device mac
     bt_notify_device_mac_t mac;
+    ///  acl connection handle
+    uint16_t handle;
     ///  reason
     uint8_t res;
     ///  acl connect direction
     uint8_t acl_dir;
     ///  remote device class of device
     uint32_t dev_cls;
+
+    void * acl_info;
 } bt_notify_device_acl_conn_info_t;
+
+typedef struct
+{
+    ///  remote device mac
+    bt_notify_device_mac_t mac;
+    ///  acl connect direction
+    uint8_t acl_dir;
+    ///  acl link type
+    uint16_t link_type;
+    ///  remote device class of device
+    uint32_t dev_cls;
+} bt_notify_device_conn_request_t;
 
 ///  bt sco connection state information
 typedef struct

@@ -1822,7 +1822,7 @@ static void bt_hdl_menu_pan(bts2_app_stru *bts2_app_data)
         bd.lap = (mac[3] << 16) | (mac[4] << 8) | mac[5];
         bd.uap = (U8)mac[2];
         bd.nap = (U16)((mac[0] << 8) | mac[1]);
-        bt_pan_conn(&bd);
+        bt_pan_connect_request(&bd);
         break;
     }
     case '2':
@@ -1951,7 +1951,7 @@ static void bt_hdl_menu_hfp_hf(bts2_app_stru *bts2_app_data)
 
     case '1':
     {
-        //bt_hfp_hf_start_connecting(bts2_app_data);
+        //bt_hfp_hf_connect_request(bts2_app_data);
         BTS2S_BD_ADDR bd;
         int reuslt = 0;
         uint32_t mac[6];
@@ -2705,7 +2705,7 @@ static void bt_hdl_menu_hfp_ag(bts2_app_stru *bts2_app_data)
         bd.lap = (mac[3] << 16) | (mac[4] << 8) | mac[5];
         bd.uap = (U8)mac[2];
         bd.nap = (U16)((mac[0] << 8) | mac[1]);
-        bt_hfp_connect_profile(&bd);
+        bt_hfp_ag_connect_request(&bd);
         break;
     }
     case '2':
@@ -2721,7 +2721,7 @@ static void bt_hdl_menu_hfp_ag(bts2_app_stru *bts2_app_data)
         bd.uap = (U8)mac[2];
         bd.nap = (U16)((mac[0] << 8) | mac[1]);
 
-        bt_hfp_disconnect_profile(&bd);
+        bt_hfp_ag_disconnect_request(&bd);
         break;
     }
     case '3':
@@ -3538,7 +3538,7 @@ static void bt_hdl_menu_av_snk(bts2_app_stru *bts2_app_data)
     {
 
     case '1':
-        bt_avsnk_conn_2_src(&(bts2_app_data->last_conn_bd));
+        bt_a2dp_source_connect_request(&(bts2_app_data->last_conn_bd));
         break;
     case '2':
         bt_avsnk_disc_2_src(FALSE);
@@ -3813,7 +3813,7 @@ static void bt_hdl_menu_hid(bts2_app_stru *bts2_app_data)
     switch (bts2_app_data->input_str[0])
     {
     case 'c':
-        bt_hid_conn_2_dev(&(bts2_app_data->last_conn_bd));
+        bt_hid_connect_requset(&(bts2_app_data->last_conn_bd));
         break;
     case 'D':
         bt_hid_disc_2_dev(&(bts2_app_data->last_conn_bd));
@@ -4000,7 +4000,7 @@ static void bt_hdl_menu_av_src(bts2_app_stru *bts2_app_data)
     switch (bts2_app_data->input_str[0])
     {
     case '1':
-        bt_avsrc_conn_2_snk(&(bts2_app_data->last_conn_bd));
+        bt_a2dp_sink_connect_request(&(bts2_app_data->last_conn_bd));
         break;
     case '2':
         bt_avsrc_disc_2_snk(bts2_app_data);
@@ -4794,7 +4794,7 @@ static void bt_hdl_menu_pbap_clt(bts2_app_stru *bts2_app_data)
         bd.uap = (U8)mac[2];
         bd.nap = (U16)((mac[0] << 8) | mac[1]);
 
-        bt_pbap_client_connect(&bd, FALSE);
+        bt_pbap_client_connect_request(&bd, FALSE);
         break;
     }
     case '2':
@@ -4860,7 +4860,7 @@ static void bt_hdl_menu_pbap_clt(bts2_app_stru *bts2_app_data)
         bd.uap = (U8)mac[2];
         bd.nap = (U16)((mac[0] << 8) | mac[1]);
 
-        bt_pbap_client_connect(&bd, TRUE);
+        bt_pbap_client_connect_request(&bd, TRUE);
         break;
     }
     case 's':

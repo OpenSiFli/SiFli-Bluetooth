@@ -157,7 +157,15 @@ U8 bt_avrcp_get_role_by_addr(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd_add
     return role;
 }
 
+int bt_avrcp_target_connect_request(BTS2S_BD_ADDR *bd)
+{
+    return bt_avrcp_conn_2_dev(bd,TRUE);
+}
 
+int bt_avrcp_controller_connect_request(BTS2S_BD_ADDR *bd)
+{
+    return bt_avrcp_conn_2_dev(bd,FALSE);
+}
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
@@ -172,7 +180,7 @@ U8 bt_avrcp_get_role_by_addr(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd_add
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avrcp_conn_2_dev(BTS2S_BD_ADDR *bd, BOOL is_target)
+int bt_avrcp_conn_2_dev(BTS2S_BD_ADDR *bd, BOOL is_target)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
 
@@ -192,11 +200,15 @@ void bt_avrcp_conn_2_dev(BTS2S_BD_ADDR *bd, BOOL is_target)
         {
             avrcp_conn_req(bts2_app_data->phdl, *bd, AVRCP_CT, AVRCP_TG);
         }
+
+        return 0;
     }
     else
     {
         USER_TRACE(" -- already connected with remote device\n");
+        return 1;
     }
+    return 1;
 }
 
 /*----------------------------------------------------------------------------*
@@ -2384,8 +2396,7 @@ static void bt_avrcp_hdl_conn_cfm(bts2_app_stru *bts2_app_data)
         bt_addr_convert(&msg->bd, profile_state.mac.addr);
         profile_state.profile_type = BT_NOTIFY_AVRCP;
         profile_state.res = BTS2_SUCC;
-        bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_PROFILE_CONNECTED,
-                                     &profile_state, sizeof(bt_notify_profile_state_info_t));
+        bt_profile_update_connection_state(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_PROFILE_CONNECTED, &profile_state);
         INFO_TRACE("URC avrcp conn,cfm\n");
 #endif
 
@@ -2406,8 +2417,7 @@ static void bt_avrcp_hdl_conn_cfm(bts2_app_stru *bts2_app_data)
         bt_addr_convert(&msg->bd, profile_state.mac.addr);
         profile_state.profile_type = BT_NOTIFY_AVRCP;
         profile_state.res = msg->res;
-        bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_PROFILE_DISCONNECTED,
-                                     &profile_state, sizeof(bt_notify_profile_state_info_t));
+        bt_profile_update_connection_state(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_PROFILE_DISCONNECTED, &profile_state);
 #endif
     }
 
@@ -2509,8 +2519,7 @@ void bt_avrcp_msg_handler(bts2_app_stru *bts2_app_data)
         bt_addr_convert(&msg->bd, profile_state.mac.addr);
         profile_state.profile_type = BT_NOTIFY_AVRCP;
         profile_state.res = BTS2_SUCC;
-        bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_PROFILE_CONNECTED,
-                                     &profile_state, sizeof(bt_notify_profile_state_info_t));
+        bt_profile_update_connection_state(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_PROFILE_CONNECTED, &profile_state);
         INFO_TRACE("URC avrcp conn,ind\n");
 #endif
         U8 role = bt_avrcp_get_role_by_addr(bts2_app_data, &bts2_app_data->avrcp_inst.con[0].rmt_bd);
@@ -2539,8 +2548,7 @@ void bt_avrcp_msg_handler(bts2_app_stru *bts2_app_data)
         bt_addr_convert(&msg->bd, profile_state.mac.addr);
         profile_state.profile_type = BT_NOTIFY_AVRCP;
         profile_state.res = msg->res;
-        bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_PROFILE_DISCONNECTED,
-                                     &profile_state, sizeof(bt_notify_profile_state_info_t));
+        bt_profile_update_connection_state(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_PROFILE_DISCONNECTED, &profile_state);
         USER_TRACE("<< urc AVRCP disc\n");
 #endif
         break;

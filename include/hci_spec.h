@@ -203,12 +203,13 @@ extern "C" {
 #endif
 #define HCI_SET_EV_MASK2                     ((U16)HCI_HOST_BB | 0x0063)
 #define HCI_WR_LE_HOST_SUPPORT               ((U16)HCI_HOST_BB | 0x006D)
+#define HCI_WR_SEC_HOST_SUPPORT              ((U16)HCI_HOST_BB | 0x007A)
 
 
 #define HCI_RESET_FIXED_ADDR_ATTMPTS_COUNTER ((U16)HCI_HOST_BB | 0x0050)
 
 #ifdef CFG_BT_VER_21
-#define HCI_MAX_HOST_BB_OCF            ((U16)0x0061)
+#define HCI_MAX_HOST_BB_OCF            ((U16)0x007B)
 #else
 #define HCI_MAX_HOST_BB_OCF            ((U16)0x0051)
 #endif
@@ -2856,6 +2857,12 @@ typedef struct
 typedef struct
 {
     BTS2S_HCI_CMD_COMMON common;
+    U8 sec_support;
+} BTS2S_HCI_WR_SEC_HOST_SUPPORT;
+
+typedef struct
+{
+    BTS2S_HCI_CMD_COMMON common;
     U8 smp_pair_mode;
 } BTS2S_HCI_WR_SMP_PAIR_MODE;
 
@@ -4446,6 +4453,11 @@ typedef enum BTS2E_DM_MSG_TAG
 
     //extend message
     ENUM_DM_ACL_CANCEL_CONN_REQ,
+    ENUM_DM_ACL_CANCEL_CONN_STATUS,
+    ENUM_DM_ACL_DIS_CONN_STATUS,
+    ENUM_DM_ACL_CREATE_CONN_STATUS,
+    ENUM_DM_ACL_ACPT_CONN_STATUS,
+    ENUM_DM_ACL_REJ_CONN_STATUS,
     ENUM_SEP_DM_ACL_LAST, /* not a msg */
 
     /* SCO conn ui msgs */
@@ -4935,6 +4947,12 @@ typedef enum BTS2E_DM_OOB_DATA_PRESENT_TAG
 #define DM_ACL_BUFF_SIZE_IND        ((U16)(ENUM_DM_ACL_BUFF_SIZE_IND))
 #define DM_ACL_DATA_SENT_IND        ((U16)(ENUM_DM_ACL_DATA_SENT_IND))
 #define DM_CONNLESS_CH_REG_REQ      ((U16)(ENUM_DM_CONNLESS_CH_REG_REQ))
+
+#define DM_ACL_CANCEL_CONN_STATUS           ((U16)(ENUM_DM_ACL_CANCEL_CONN_STATUS))
+#define DM_ACL_DIS_CONN_STATUS              ((U16)(ENUM_DM_ACL_DIS_CONN_STATUS))
+#define DM_ACL_CREATE_CONN_STATUS           ((U16)(ENUM_DM_ACL_CREATE_CONN_STATUS))
+#define DM_ACL_ACPT_CONN_STATUS             ((U16)(ENUM_DM_ACL_ACPT_CONN_STATUS))
+#define DM_ACL_REJ_CONN_STATUS              ((U16)(ENUM_DM_ACL_REJ_CONN_STATUS))
 
 /* synchronous conn ui msgs */
 #define DM_SYNC_REG_REQ             ((U16)(ENUM_DM_SYNC_REG_REQ))
@@ -5626,6 +5644,11 @@ typedef struct
 } BTS2S_DM_SYNC_DISC_CFM;
 
 
+typedef struct
+{
+    U16 type;           /* always cmd type */
+    U8 reason;          /* reason for command status */
+} BTS2S_DM_CMD_STATUS;
 
 /* SECU MGM UI dw_msg msgs are sent to the BTS2T_HCI_CMD, umsg msgs
    are sent either to the reged AM que (see HCI_GAP_MGM_REG_REQ), or to

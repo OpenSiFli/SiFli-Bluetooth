@@ -51,12 +51,12 @@ static bool bt_check_mac_addresses_validity(unsigned char *mac)
 
 void bt_interface_open_bt(void)
 {
-    bt_cm_open_bt();
+    bt_open_bt_request();
 }
 
 void bt_interface_close_bt(void)
 {
-    bt_cm_close_bt();
+    bt_close_bt_request();
 }
 
 void bt_interface_start_inquiry(void)
@@ -77,191 +77,230 @@ void bt_interface_stop_inquiry(void)
     bt_stop_inquiry(bts2_app_data);
 }
 
-bt_err_t bt_interface_conn_ext(unsigned char *mac, bt_profile_t ext_profile)
+__WEAK bt_err_t bt_interface_profile_connect_request(unsigned char *mac, uint8_t profile, uint8_t role)
 {
-    bts2_app_stru *bts2_app_data = bts2g_app_p;
-    bt_err_t          res = BT_EOK;
-    BTS2S_BD_ADDR     *bd_addr;
+    bt_err_t err = BT_EOK;
+    BTS2S_BD_ADDR     bd_addr;
 
-    bd_addr = bt_interface_this_connect_addr(mac);
-    if (bd_addr == NULL)
+    bt_addr_convert_to_bts((bd_addr_t *)mac, &bd_addr);
+    if (bd_is_empty(&bd_addr))
     {
         USER_TRACE(">> address invalid\n");
         return BT_ERROR_INPARAM;
     }
 
-    bt_cm_conned_dev_t *conn = bt_cm_find_conn_by_addr(bt_cm_get_env(), bd_addr);
-    if (conn == NULL)
+    switch (profile)
     {
-        conn = bt_cm_get_free_conn(bt_cm_get_env());
-        if (conn == NULL)
+    case BT_NOTIFY_HFP_PROFILE:
+    {
+        if(role == BT_NOTIFY_HFP_HF)
         {
-            return BT_ERROR_STATE;
-        }
-
-        memcpy(&conn->info.bd_addr, &bts2_app_data->bd_list[bts2_app_data->dev_idx], sizeof(BTS2S_BD_ADDR));
-        conn->info.role = BT_CM_SLAVE;
-        conn->state = BT_CM_STATE_CONNECTING;
-        conn->sub_state = BT_CM_SUB_STATE_IDLE;
-#ifdef BT_CONNECT_SUPPORT_MULTI_LINK
-        bt_cm_add_bonded_dev(&conn->info, 1);
+#ifdef CFG_HFP_HF
+            err = bt_hfp_hf_connect_request(&bd_addr);
 #endif
+        }
+        else if (role == BT_NOTIFY_HFP_AG)
+        {
+#ifdef CFG_HFP_AG
+            err = bt_hfp_ag_connect_request(&bd_addr);
+#endif
+        }
+        break;
     }
+#ifdef CFG_AVRCP
+    case BT_NOTIFY_AVRCP_PROFILE:
+    {
+        if(role == BT_NOTIFY_AVRCP_ROLE_CT)
+        {
+            err = bt_avrcp_controller_connect_request(&bd_addr);
+        }
+        else if (role == BT_NOTIFY_AVRCP_ROLE_TG)
+        {
+            err = bt_avrcp_target_connect_request(&bd_addr);
+        }
+        break;
+    }
+#endif
+#ifdef CFG_AV
+    case BT_NOTIFY_A2DP_PROFILE:
+    {
+        if(role == BT_NOTIFY_A2DP_ROLE_SINK)
+        {
+            err = bt_a2dp_sink_connect_request(&bd_addr);
+        }
+        else if (role == BT_NOTIFY_A2DP_ROLE_SOURCE)
+        {
+            err = bt_a2dp_source_connect_request(&bd_addr);
+        }
+        break;
+    }
+#endif
+#ifdef BT_FINSH_PAN
+    case BT_NOTIFY_PAN_PROFILE:
+    {
+        err = bt_pan_connect_request(&bd_addr);
+        break;
+    }
+#endif
+#ifdef CFG_HID
+    case BT_NOTIFY_HID_PROFILE:
+    {
+        bt_hid_connect_requset(&bd_addr);
+        break;
+    }
+#endif
+#ifdef CFG_BR_GATT_SRV
+    case BT_NOTIFY_BT_GATT_PROFILE:
+    {
+        bt_gatt_conn_req(&bd_addr);
+        break;
+    }
+#endif
+#ifdef CFG_PBAP_CLT
+    case BT_NOTIFY_PBAP_PROFILE:
+    {
+        err = bt_pbap_client_connect_request(&bd_addr, FALSE);
+        break;
+    }
+#endif
+    default:
+        return BT_ERROR_UNSUPPORTED;
+    }
+    return err;
+}
+
+bt_err_t bt_interface_conn_ext(unsigned char *mac, bt_profile_t ext_profile)
+{
+    bt_err_t res = BT_EOK;
+    uint8_t role = 0;
+    uint8_t profile_type = 0;
 
     switch (ext_profile)
     {
-    case BT_PROFILE_A2DP:
-        res = bt_avsnk_conn_2_src(bd_addr);
-        break;
-
     case BT_PROFILE_HFP:
-        bt_hfp_hf_start_connecting(bd_addr);
+        role = BT_NOTIFY_HFP_ROLE_HF;
+        profile_type = BT_NOTIFY_HFP_PROFILE;
         break;
-
     case BT_PROFILE_AVRCP:
-        bt_avrcp_conn_2_dev(bd_addr, FALSE);
+        role = BT_NOTIFY_AVRCP_ROLE_CT;
+        profile_type = BT_NOTIFY_AVRCP_PROFILE;
         break;
-
-#ifdef BT_FINSH_PAN
-    case BT_PROFILE_PAN:
-        bt_pan_conn(bd_addr);
+    case BT_PROFILE_A2DP:
+        role = BT_NOTIFY_A2DP_ROLE_SINK;
+        profile_type = BT_NOTIFY_A2DP_PROFILE;
         break;
-#endif
-
-#ifdef CFG_HID
     case BT_PROFILE_HID:
-        bt_hid_conn_2_dev(bd_addr);
+        role = 0;
+        profile_type = BT_NOTIFY_HID_PROFILE;
         break;
-#endif
 
-#ifdef CFG_BR_GATT_SRV
+    case BT_PROFILE_PAN:
+        role = 0;
+        profile_type = BT_NOTIFY_PAN_PROFILE;
+        break;
+
     case BT_PROFILE_BT_GATT:
-        bt_gatt_conn_req(bd_addr);
-        break;
-#endif
-
-#ifdef CFG_PBAP_CLT
+        role = 0;
+        profile_type = BT_NOTIFY_BT_GATT_PROFILE;
+        break; 
     case BT_PROFILE_PBAP:
-        res = bt_pbap_client_connect(bd_addr, FALSE);
-        break;
-#endif
+        role = BT_NOTIFY_PBAP_ROLE_CLIENT;
+        profile_type = BT_NOTIFY_PBAP_PROFILE;
+        break; 
 
     default:
         res = BT_ERROR_UNSUPPORTED;
         break;
     }
 
+    res = bt_interface_profile_connect_request(mac, profile_type, role);
     return res;
 }
 
 bt_err_t bt_interface_conn_to_source_ext(unsigned char *mac, bt_profile_t ext_profile)
 {
-    bts2_app_stru *bts2_app_data = bts2g_app_p;
-    bt_err_t          res = BT_EOK;
-    BTS2S_BD_ADDR     *bd_addr;
-
-    bd_addr = bt_interface_this_connect_addr(mac);
-    if (bd_addr == NULL)
-    {
-        USER_TRACE(">> address invalid\n");
-        return BT_ERROR_INPARAM;
-    }
-
-
-    bt_cm_conned_dev_t *conn = bt_cm_find_conn_by_addr(bt_cm_get_env(), &bts2_app_data->bd_list[bts2_app_data->dev_idx]);
-    if (conn == NULL)
-    {
-        conn = bt_cm_get_free_conn(bt_cm_get_env());
-        if (conn == NULL)
-        {
-            return BT_ERROR_STATE;
-        }
-
-        memcpy(&conn->info.bd_addr, &bts2_app_data->bd_list[bts2_app_data->dev_idx], sizeof(BTS2S_BD_ADDR));
-        conn->info.role = BT_CM_MASTER;
-        conn->state = BT_CM_STATE_CONNECTING;
-        conn->sub_state = BT_CM_SUB_STATE_IDLE;
-#ifdef BT_CONNECT_SUPPORT_MULTI_LINK
-        bt_cm_add_bonded_dev(&conn->info, 1);
-#endif
-    }
+    bt_err_t res = BT_EOK;
+    uint8_t role = 0;
+    uint8_t profile_type = 0;
 
     switch (ext_profile)
     {
-    case BT_PROFILE_A2DP:
-        bt_avsrc_conn_2_snk(bd_addr);
-        break;
-
-#ifdef BT_USING_AG
     case BT_PROFILE_HFP:
-        bt_hfp_connect_profile(bd_addr);
+    {
+        role = BT_NOTIFY_HFP_ROLE_AG;
+        profile_type = BT_NOTIFY_HFP_PROFILE;
         break;
-#endif
-
+    }
     case BT_PROFILE_AVRCP:
-        bt_avrcp_conn_2_dev(bd_addr, TRUE);
+    {
+        role = BT_NOTIFY_AVRCP_ROLE_TG;
+        profile_type = BT_NOTIFY_AVRCP_PROFILE;
         break;
-
+    }
+    case BT_PROFILE_A2DP:
+    {
+        role = BT_NOTIFY_A2DP_ROLE_SOURCE;
+        profile_type = BT_NOTIFY_A2DP_PROFILE;
+        break;
+    }
     default:
-        ;
+        return BT_ERROR_INPARAM;;
     }
 
+    res = bt_interface_profile_connect_request(mac, profile_type, role);
     return res;
 }
 
 bt_err_t bt_interface_disc_ext(unsigned char *mac, bt_profile_t ext_profile)
 {
-    bts2_app_stru *bts2_app_data = bts2g_app_p;
-    BTS2S_BD_ADDR     *bd_addr;
+    BTS2S_BD_ADDR     bd_addr;
 
-    bd_addr = bt_interface_this_connect_addr(mac);
+    bt_addr_convert_to_bts((bd_addr_t *)mac, &bd_addr);
 
-    if (bd_addr == NULL)
+    if (bd_is_empty(&bd_addr))
     {
         USER_TRACE(">> address invalid\n");
         return BT_ERROR_INPARAM;
     }
 
-    unsigned char     addr[6];
-    bt_addr_convert_to_general(bd_addr, (bd_addr_t *)&addr[0]);
-    USER_TRACE("connect adrr :%x:%x:%x:%x:%x:%x \n", addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
+    USER_TRACE("connect adrr :%x:%x:%x:%x:%x:%x \n", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
     switch (ext_profile)
     {
     case BT_PROFILE_A2DP:
 #ifdef CFG_AV_SNK
-        bt_avsnk_disc_by_addr(bd_addr, FALSE);
+        bt_avsnk_disc_by_addr(&bd_addr, FALSE);
 #endif
         break;
 
     case BT_PROFILE_AVRCP:
-        bt_avrcp_disc_2_dev(bd_addr);
+        bt_avrcp_disc_2_dev(&bd_addr);
         break;
 
     case BT_PROFILE_HID:
 #ifdef CFG_HID
-        bt_hid_disc_2_dev(bd_addr);
+        bt_hid_disc_2_dev(&bd_addr);
 #endif
         break;
 
 #ifdef CFG_BR_GATT_SRV
     case BT_PROFILE_BT_GATT:
-        bt_gatt_disconn_req(bd_addr);
+        bt_gatt_disconn_req(&bd_addr);
         break;
 #endif
 
 #ifdef CFG_PBAP_CLT
     case BT_PROFILE_PBAP:
-        bt_pbap_client_disconnect(bd_addr);
+        bt_pbap_client_disconnect(&bd_addr);
         break;
 #endif
     case BT_PROFILE_HFP:
-        bt_hfp_hf_start_disc(bd_addr);
+        bt_hfp_hf_start_disc(&bd_addr);
         break;
 
 #ifdef BT_FINSH_PAN
     case BT_PROFILE_PAN:
-        bt_pan_disc(bd_addr);
+        bt_pan_disc(&bd_addr);
         break;
 #endif
 
@@ -465,7 +504,7 @@ BTS2S_BD_ADDR *bt_interface_this_connect_addr(unsigned char *mac)
 
 void bt_interface_acl_accept_role_set(U8 role) //0；master 1:slave
 {
-    bt_acl_accept_role_set(role);
+    // bt_acl_accept_role_set(role);
 }
 
 void bt_interface_set_linkpolicy(U16 lp_in, U16 lp_out)//bit0:roleswitch   bit2:sniff
@@ -1378,7 +1417,7 @@ bt_err_t bt_interface_hfp_hf_start_connecting(unsigned char *mac)
     if (bt_check_mac_addresses_validity(mac))
     {
         bt_addr_convert_to_bts((bd_addr_t *)mac, &bd_addr);
-        bt_hfp_hf_start_connecting(&bd_addr);
+        bt_hfp_hf_connect_request(&bd_addr);
         return BT_EOK;
     }
 

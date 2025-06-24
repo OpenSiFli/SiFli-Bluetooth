@@ -19,7 +19,7 @@ extern "C" {
 void bt_pan_init(bts2_app_stru *bts2_app_data);
 void bt_pan_reg(bts2_app_stru *bts2_app_data);
 void bt_pan_enable(bts2_app_stru *bts2_app_data);
-int bt_pan_conn(BTS2S_BD_ADDR *remote_addr);
+int bt_pan_connect_request(BTS2S_BD_ADDR *remote_addr);
 void bt_pan_update_addr(BTS2S_BD_ADDR *bd_addr);
 void bt_pan_disc(BTS2S_BD_ADDR *bd);
 void bt_hdl_pan_msg(bts2_app_stru *bts2_app_data);

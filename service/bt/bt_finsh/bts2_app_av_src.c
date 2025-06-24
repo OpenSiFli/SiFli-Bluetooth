@@ -158,9 +158,10 @@ static void bt_avsrc_send_cb(uint16_t m, void *para)
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avsrc_conn_2_snk(BTS2S_BD_ADDR *bd)
+int bt_a2dp_sink_connect_request(BTS2S_BD_ADDR *bd)
 {
     bt_av_conn(bd, AV_SNK);
+    return 0;
 }
 
 /*----------------------------------------------------------------------------*

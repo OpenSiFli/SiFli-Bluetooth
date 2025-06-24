@@ -199,7 +199,9 @@ bt_err_t bt_sifli_control_hf(struct rt_bt_device *bt_handle, int cmd, void *args
             return BT_ERROR_INPARAM;
         }
 
-        if (bt_sifli_check_bt_event(BT_SET_DTMF_EVENT) || (BT_STATE_CONNECTED != rt_bt_get_connect_state(bt_handle, BT_PROFILE_HFP)))
+        if (!bt_sifli_get_role_profile_connect_status(bt_handle, BT_LINK_PHONE, BT_PROFILE_HFP))
+            return BT_ERROR_STATE;
+        if (bt_sifli_check_bt_event(BT_SET_DTMF_EVENT))
         {
             LOG_I("set DMTF failed");
             return BT_ERROR_STATE;
@@ -242,12 +244,10 @@ bt_err_t bt_sifli_control_hf(struct rt_bt_device *bt_handle, int cmd, void *args
 #ifdef BT_USING_SIRI
     case BT_CONTROL_SIRI_ON:
     {
-#ifndef BT_CONNECT_SUPPORT_MULTI_LINK
-        if (rt_bt_get_connect_state(bt_handle, BT_PROFILE_HFP) != BT_STATE_CONNECTED)
+        if (!bt_sifli_get_role_profile_connect_status(bt_handle, BT_LINK_PHONE, BT_PROFILE_HFP))
         {
             return BT_ERROR_DISCONNECTED;
         }
-#endif
         if (bt_sifli_check_bt_event(BT_SET_SIRI_OFF_EVENT))
         {
             LOG_I("during siri off porcess");
@@ -275,12 +275,10 @@ bt_err_t bt_sifli_control_hf(struct rt_bt_device *bt_handle, int cmd, void *args
 
     case BT_CONTROL_SIRI_OFF:
     {
-#ifndef BT_CONNECT_SUPPORT_MULTI_LINK
-        if (rt_bt_get_connect_state(bt_handle, BT_PROFILE_HFP) != BT_STATE_CONNECTED)
+        if (!bt_sifli_get_role_profile_connect_status(bt_handle, BT_LINK_PHONE, BT_PROFILE_HFP))
         {
             return BT_ERROR_DISCONNECTED;
         }
-#endif
         if (bt_sifli_check_bt_event(BT_SET_SIRI_ON_EVENT))
         {
             LOG_I("during siri on porcess");

@@ -14,9 +14,9 @@
 #include "drivers/bt_device.h"
 
 #ifdef CFG_MAX_BT_ACL_NUM
-    #define BT_CM_MAX_CONN CFG_MAX_BT_ACL_NUM
+    #define BT_CM_DEVICE_MAX_CONN CFG_MAX_BT_ACL_NUM
 #else
-    #define BT_CM_MAX_CONN 1
+    #define BT_CM_DEVICE_MAX_CONN 1
 #endif
 #ifdef CFG_MAX_BT_BOND_NUM
     #define BT_CM_MAX_BOND CFG_MAX_BT_BOND_NUM
@@ -49,13 +49,25 @@
 
 #define BT_BASIC_PROFILE (BT_CM_HFP | BT_CM_A2DP | BT_CM_AVRCP)
 
+// Master device means audio provider, not BT's role
+typedef enum
+{
+    BT_LINK_MASTER,
+    BT_LINK_SLAVE
+} bt_cm_link_role_t;
+
+typedef enum
+{
+    BT_LINK_PHONE = 0x00,
+    BT_LINK_EARPHONE
+} bt_cm_link_type_t;
 
 // Master device means audio provider, not BT's role
 typedef enum
 {
-    BT_CM_MASTER,
-    BT_CM_SLAVE
-} bt_cm_conn_role_t;
+    BT_CM_LINK_INCOMING,
+    BT_CM_LINK_OUTGOING
+} bt_cm_link_dir_t;
 
 typedef enum
 {
@@ -69,87 +81,92 @@ typedef enum
 
 typedef enum
 {
-    BT_CM_NO_CLOSE,
-    BT_CM_ON_CLOSE_PROCESS,
-    BT_CM_CLOSE_COMPLETE
-} bt_cm_close_status_t;
+    BT_CM_CLOSED,
+    BT_CM_OPENING,
+    BT_CM_OPENED,
+    BT_CM_CLOSING,
+} bt_cm_state_t;
 
 typedef enum
 {
-    BT_CM_STATE_IDLE,
-    BT_CM_STATE_CONNECTING,
-    BT_CM_STATE_RECONNECTING,
-    BT_CM_STATE_CONNECTED,
-} bt_cm_fsm_t;
+    BT_CM_ACL_STATE_DISCONNECTED,
+    BT_CM_ACL_STATE_CONNECTING,
+    BT_CM_ACL_STATE_CONNECTED,
+    BT_CM_ACL_STATE_DISCONNECTING,
+} bt_cm_acl_state_t;
 
 typedef enum
 {
     BT_CM_SUB_STATE_IDLE,
     BT_CM_SUB_PROFILING_CONNECTING,
-} bt_cm_sub_fsm_t;
+} bt_cm_profile_state_t;
 
 
 typedef struct
 {
     BTS2S_BD_ADDR bd_addr;
-    uint32_t dev_cls;
-    bt_cm_conn_role_t role;
+    uint32_t dev_cls;   // device of class
+    bt_cm_link_role_t role;
+    uint8_t link_type;// phone or earphone
     uint8_t is_reconn;
-} bt_cm_conn_info_t;
+    uint8_t is_use;
+} bt_cm_dev_info_t;
 
 typedef struct
 {
-    bt_cm_conn_info_t info;
-    uint32_t conned_profiles;
-    rt_timer_t tim_hdl;
+    bt_cm_dev_info_t info;
+    uint8_t is_use;
+    uint32_t profiles_bit_mask;
+    uint32_t profiles_role_bit_mask;
+    rt_timer_t profile_timer_hdl;
     uint16_t conn_hdl;
     // Curretly connect as master or slave;
-    uint8_t incoming;
+    uint8_t link_dir;
     uint8_t state;
     uint8_t sub_state;
-    uint8_t sniff_changing;
-    //uint8_t rmt_smc;//1:remote device indicate encryption change;
-} bt_cm_conned_dev_t;
+    uint8_t link_status_update; // link mode update flag
+    uint8_t link_mode;
+    float   link_interval;
+} bt_cm_dev_acl_info_t;
 
 typedef struct
 {
-    bt_cm_conn_info_t info[BT_CM_MAX_BOND];
-    uint8_t dev_state[BT_CM_MAX_BOND];
-    uint8_t g_bt_cm_last_bond_idx;
+    bt_cm_dev_info_t info[BT_CM_MAX_BOND];
+    uint8_t last_bond_idx;
 } bt_cm_bonded_dev_t;
 
 // Added reconnect flag and addr
 typedef struct
 {
-    bt_cm_conned_dev_t conn_device[BT_CM_MAX_CONN];
-    bt_cm_conn_role_t cur_role;
-    bt_cm_close_status_t close_process;
-} bt_cm_env_t;
+    bt_cm_dev_acl_info_t bt_devices[BT_CM_DEVICE_MAX_CONN];
+    bt_cm_state_t close_process;
+} bt_cm_device_manager_t;
 
 
 void init_bt_cm();
-void set_last_connect_a2dp_device(BTS2S_BD_ADDR *bd);
-void connect_bt_a2dp();
-void set_app_data(bts2_app_stru *bts2_app_data);
-bt_cm_err_t bt_cm_connect_req(BTS2S_BD_ADDR *bd_addr, bt_cm_conn_role_t role);
-int bt_cm_close_bt(void);
-int bt_cm_open_bt(void);
-void bt_cm_set_profile_target(uint32_t setProfile, bt_cm_conn_role_t role, uint8_t addFlag);
+bt_cm_device_manager_t *bt_cm_get_env();
+bt_cm_bonded_dev_t *bt_cm_get_bonded_dev(void);
+
+
+void bt_cm_change_inquiryscan_activity(uint8_t is_high);
+void bt_cm_change_page_activity(uint8_t is_high);
+
+bt_cm_err_t bt_cm_connect_req(BTS2S_BD_ADDR *bd_addr, bt_cm_link_type_t link_type);
+void bt_cm_disconnect_req(void);
+
+void bt_cm_set_profile_target(uint32_t setProfile, bt_cm_link_type_t link_type, uint8_t addFlag);
+
+bt_cm_err_t bt_cm_profile_connect(uint32_t profile_bit, BTS2S_BD_ADDR *bd_addr, bt_cm_link_type_t link_type);
+
+void bt_cm_add_bonded_dev(bt_cm_dev_info_t *dev, uint8_t force);
 void bt_cm_delete_bonded_devs(void);
 void bt_cm_delete_bonded_devs_and_linkkey(uint8_t *addr);
-void bt_cm_reconnect_last_device(void);
-uint8_t bt_cm_last_device_is_valid(void);
-void bt_cm_disconnect_req(void);
-void bt_cm_last_device_bd_addr(bt_mac_t *bd_addr_c);
-void bt_cm_change_page_activity(uint8_t is_high);
-bt_cm_conned_dev_t *bt_cm_get_free_conn(bt_cm_env_t *env);
-bt_cm_conned_dev_t *bt_cm_find_conn_by_addr(bt_cm_env_t *env, BTS2S_BD_ADDR *bd_addr);
-bt_cm_env_t *bt_cm_get_env();
-bt_cm_bonded_dev_t *bt_cm_get_bonded_dev(void);
-bt_cm_conn_info_t *bt_cm_find_bonded_dev_by_addr(uint8_t *addr);
-void bt_cm_change_inquiryscan_activity(uint8_t is_high);
-uint8_t bt_cm_find_conn_index_by_addr(uint8_t *addr);
-uint8_t bt_cm_find_addr_by_conn_index(uint8_t idx, BTS2S_BD_ADDR *addr);
-void bt_cm_add_bonded_dev(bt_cm_conn_info_t *dev, uint8_t force);
+bt_cm_dev_info_t *bt_cm_get_bonded_dev_by_addr(uint8_t *addr);
+
+bt_cm_dev_acl_info_t *bt_cm_conn_alloc(bt_cm_device_manager_t *env, BTS2S_BD_ADDR *bd_addr, uint8_t link_type);
+bt_cm_dev_acl_info_t *bt_cm_get_conn_by_addr(bt_cm_device_manager_t *env, BTS2S_BD_ADDR *bd_addr);
+uint8_t bt_cm_get_bond_index_by_addr(uint8_t *addr);
+uint8_t bt_cm_get_addr_by_bond_index(uint8_t idx, BTS2S_BD_ADDR *addr);
+
 #endif // BSP_BT_CONNECTION_MANAGER
 #endif // _BT_CONNECTION_MANAGER_H_

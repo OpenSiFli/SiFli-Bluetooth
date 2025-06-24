@@ -15,7 +15,8 @@ extern "C" {
 //add for tcpip route
 extern BTS2S_ETHER_ADDR   bts2_local_ether_addr;
 #endif
-
+# include "bts2_app_avrcp.h"
+#include "bts2_app_interface_type.h"
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
@@ -171,6 +172,10 @@ void bt_wr_dev_cls(bts2_app_stru *bts2_app_data);
  *----------------------------------------------------------------------------*/
 uint32_t bt_get_class_of_device(void);
 
+uint8_t bt_is_auto_request_connect(void);
+uint8_t bt_open_bt_request(void);
+uint8_t bt_close_bt_request(void);
+void bt_profile_update_connection_state(uint16_t type, uint16_t event_id, bt_notify_profile_state_info_t *profile_state);
 void bt_sc_io_capability_rsp(BTS2S_BD_ADDR *bd);
 
 /*----------------------------------------------------------------------------*
