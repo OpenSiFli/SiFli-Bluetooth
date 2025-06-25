@@ -159,7 +159,7 @@ bt_err_t bt_sifli_control_common(struct rt_bt_device *bt_handle, int cmd, void *
         if (app_bt_get_non_signaling_test_status())
             return BT_ERROR_STATE;
         bt_scan_con_t *scan = (bt_scan_con_t *)args;
-        gap_wr_scan_enb_req(bts2_task_get_app_task_id(), scan->inquiry_scan, scan->page_scan);
+        bt_interface_set_scan_mode(scan->inquiry_scan, scan->page_scan);
     }
     break;
 
@@ -234,7 +234,7 @@ bt_err_t bt_sifli_control_common(struct rt_bt_device *bt_handle, int cmd, void *
         ret = BT_EOK;
         bt_connect_info_t *info = (bt_connect_info_t *)args;
         bt_mac_t *mac = &(info->mac);
-        bt_interface_set_scan_mode(bts2_task_get_app_task_id(), 0, 0);
+        bt_interface_set_scan_mode(0, 0);
         bt_cm_dev_info_t *conn = bt_cm_get_bonded_dev_by_addr((uint8_t *)&info->mac);
         LOG_D("[%s] conn:%p type:%d", __func__, conn, conn->link_type);
         if (conn)
@@ -488,7 +488,7 @@ bt_err_t bt_sifli_control_common(struct rt_bt_device *bt_handle, int cmd, void *
     {
         if (app_bt_get_non_signaling_test_status())
             return BT_ERROR_STATE;
-        gap_wr_scan_enb_req(bts2_task_get_app_task_id(), TRUE, TRUE);
+        bt_interface_set_scan_mode(TRUE, TRUE);
     }
     break;
 
@@ -496,7 +496,7 @@ bt_err_t bt_sifli_control_common(struct rt_bt_device *bt_handle, int cmd, void *
     {
         if (app_bt_get_non_signaling_test_status())
             return BT_ERROR_STATE;
-        gap_wr_scan_enb_req(bts2_task_get_app_task_id(), FALSE, FALSE);
+        bt_interface_set_scan_mode(FALSE, FALSE);
     }
     break;
 

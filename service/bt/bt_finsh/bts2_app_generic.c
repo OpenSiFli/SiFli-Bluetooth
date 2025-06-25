@@ -192,7 +192,7 @@ __WEAK void bt_sc_io_capability_rsp(BTS2S_BD_ADDR *bd)
 
 __WEAK uint8_t bt_is_auto_request_connect(void)
 {
-    return 1; // 0:it doesn't need check 
+    return 1; // 0:it doesn't need check
 }
 
 __WEAK uint8_t bt_open_bt_request(void)
@@ -207,11 +207,6 @@ __WEAK uint8_t bt_close_bt_request(void)
     gap_close_req(NULL);
     bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_CLOSE_COMPLETE, NULL, 0);
     return 0;
-}
-
-__WEAK void bt_profile_update_connection_state(uint16_t type, uint16_t event_id, bt_notify_profile_state_info_t *profile_state)
-{
-    bt_interface_bt_event_notify(type, event_id, profile_state, sizeof(bt_notify_profile_state_info_t));
 }
 /*----------------------------------------------------------------------------*
  *

@@ -95,6 +95,8 @@ int8_t bt_interface_start_inquiry_ex(bt_start_inquiry_ex_t *param);
  **/
 void bt_interface_stop_inquiry(void);
 
+void bt_profile_update_connection_state(uint16_t type, uint16_t event_id, bt_notify_profile_state_info_t *profile_state);
+
 bt_err_t bt_interface_profile_connect_request(unsigned char *mac, uint8_t profile, uint8_t role);
 /**
  * @brief            Initiate connect with the specified device and profile(hf sink)
@@ -210,6 +212,15 @@ void bt_interface_rd_local_rssi(unsigned char *mac);
  * @return           Bluetooth scan mode
  **/
 U8 bt_interface_get_current_scan_mode(void);
+
+/**
+ * @brief                     set bluetooth's scan mode
+ * @param[in] inquiry_scan    enable/disable inquiry scan
+ * @param[in] page_scan       enable/disable page scan
+ * @return                    Return scan mode set result
+ *
+ **/
+U8 bt_interface_set_scan_mode(BOOL inquiry_scan, BOOL page_scan);
 
 /**
  * @brief               Bluetooth address covert

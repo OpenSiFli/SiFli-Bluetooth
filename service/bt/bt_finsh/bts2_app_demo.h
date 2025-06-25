@@ -293,6 +293,12 @@ typedef struct
 } bts2_bt_l2cap_inst_data_t;
 #endif
 
+typedef enum
+{
+    BTS_SCAN_MODE_IDLE,
+    BTS_SCAN_MODE_SETTING,
+} bts_scan_mode_fsm_t;
+
 /* app structure */
 typedef struct
 {
@@ -373,6 +379,8 @@ typedef struct
     //U8                 hci_version;
     //U8                 l2cap_version;
     U8                 scan_mode;
+    U8                 target_scan_mode;
+    U8                 scan_mode_fsm;
 } bts2_app_stru;
 
 void key_msg_svc(void);

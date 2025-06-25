@@ -40,6 +40,11 @@ extern "C" {
 #define FORWARD_PASS_THROUGH      (0x4b)
 #define BACKWARD_PASS_THROUGH     (0x4c)
 
+#define AVRCP_MAX_SONG_NAME_LEN    (128)
+#define AVRCP_MAX_SINGER_NAME_LEN  (128)
+#define AVRCP_MAX_ALBUM_INFO_LEN   (128)
+#define AVRCP_MAX_PLAY_TIME_LEN    (8)
+
 #ifdef CFG_MS
 _CTRLLER_EXPORT int AVRCP_ctrl_API(WORD n_cmd_code,  LPVOID lp_param);
 
@@ -58,26 +63,26 @@ typedef enum
 typedef struct
 {
     uint32_t size;
-    uint8_t song_name[BT_MAX_SONG_NAME_LEN];
+    uint8_t song_name[AVRCP_MAX_SONG_NAME_LEN];
 } bt_avrcp_music_song_name_t;
 
 typedef struct
 {
     uint32_t size;
-    uint8_t singer_name[BT_MAX_SINGER_NAME_LEN];
+    uint8_t singer_name[AVRCP_MAX_SINGER_NAME_LEN];
 } bt_avrcp_music_singer_name_t;
 
 
 typedef struct
 {
     uint32_t size;
-    uint8_t album_name[BT_MAX_ALBUM_INFO_LEN];
+    uint8_t album_name[AVRCP_MAX_ALBUM_INFO_LEN];
 } bt_avrcp_music_album_info_t;
 
 typedef struct
 {
     uint32_t size;
-    uint8_t play_time[BT_MAX_PLAY_TIME_LEN];//ascii code  ,unit:ms
+    uint8_t play_time[AVRCP_MAX_PLAY_TIME_LEN];//ascii code  ,unit:ms
 } bt_avrcp_music_play_time_t;
 
 typedef struct

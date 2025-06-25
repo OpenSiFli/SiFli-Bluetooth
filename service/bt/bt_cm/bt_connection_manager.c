@@ -98,7 +98,7 @@ static uint8_t bt_cm_get_link_type_by_profile_role(uint8_t profile, uint8_t role
     }
     case BT_NOTIFY_A2DP_PROFILE:
     {
-         if (role == BT_NOTIFY_A2DP_ROLE_SOURCE)
+        if (role == BT_NOTIFY_A2DP_ROLE_SOURCE)
         {
             link_type = BT_LINK_EARPHONE;
         }
@@ -305,7 +305,7 @@ bt_cm_dev_acl_info_t *bt_cm_conn_alloc(bt_cm_device_manager_t *env, BTS2S_BD_ADD
     for (uint8_t i = 0; i < BT_CM_DEVICE_MAX_CONN; i++)
     {
 
-        bt_cm_dev_acl_info_t * conn = &env->bt_devices[i];
+        bt_cm_dev_acl_info_t *conn = &env->bt_devices[i];
         memset(conn, 0, sizeof(bt_cm_dev_acl_info_t));
         if (!conn->is_use)
         {
@@ -434,7 +434,7 @@ uint8_t bt_close_bt_request(void)
         {
             env->bt_devices[i].state =  BT_CM_ACL_STATE_DISCONNECTED;
         }
-                // Cal AVRCP
+        // Cal AVRCP
         bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_CLOSE_COMPLETE, NULL, 0);
     }
 
@@ -481,7 +481,7 @@ static int bt_cm_update_profile_bit_mask(bt_cm_dev_acl_info_t *conn, uint32_t pr
         uint32_t profile_type = bt_cm_conn_get_next_profile(conn, conn->info.link_type);
         if (profile_type != 0)
         {
-            bt_cm_profile_connect(profile_type,  &conn->info.bd_addr,conn->info.link_type);
+            bt_cm_profile_connect(profile_type,  &conn->info.bd_addr, conn->info.link_type);
         }
     }
     return 0;
@@ -706,53 +706,53 @@ void bt_profile_update_connection_state(uint16_t type, uint16_t event_id, bt_not
 #ifdef BT_AUTO_CONNECT_LAST_DEVICE
     switch (type)
     {
-        case BT_NOTIFY_HFP_HF:
-        {
-            bt_hfp_hf_profile_state_hdl(event_id, profile_state);
-            break;
-        }
-        case BT_NOTIFY_HFP_AG:
-        {
-            bt_hfp_ag_profile_state_hdl(event_id, profile_state);
-            break;
-        }
-        case BT_NOTIFY_A2DP:
-        {
-            bt_a2dp_profile_state_hdl(event_id, profile_state);
-            break;
-        }
-        case BT_NOTIFY_AVRCP:
-        {
-            bt_avrcp_profile_state_hdl(event_id, profile_state);
-            break;
-        }
-        case BT_NOTIFY_HID:
-        {
-            bt_hid_profile_state_hdl(event_id, profile_state);
-            break;
-        }
-        case BT_NOTIFY_PAN:
-        {
-            bt_pan_profile_state_hdl(event_id, profile_state);
-            break;
-        }
-        case BT_NOTIFY_SPP:
-        {
-            bt_spp_profile_state_hdl(event_id, profile_state);
-            break;
-        }
-        case BT_NOTIFY_GATT:
-        {
-            bt_gatt_profile_state_hdl(event_id, profile_state);
-            break;
-        }
-        case BT_NOTIFY_PBAP:
-        {
-            bt_pabp_profile_state_hdl(event_id, profile_state);
-            break;
-        }
-        default:
-            break;
+    case BT_NOTIFY_HFP_HF:
+    {
+        bt_hfp_hf_profile_state_hdl(event_id, profile_state);
+        break;
+    }
+    case BT_NOTIFY_HFP_AG:
+    {
+        bt_hfp_ag_profile_state_hdl(event_id, profile_state);
+        break;
+    }
+    case BT_NOTIFY_A2DP:
+    {
+        bt_a2dp_profile_state_hdl(event_id, profile_state);
+        break;
+    }
+    case BT_NOTIFY_AVRCP:
+    {
+        bt_avrcp_profile_state_hdl(event_id, profile_state);
+        break;
+    }
+    case BT_NOTIFY_HID:
+    {
+        bt_hid_profile_state_hdl(event_id, profile_state);
+        break;
+    }
+    case BT_NOTIFY_PAN:
+    {
+        bt_pan_profile_state_hdl(event_id, profile_state);
+        break;
+    }
+    case BT_NOTIFY_SPP:
+    {
+        bt_spp_profile_state_hdl(event_id, profile_state);
+        break;
+    }
+    case BT_NOTIFY_GATT:
+    {
+        bt_gatt_profile_state_hdl(event_id, profile_state);
+        break;
+    }
+    case BT_NOTIFY_PBAP:
+    {
+        bt_pabp_profile_state_hdl(event_id, profile_state);
+        break;
+    }
+    default:
+        break;
     }
 #endif
 }
@@ -831,9 +831,9 @@ static void bt_cm_app_init_ready_hdl(void *msg)
 
     if (idx < BT_CM_MAX_BOND)
     {
-        bt_cm_dev_info_t * device_info =  bonded_list->info + idx;
+        bt_cm_dev_info_t *device_info =  bonded_list->info + idx;
         uint8_t link_type1 = device_info->link_type;
-        LOG_I("bt_cm_app_init_ready_hdl ,idx %d link_type  %d",idx, device_info->link_type);
+        LOG_I("bt_cm_app_init_ready_hdl ,idx %d link_type  %d", idx, device_info->link_type);
 
         if (!bd_is_empty(&device_info->bd_addr))
         {
@@ -846,10 +846,10 @@ static void bt_cm_app_init_ready_hdl(void *msg)
     }
     else
 #endif // BT_AUTO_CONNECT_LAST_DEVICE
-    if ((BT_CM_OPENED == env->close_process) && (bt_cm_get_conn_num(env) < BT_CM_DEVICE_MAX_CONN))
-    {
-        gap_wr_scan_enb_req(bts2_task_get_app_task_id(), TRUE, TRUE);
-    }
+        if ((BT_CM_OPENED == env->close_process) && (bt_cm_get_conn_num(env) < BT_CM_DEVICE_MAX_CONN))
+        {
+            gap_wr_scan_enb_req(bts2_task_get_app_task_id(), TRUE, TRUE);
+        }
 
 }
 
@@ -876,7 +876,7 @@ int bt_cm_gap_event_handler(uint16_t event_id, uint8_t *msg)
 
         if (conn)
         {
-            if (conn->link_status_update&& ind->st != HCI_SUCC)
+            if (conn->link_status_update && ind->st != HCI_SUCC)
             {
                 LOG_E("Adjust sniff failed");
                 conn->link_status_update = 0;
@@ -908,7 +908,7 @@ int bt_cm_gap_event_handler(uint16_t event_id, uint8_t *msg)
             {
                 conn->link_interval = (float)ind->interval * 5 / 8;
                 LOG_D("%s mode st: %d, inv: %.2f", mod_str[ind->mode], ind->st, conn->link_interval);
-            }      
+            }
         }
         break;
     }
@@ -968,13 +968,13 @@ static void bt_cm_hci_acl_connect_complete_event_hdl(BTS2S_DM_EN_ACL_OPENED_IND 
         conn->info.dev_cls = ind->dev_cls;
         conn->link_dir = ind->incoming;
         conn->state = BT_CM_ACL_STATE_CONNECTED;
-        hcia_wr_lp_settings_keep_sniff_interval(&ind->bd, HCI_LINK_POLICY_NO_CHANGE, BT_CM_SNIFF_ENTER_TIME, 
+        hcia_wr_lp_settings_keep_sniff_interval(&ind->bd, HCI_LINK_POLICY_NO_CHANGE, BT_CM_SNIFF_ENTER_TIME,
                                                 BT_CM_SNIFF_INV, BT_CM_SNIFF_INV, BT_CM_SNIFF_ATTEMPT, BT_CM_SNIFF_TIMEOUT, NULL);
     }
 
     else if (conn && (ind->st != HCI_SUCC || (BT_CM_OPENED != env->close_process)))
     {
-         bt_cm_conn_dealloc(env, conn);
+        bt_cm_conn_dealloc(env, conn);
     }
 
     if ((bt_cm_get_conn_num(env) + 1) > BT_CM_DEVICE_MAX_CONN)
@@ -1131,7 +1131,7 @@ int bt_cm_sc_event_handler(uint16_t event_id, uint8_t *msg)
         bt_cm_device_manager_t *env = bt_cm_get_env();
         if (ind->res == 0)
         {
-            LOG_I("BTS2S_SC_PAIR_IND cod:0x%2x",ind->cod);
+            LOG_I("BTS2S_SC_PAIR_IND cod:0x%2x", ind->cod);
             bt_cm_dev_acl_info_t *conn = bt_cm_get_conn_by_addr(env, &ind->bd);
             bt_cm_add_bonded_dev(&conn->info, 1);
             //to add bonded device
@@ -1303,7 +1303,7 @@ bt_err_t bt_interface_profile_connect_request(unsigned char *mac, uint8_t profil
     }
 
     bt_cm_device_manager_t *env = bt_cm_get_env();
-    bt_cm_dev_acl_info_t *conn = bt_cm_get_conn_by_addr(env,&bd_addr);
+    bt_cm_dev_acl_info_t *conn = bt_cm_get_conn_by_addr(env, &bd_addr);
 
     if (conn == NULL)
     {
@@ -1337,7 +1337,7 @@ bt_err_t bt_interface_profile_connect_request(unsigned char *mac, uint8_t profil
 #ifdef CFG_AVRCP
     case BT_NOTIFY_AVRCP_PROFILE:
     {
-        if(role == BT_NOTIFY_AVRCP_ROLE_CT)
+        if (role == BT_NOTIFY_AVRCP_ROLE_CT)
         {
             err = bt_avrcp_controller_connect_request(&bd_addr);
         }
@@ -1351,13 +1351,21 @@ bt_err_t bt_interface_profile_connect_request(unsigned char *mac, uint8_t profil
 #ifdef CFG_AV
     case BT_NOTIFY_A2DP_PROFILE:
     {
-        if(role == BT_NOTIFY_A2DP_ROLE_SINK)
+        if (role == BT_NOTIFY_A2DP_ROLE_SOURCE)
         {
+#ifdef CFG_AV_SRC
             err = bt_a2dp_sink_connect_request(&bd_addr);
+#else
+            LOG_I("WARRING,not enabled AV source");
+#endif
         }
-        else if (role == BT_NOTIFY_A2DP_ROLE_SOURCE)
+        else if (role == BT_NOTIFY_A2DP_ROLE_SINK)
         {
+#ifdef CFG_AV_SNK
             err = bt_a2dp_source_connect_request(&bd_addr);
+#else
+            LOG_I("WARRING,not enabled AV sink");
+#endif
         }
         break;
     }
@@ -1430,12 +1438,12 @@ bt_cm_err_t bt_cm_profile_connect(uint32_t profile_bit, BTS2S_BD_ADDR *bd_addr, 
     uint8_t role = 0xff;
     uint8_t profile = 0xff;
 
-    switch(profile_bit)
+    switch (profile_bit)
     {
     case BT_CM_HFP:
     {
         profile = BT_NOTIFY_HFP_PROFILE;
-    
+
         if (link_type == BT_LINK_PHONE)
         {
             role = BT_NOTIFY_HFP_ROLE_HF;
@@ -1525,7 +1533,7 @@ bt_cm_err_t bt_cm_connect_req(BTS2S_BD_ADDR *bd_addr, bt_cm_link_type_t link_typ
         {
             bt_cm_err_t ret = bt_cm_profile_connect(profile_bit, bd_addr, link_type);
             LOG_I("Reconnect ret %d link_type 0x%2x", ret, link_type);
-    
+
             if (ret != BT_CM_ERR_NO_ERR)
             {
                 err = BT_CM_ERR_INVALID_PARA;
@@ -1715,7 +1723,7 @@ void bt_cm(uint8_t argc, char **argv)
         {
             uint8_t mod_str[3][7] = {"Active", "Hold", "Sniff"};
             bt_cm_device_manager_t *env = bt_cm_get_env();
-            for (uint8_t i = 0; i < BT_CM_MAX_BOND; i++) 
+            for (uint8_t i = 0; i < BT_CM_MAX_BOND; i++)
             {
                 bt_cm_dev_acl_info_t *conn = &env->bt_devices[i];
                 if (conn->state >= BT_CM_ACL_STATE_CONNECTED)

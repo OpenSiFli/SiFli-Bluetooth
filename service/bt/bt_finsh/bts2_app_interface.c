@@ -77,6 +77,11 @@ void bt_interface_stop_inquiry(void)
     bt_stop_inquiry(bts2_app_data);
 }
 
+__WEAK void bt_profile_update_connection_state(uint16_t type, uint16_t event_id, bt_notify_profile_state_info_t *profile_state)
+{
+    bt_interface_bt_event_notify(type, event_id, profile_state, sizeof(bt_notify_profile_state_info_t));
+}
+
 __WEAK bt_err_t bt_interface_profile_connect_request(unsigned char *mac, uint8_t profile, uint8_t role)
 {
     bt_err_t err = BT_EOK;
@@ -93,7 +98,7 @@ __WEAK bt_err_t bt_interface_profile_connect_request(unsigned char *mac, uint8_t
     {
     case BT_NOTIFY_HFP_PROFILE:
     {
-        if(role == BT_NOTIFY_HFP_HF)
+        if (role == BT_NOTIFY_HFP_HF)
         {
 #ifdef CFG_HFP_HF
             err = bt_hfp_hf_connect_request(&bd_addr);
@@ -110,7 +115,7 @@ __WEAK bt_err_t bt_interface_profile_connect_request(unsigned char *mac, uint8_t
 #ifdef CFG_AVRCP
     case BT_NOTIFY_AVRCP_PROFILE:
     {
-        if(role == BT_NOTIFY_AVRCP_ROLE_CT)
+        if (role == BT_NOTIFY_AVRCP_ROLE_CT)
         {
             err = bt_avrcp_controller_connect_request(&bd_addr);
         }
@@ -124,13 +129,21 @@ __WEAK bt_err_t bt_interface_profile_connect_request(unsigned char *mac, uint8_t
 #ifdef CFG_AV
     case BT_NOTIFY_A2DP_PROFILE:
     {
-        if(role == BT_NOTIFY_A2DP_ROLE_SINK)
+        if (role == BT_NOTIFY_A2DP_ROLE_SOURCE)
         {
+#ifdef CFG_AV_SRC
             err = bt_a2dp_sink_connect_request(&bd_addr);
+#else
+            LOG_I("WARRING,not enabled AV source");
+#endif
         }
-        else if (role == BT_NOTIFY_A2DP_ROLE_SOURCE)
+        else if (role == BT_NOTIFY_A2DP_ROLE_SINK)
         {
+#ifdef CFG_AV_SNK
             err = bt_a2dp_source_connect_request(&bd_addr);
+#else
+            LOG_I("WARRING,not enabled AV sink");
+#endif
         }
         break;
     }
@@ -202,11 +215,11 @@ bt_err_t bt_interface_conn_ext(unsigned char *mac, bt_profile_t ext_profile)
     case BT_PROFILE_BT_GATT:
         role = 0;
         profile_type = BT_NOTIFY_BT_GATT_PROFILE;
-        break; 
+        break;
     case BT_PROFILE_PBAP:
         role = BT_NOTIFY_PBAP_ROLE_CLIENT;
         profile_type = BT_NOTIFY_PBAP_PROFILE;
-        break; 
+        break;
 
     default:
         res = BT_ERROR_UNSUPPORTED;
@@ -453,6 +466,30 @@ U8 bt_interface_get_current_scan_mode(void)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
     return bts2_app_data->scan_mode;
+}
+
+U8 bt_interface_set_scan_mode(BOOL inquiry_scan, BOOL page_scan)
+{
+    U8 target_scan_mode = 0;
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    if (inquiry_scan)
+    {
+        target_scan_mode |= 0x01;
+    }
+
+    if (page_scan)
+    {
+        target_scan_mode |= 0x02;
+    }
+
+    if ((target_scan_mode != bts2_app_data->scan_mode) ||
+            (bts2_app_data->scan_mode_fsm && (target_scan_mode !=  bts2_app_data->target_scan_mode)))
+    {
+        gap_wr_scan_enb_req(bts2_task_get_app_task_id(), inquiry_scan, page_scan);
+    }
+    bts2_app_data->target_scan_mode = target_scan_mode;
+    bts2_app_data->scan_mode_fsm = BTS_SCAN_MODE_SETTING;
+    return 0;
 }
 
 uint8_t bt_addr_convert(BTS2S_BD_ADDR *src_addr, uint8_t *addr)

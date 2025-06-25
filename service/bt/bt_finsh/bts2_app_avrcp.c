@@ -159,12 +159,12 @@ U8 bt_avrcp_get_role_by_addr(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd_add
 
 int bt_avrcp_target_connect_request(BTS2S_BD_ADDR *bd)
 {
-    return bt_avrcp_conn_2_dev(bd,TRUE);
+    return bt_avrcp_conn_2_dev(bd, TRUE);
 }
 
 int bt_avrcp_controller_connect_request(BTS2S_BD_ADDR *bd)
 {
-    return bt_avrcp_conn_2_dev(bd,FALSE);
+    return bt_avrcp_conn_2_dev(bd, FALSE);
 }
 /*----------------------------------------------------------------------------*
  *
@@ -1330,9 +1330,9 @@ static void bt_avrcp_get_element_attributes_confirm(bts2_app_stru *bts2_app_data
     }
     case AVRCP_MEDIA_ATTRIBUTES_ARTIST:
     {
-        if (value_length > BT_MAX_SINGER_NAME_LEN)
+        if (value_length > AVRCP_MAX_SINGER_NAME_LEN)
         {
-            value_length = BT_MAX_SINGER_NAME_LEN;
+            value_length = AVRCP_MAX_SINGER_NAME_LEN;
         }
 
         if (value_length != 0)
@@ -1359,9 +1359,9 @@ static void bt_avrcp_get_element_attributes_confirm(bts2_app_stru *bts2_app_data
     }
     case AVRCP_MEDIA_ATTRIBUTES_ALBUM:
     {
-        if (value_length > BT_MAX_ALBUM_INFO_LEN)
+        if (value_length > AVRCP_MAX_ALBUM_INFO_LEN)
         {
-            value_length = BT_MAX_ALBUM_INFO_LEN;
+            value_length = AVRCP_MAX_ALBUM_INFO_LEN;
         }
 
         if (value_length != 0)
@@ -1387,9 +1387,9 @@ static void bt_avrcp_get_element_attributes_confirm(bts2_app_stru *bts2_app_data
     }
     case AVRCP_MEDIA_ATTRIBUTES_TITLE:
     {
-        if (value_length > BT_MAX_SONG_NAME_LEN)
+        if (value_length > AVRCP_MAX_SONG_NAME_LEN)
         {
-            value_length = BT_MAX_SONG_NAME_LEN;
+            value_length = AVRCP_MAX_SONG_NAME_LEN;
         }
 
         if (value_length != 0)
@@ -1415,9 +1415,9 @@ static void bt_avrcp_get_element_attributes_confirm(bts2_app_stru *bts2_app_data
     }
     case AVRCP_MEDIA_ATTRIBUTES_PLAYTIME:
     {
-        if (value_length > BT_MAX_PLAY_TIME_LEN)
+        if (value_length > AVRCP_MAX_PLAY_TIME_LEN)
         {
-            value_length = BT_MAX_PLAY_TIME_LEN;
+            value_length = AVRCP_MAX_PLAY_TIME_LEN;
         }
 
         if (value_length != 0)
@@ -1446,7 +1446,7 @@ static void bt_avrcp_get_element_attributes_confirm(bts2_app_stru *bts2_app_data
         }
         USER_TRACE("URC BT music detail end %x\n", music_detail_info.track_id);
 #if defined(CFG_AVRCP)
-        bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_MUSIC_DETAIL_INFO, &music_detail_info.detail_info, sizeof(bt_notify_avrcp_music_detail_t));
+        bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_MUSIC_DETAIL_INFO, &music_detail_info, sizeof(bt_notify_avrcp_music_detail_t));
 #endif
         break;
     }
