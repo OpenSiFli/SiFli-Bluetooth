@@ -67,6 +67,7 @@ typedef struct
     ble_serial_tran_assemable_t assemable;
     uint8_t conn_idx;
     uint8_t is_cccd_on;
+    uint8_t is_init;
     uint16_t remote_handle;
     ble_serial_client_state_t state;
 } ble_serial_client_env_t;
@@ -454,8 +455,8 @@ ble_serial_tran_error_event_t ble_serial_client_send_data(ble_serial_tran_data_t
     else
     {
         // use fragment packet
-        uint16_t max_packet_len = env->mtu - 3 - 4;
-        uint16_t single_packet_len = max_packet_len;
+        uint16_t max_packet_len = env->mtu - 3;
+        uint16_t single_packet_len = max_packet_len - 4;
 
         packet = bt_mem_alloc(max_packet_len);
         if (!packet)
@@ -636,7 +637,10 @@ void ble_serial_client_init(void)
 {
 
     ble_serial_client_env_t *env = ble_serial_client_get_env();
+    if (env->is_init)
+        return;
 
+    env->is_init = 1;
     // Init callback table
     env->cb_table = (ble_serial_tran_export_t *)SECTION_START_ADDR(SerialTranClientExport);
     env->cb_count = (ble_serial_tran_export_t *)SECTION_END_ADDR(SerialTranClientExport) - env->cb_table;
