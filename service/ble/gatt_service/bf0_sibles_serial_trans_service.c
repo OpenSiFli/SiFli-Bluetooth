@@ -59,6 +59,7 @@ typedef struct
     uint16_t cccd_enable;
     uint8_t cb_count;
     uint8_t is_assemable;
+    uint8_t is_init;
     uint16_t mtu;
     ble_serial_tran_export_t *cb_table;
     ble_serial_tran_assemable_t assemable;
@@ -582,8 +583,12 @@ void ble_serial_tran_init(void)
 {
 
     ble_serial_tran_env_t *env = ble_serial_tran_get_env();
-
     sibles_register_svc_128_t svc;
+
+    if (env->is_init)
+        return;
+
+    env->is_init = 1;
 
     // Init callback table
     env->cb_table = (ble_serial_tran_export_t *)SECTION_START_ADDR(SerialTranExport);
