@@ -71,6 +71,15 @@ extern uint8_t a2dp_relay_get_channel(void);
 
 #if defined(AUDIO_USING_MANAGER) && defined(AUDIO_BT_AUDIO)
 static sifli_resample_t *resample;
+#if BT_BAP_BROADCAST_SOURCE
+    static int16_t *g_left;
+    static int16_t *g_right;
+    static uint32_t g_remain;
+    static uint32_t g_offset;
+    static uint32_t g_one_channle_size;
+    static uint16_t g_drop_cnt = 12;
+#endif
+
 static rt_event_t g_playback_evt;
 static rt_thread_t g_playback_thread = NULL;
 #define  PLAYBACK_GETDATA_EVENT_FLAG       (1 << 0)
@@ -336,7 +345,201 @@ static U8 *play_data_decode(bts2s_av_inst_data *inst, U16 *out_len)
     return ret;
 }
 
+#if BT_BAP_BROADCAST_SOURCE
+extern struct rt_ringbuffer *ble_bap_src_enabled_ring;
+#define SPEAKER_DMA_SIZE    960
+static const uint8_t zero[160] = {0};
+void prepare_ble_src_data(int16_t *data, uint32_t len)
+{
+    int16_t *left, *right, *src;
+    uint32_t bytes = sifli_resample_process(resample, data, len, 0); //two channel data bytes
+    src = sifli_resample_get_output(resample);
+    RT_ASSERT((bytes & 3) == 0);
+    uint32_t one_channel_sample = bytes >> 2;
+    if ((one_channel_sample * 2 + g_remain) > g_one_channle_size)
+    {
+        USER_TRACE("sample=%d remain=%d size=%d", one_channel_sample, g_remain, g_one_channle_size);
+        RT_ASSERT(0);
+    }
+    left = g_left + (g_remain >> 1);
+    right = g_right + (g_remain >> 1);
 
+    while (one_channel_sample > 0)
+    {
+        *left++ = *src++;
+        *right++ = *src++;
+        one_channel_sample--;
+    }
+
+    //one channel data_len
+    g_remain = (bytes >> 1) + g_remain;
+    g_offset = 0;
+}
+
+#if defined (RT_USING_FINSH)
+int src_drop(int argc, char **argv)
+{
+    if (argc == 1)
+    {
+        LOG_I("drop=%d", g_drop_cnt);
+    }
+    else
+    {
+        g_drop_cnt = atoi(argv[1]);
+        LOG_I("drop=%d", g_drop_cnt);
+    }
+    return 0;
+}
+MSH_CMD_EXPORT_ALIAS(src_drop, src_drop, src_drop);
+#endif
+
+void notify_dma_done_to_a2dp()
+{
+    rt_event_send(g_playback_evt, PLAYBACK_GETDATA_EVENT_FLAG);
+}
+static void decode_playback_thread(void *args)
+{
+    bts2s_av_inst_data *inst_data;
+
+    rt_uint32_t evt;
+    play_data_t *pt_data;
+    U8 *decode_data = NULL;
+    U16 decode_len = 0;
+    U16 need_send_len = 0;
+    U8  is_stopped = 1;
+    U8  debug_tx_cnt = 0;
+    int  ret_write = 0;
+#if PKG_USING_VBE_DRC
+    uint32_t vbe_out_size;
+#endif
+    g_playback_evt = rt_event_create("playback_evt", RT_IPC_FLAG_FIFO);
+
+    while (1)
+    {
+        evt = 0;
+        rt_err_t err = rt_event_recv(g_playback_evt, PLAYBACK_GETDATA_EVENT_FLAG | PLAYBACK_START_EVENT_FLAG | PLAYBACK_STOPPING_EVENT_FLAG, RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, RT_WAITING_FOREVER, &evt);
+        inst_data = bt_av_get_inst_data();
+        if (evt & PLAYBACK_STOPPING_EVENT_FLAG)
+        {
+            is_stopped = 1;
+            rt_event_send(g_playback_evt, PLAYBACK_STOPPED_EVENT_FLAG);
+            continue;
+        }
+
+        if (evt & PLAYBACK_START_EVENT_FLAG)
+        {
+            if (inst_data->snk_data.audio_client)
+            {
+                USER_TRACE("bt_music: open again--\r\n");
+                continue;
+            }
+
+            decode_data = play_data_decode(inst_data, &decode_len);
+
+            USER_TRACE("bt_music: open len=%d\r\n", decode_len);
+
+            USER_TRACE("decode src_len:%d, dst_len:%d\n", inst_data->snk_data.pt_curdata->len, decode_len);
+            if (decode_len == 0)
+            {
+                rt_thread_mdelay(5);
+                rt_event_send(g_playback_evt, PLAYBACK_START_EVENT_FLAG);
+                continue;
+            }
+
+            audio_parameter_t param = {0};
+            if (inst_data->snk_data.codec == AV_SBC)
+            {
+                param.write_samplerate = inst_data->con[inst_data->con_idx].act_cfg.sample_freq;
+            }
+#ifdef CFG_AV_AAC
+            else if (inst_data->snk_data.codec == AV_MPEG24_AAC)
+            {
+                param.write_samplerate = inst_data->con[inst_data->con_idx].act_aac_cfg.sample_freq;
+            }
+#endif
+            else
+            {
+                USER_TRACE("Unsupported codec!!!!!\n");
+                RT_ASSERT(0);
+            }
+            uint32_t origin_samplerate = param.write_samplerate;
+            param.write_bits_per_sample = 16;
+            param.write_channnel_num = 1;
+            param.write_cache_size = 320 * g_drop_cnt + SPEAKER_DMA_SIZE;
+            param.write_samplerate = 48000;
+            debug_tx_cnt = 0;
+            inst_data->snk_data.audio_client = audio_open(AUDIO_TYPE_BT_MUSIC, AUDIO_TX, &param, NULL, NULL);
+            is_stopped = 0;
+            if (!resample)
+            {
+                USER_TRACE("resample from %d to 48k", origin_samplerate);
+                resample = sifli_resample_open(2, origin_samplerate, 48000);
+                RT_ASSERT(resample);
+                g_one_channle_size = 4096;
+                g_left = (int16_t *)audio_mem_malloc(g_one_channle_size);
+                g_right = (int16_t *)audio_mem_malloc(g_one_channle_size);
+                RT_ASSERT(g_left && g_right);
+            }
+            g_remain = 0;
+            g_offset = 0;
+            prepare_ble_src_data((int16_t *)decode_data, decode_len);
+            for (int i = 0; i < g_drop_cnt; i++)
+            {
+                audio_write(inst_data->snk_data.audio_client, (uint8_t *)zero, 160);
+            }
+        }
+        if (evt & PLAYBACK_GETDATA_EVENT_FLAG)
+        {
+            if (debug_tx_cnt == 0)
+            {
+                //USER_TRACE("a2dp get data,total:%d,full:%d,empty:%d, curr %d\r\n", inst_data->snk_data.playlist.total_num,
+                //           inst_data->snk_data.playlist.full_num, inst_data->snk_data.playlist.empty_num, inst_data->snk_data.playlist.cnt);
+            }
+            debug_tx_cnt++;
+
+            if (is_stopped == 1 || inst_data->snk_data.play_state == FALSE || inst_data->snk_data.audio_client == NULL)
+            {
+                //USER_TRACE("snk: stop %d %d %x\r\n", is_stopped, inst_data->snk_data.play_state, inst_data->snk_data.audio_client);
+                continue;
+            }
+        }
+
+        if (g_remain < SPEAKER_DMA_SIZE)
+        {
+            memcpy(g_left, &g_left[g_offset], g_remain);
+            memcpy(g_right, &g_right[g_offset], g_remain);
+            decode_data = play_data_decode(inst_data, &decode_len);
+            if (decode_len == 0)
+            {
+                decode_len = 2560;
+                decode_data = inst_data->snk_data.decode_buf;
+                memset(decode_data, 0, decode_len);
+            }
+            prepare_ble_src_data((int16_t *)decode_data, decode_len);
+        }
+
+        ret_write = audio_write(inst_data->snk_data.audio_client, (uint8_t *)&g_left[g_offset], SPEAKER_DMA_SIZE);
+        if (ret_write < 0)
+        {
+            USER_TRACE("playback write ret:%d\n", ret_write);
+        }
+        else if (ret_write == 0)
+        {
+            USER_TRACE("cache full\n");
+        }
+        else
+        {
+            if (rt_ringbuffer_space_len(ble_bap_src_enabled_ring) < SPEAKER_DMA_SIZE)
+            {
+                LOG_I("ble src cache full");
+            }
+            rt_ringbuffer_put(ble_bap_src_enabled_ring, (uint8_t *)&g_right[g_offset], SPEAKER_DMA_SIZE);
+            g_offset += (SPEAKER_DMA_SIZE / 2);
+            g_remain -= SPEAKER_DMA_SIZE;
+        }
+    }
+}
+#else
 static void decode_playback_thread(void *args)
 {
     bts2s_av_inst_data *inst_data;
@@ -509,6 +712,7 @@ static void decode_playback_thread(void *args)
         }
     }
 }
+#endif
 
 #ifdef CFG_AV_AAC
     #define DEPLAYBACK_STACK_SIZE   (1024 * 16)
@@ -573,6 +777,12 @@ static void stop_audio_playback(bts2s_av_inst_data *inst)
 #if defined(AUDIO_USING_MANAGER) && defined(AUDIO_BT_AUDIO)
         sifli_resample_close(resample);
         resample = NULL;
+#if BT_BAP_BROADCAST_SOURCE
+        audio_mem_free(g_left);
+        g_left = NULL;
+        audio_mem_free(g_right);
+        g_right = NULL;
+#endif
         audio_close(inst->snk_data.audio_client);
         inst->snk_data.audio_client = NULL;
 #endif
@@ -609,6 +819,12 @@ static void stop_audio_playback_temporarily(bts2s_av_inst_data *inst)
 #if defined(AUDIO_USING_MANAGER) && defined(AUDIO_BT_AUDIO)
         sifli_resample_close(resample);
         resample = NULL;
+#if BT_BAP_BROADCAST_SOURCE
+        audio_mem_free(g_left);
+        g_left = NULL;
+        audio_mem_free(g_right);
+        g_right = NULL;
+#endif
         audio_close(inst->snk_data.audio_client);
         inst->snk_data.audio_client = NULL;
 #endif
