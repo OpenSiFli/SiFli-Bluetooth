@@ -18,6 +18,7 @@ menu "Bluetooth"
         bool "Bluetooth service"
         select USING_IPC_QUEUE if !BSP_USING_PC_SIMULATOR
         depends on BLUETOOTH && (!BF0_LCPU || (BF0_LCPU && SOC_SF32LB55X))
+        default n if BF0_LCPU && SOC_SF32LB55X
         default y
   
     if BSP_BLE_SIBLES
