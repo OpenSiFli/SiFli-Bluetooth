@@ -328,6 +328,11 @@ static void bt_cm_conn_dealloc(bt_cm_device_manager_t *env, bt_cm_dev_acl_info_t
     {
         if (&env->bt_devices[i] == conn)
         {
+            if (conn->profile_timer_hdl)
+            {
+                rt_timer_delete(conn->profile_timer_hdl);
+                conn->profile_timer_hdl = NULL;
+            }
             memset(conn, 0, sizeof(bt_cm_dev_acl_info_t));
             return;
         }
@@ -473,6 +478,44 @@ int bt_open_bt_request_scan(uint8_t scan)
 }
 
 #ifdef BT_AUTO_CONNECT_LAST_DEVICE
+
+static void bt_cm_reconnect_timeout_hdl(void *parameter)
+{
+    uint32_t time_state = 0;
+    if (parameter != NULL)
+    {
+        bt_cm_dev_acl_info_t *conn = (bt_cm_dev_acl_info_t *)parameter;
+        if (conn->profile_timer_hdl)
+        {
+            rt_timer_delete(conn->profile_timer_hdl);
+            conn->profile_timer_hdl = NULL;
+        }
+
+        uint32_t profile_bit = bt_cm_conn_get_next_profile(conn, conn->info.link_type);
+
+        if (profile_bit)
+        {
+            bt_cm_err_t ret = bt_cm_profile_connect(profile_bit, &conn->info.bd_addr, conn->info.link_type);
+            LOG_I("bt_cm_reconnect_timeout_hdl profile_bit %d link_type 0x%2x", profile_bit, conn->info.link_type);
+
+            if (ret != BT_CM_ERR_NO_ERR)
+            {
+                bt_cm_conn_dealloc(bt_cm_get_env(), conn);
+                gap_wr_scan_enb_req(bts2_task_get_app_task_id(), 1, 1);
+                return;
+            }
+
+            // Avoid scan and page
+            gap_wr_scan_enb_req(bts2_task_get_app_task_id(), 0, 0);
+        }
+        else
+        {
+            bt_cm_conn_dealloc(bt_cm_get_env(), conn);
+            gap_wr_scan_enb_req(bts2_task_get_app_task_id(), 1, 1);
+        }
+    }
+}
+
 static int bt_cm_update_profile_bit_mask(bt_cm_dev_acl_info_t *conn, uint32_t profile_bit)
 {
     if (conn)
@@ -968,6 +1011,7 @@ static void bt_cm_hci_acl_connect_complete_event_hdl(BTS2S_DM_EN_ACL_OPENED_IND 
         conn->info.dev_cls = ind->dev_cls;
         conn->link_dir = ind->incoming;
         conn->state = BT_CM_ACL_STATE_CONNECTED;
+        conn->info.is_reconn = bt_cm_get_reconnect_flag_by_role(conn->info.link_type);
         hcia_wr_lp_settings_keep_sniff_interval(&ind->bd, HCI_LINK_POLICY_NO_CHANGE, BT_CM_SNIFF_ENTER_TIME,
                                                 BT_CM_SNIFF_INV, BT_CM_SNIFF_INV, BT_CM_SNIFF_ATTEMPT, BT_CM_SNIFF_TIMEOUT, NULL);
     }
@@ -1033,9 +1077,23 @@ static void bt_cm_hci_acl_disconnect_complete_event_hdl(BTS2S_DM_ACL_DISC_IND *i
 
     if (conn != NULL)
     {
-        bt_cm_link_role_t role = conn->info.role;
+        bt_cm_link_type_t link_type = conn->info.link_type;
         uint8_t is_reconn = conn->info.is_reconn;
         bt_cm_conn_dealloc(env, conn);
+#ifdef BT_AUTO_CONNECT_LAST_DEVICE
+        if (is_reconn && ind->reason == HCI_ERR_CONN_TIMEOUT)
+        {
+
+            // Try re-connect
+            conn = bt_cm_conn_alloc(env, &ind->cur_bd, link_type);
+            conn->profile_timer_hdl = rt_timer_create("btcm_con", bt_cm_reconnect_timeout_hdl, conn,
+                                      rt_tick_from_millisecond(BT_CM_MAX_TIMEOUT), RT_TIMER_FLAG_ONE_SHOT | RT_TIMER_FLAG_SOFT_TIMER);
+
+            if (conn->profile_timer_hdl)
+                rt_timer_start(conn->profile_timer_hdl);
+        }
+#endif
+
     }
 }
 
@@ -1421,11 +1479,6 @@ bt_err_t bt_interface_acpt_connect_req(unsigned char *mac, uint8_t link_role, ui
         hcia_send_acpt_conn_request(&bd_addr, link_role);
     }
     return BT_EOK;
-}
-
-static void bt_cm_conn_timeout(void *parameter)
-{
-    uint32_t time_state = 0;
 }
 
 bt_cm_err_t bt_cm_profile_connect(uint32_t profile_bit, BTS2S_BD_ADDR *bd_addr, bt_cm_link_type_t link_type)
