@@ -542,7 +542,7 @@ void bt_spp_data_ind_hdl(bts2_app_stru *bts2_app_data)
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_spp_srv_rfc_conn_accept_hdl(bts2_app_stru *bts2_app_data, U8 srv_chl, BTS2S_BD_ADDR bd)
+void bt_spp_srv_rfc_conn_accept_hdl(U8 srv_chl, BTS2S_BD_ADDR bd)
 {
     //!zhengyu:Just to be compatible with the old version
     spp_srv_conn_rsp(0, srv_chl, bd, TRUE);
@@ -565,7 +565,7 @@ void bt_spp_srv_rfc_conn_accept_hdl(bts2_app_stru *bts2_app_data, U8 srv_chl, BT
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_spp_srv_rfc_conn_rej_hdl(bts2_app_stru *bts2_app_data, U8 srv_chl, BTS2S_BD_ADDR bd)
+void bt_spp_srv_rfc_conn_rej_hdl(U8 srv_chl, BTS2S_BD_ADDR bd)
 {
     //!zhengyu:Just to be compatible with the old version
     spp_srv_conn_rsp(0, srv_chl, bd, FALSE);
@@ -1094,19 +1094,19 @@ void bt_spp_msg_hdl(bts2_app_stru *bts2_app_data)
 
         INFO_TRACE(">>New connection addr:%04X:%02X:%06X,srv_chl = %d\n", my_msg->bd.nap, my_msg->bd.uap, my_msg->bd.lap, my_msg->srv_chnl);
 
-        uint8_t addr1[6];
-        bt_addr_convert(&my_msg->bd, addr1);
-        bt_cm_dev_info_t *bonded_dev = bt_cm_get_bonded_dev_by_addr(addr1);
-        if (bonded_dev->role == BT_LINK_MASTER)
-        {
-            INFO_TRACE(">>earphone connect spp,should reject\n");
-            bt_spp_srv_rfc_conn_rej_hdl(bts2_app_data, my_msg->srv_chnl, my_msg->bd);
-        }
-        else
-        {
-            bts2_app_data->menu_id = menu_spp_srv;
+        bt_notify_spp_connect_req_t spp_conn_req;
+        spp_conn_req.srv_chl = my_msg->srv_chnl;
+        spp_conn_req.is_accept = SPP_NOTIFY_RESULT_ACCEPT;
+        bt_addr_convert(&my_msg->bd, spp_conn_req.mac.addr);
+        bt_interface_bt_event_notify(BT_NOTIFY_SPP, BT_NOTIFY_SPP_CONN_REQ_IND, &spp_conn_req, sizeof(bt_notify_spp_connect_req_t));
 
-            bt_spp_srv_rfc_conn_accept_hdl(bts2_app_data, my_msg->srv_chnl, my_msg->bd);
+        if (spp_conn_req.is_accept == SPP_NOTIFY_RESULT_ACCEPT)
+        {
+            bt_spp_srv_rfc_conn_accept_hdl(my_msg->srv_chnl, my_msg->bd);
+        }
+        else if (spp_conn_req.is_accept == SPP_NOTIFY_RESULT_REJECT)
+        {
+            bt_spp_srv_rfc_conn_rej_hdl(my_msg->srv_chnl, my_msg->bd);
         }
         break;
     }
@@ -1394,7 +1394,7 @@ void bt_spp_dump_all_spp_connect_information(bts2_app_stru *bts2_app_data)
     for (int i = 0; i < CFG_MAX_ACL_CONN_NUM; i++)
     {
         bts2_spp_srv_inst_data *sub_inst = &bts2_app_data->spp_srv_inst[i];
-        INFO_TRACE("[SPP_DEBUG]device_id = %d,bd = %04X:%02X:%06X,connect server channel = %x\n",
+        INFO_TRACE("[SPP_DEBUG]device_id = %d,bd = %04X:%02X:%06X,service list = %x\n",
                    sub_inst->device_id, sub_inst->bd_addr.nap, sub_inst->bd_addr.uap, sub_inst->bd_addr.lap, sub_inst->service_list);
     }
 

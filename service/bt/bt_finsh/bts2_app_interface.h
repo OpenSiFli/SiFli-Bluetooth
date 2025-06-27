@@ -649,6 +649,16 @@ void bt_interface_add_hid_descriptor(U8 *data, U8 len);
 
 #if defined(CFG_SPP_SRV) || defined(_SIFLI_DOXYGEN_)
 /**
+ * @brief               Handle spp connect request
+ * @param[in] accept    Accept the connection or not
+ * @param[in] rmt_addr  Device mac address(eg:char mac[6] = {11,22,33,44,55,66})
+ * @param[in] srv_chl   The service channel of spp
+ * @return              The results
+ *
+ **/
+bt_err_t bt_interface_spp_conn_req_hdl(BOOL accept, bt_notify_device_mac_t *rmt_addr, U8 srv_chl);
+
+/**
  * @deprecated - please use bt_interface_spp_send_data_ext
  * @brief            Send data through spp
  * @param[in] data   The pointer of spp data

@@ -314,6 +314,8 @@ typedef enum
     BT_NOTIFY_SPP_DATA_CFM,
     ///  certain spp disconnection event
     BT_NOTIFY_SPP_DISC_IND,
+    ///  SPP connect request event
+    BT_NOTIFY_SPP_CONN_REQ_IND,
 } bt_notify_spp_event_id_t;
 
 ///  these type are BT_NOTIFY_PAN event id
@@ -645,6 +647,17 @@ typedef union
     uint8_t uuid_32[4];
     uint8_t uuid_128[16];
 } SPP_UUID;
+
+///  received spp connect request notify
+typedef struct
+{
+    ///  the service channel of spp connection
+    uint8_t  srv_chl;
+    ///  Judge whether to accept the connection
+    uint8_t  is_accept;
+    ///  the address of the device that sent the data
+    bt_notify_device_mac_t mac;
+} bt_notify_spp_connect_req_t;
 
 ///  received spp data information
 typedef struct

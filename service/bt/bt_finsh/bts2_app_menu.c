@@ -4113,8 +4113,10 @@ static void bt_disply_menu_spp_srv(void)
     printf("##              disconnect device 0 with channel 2  ##\n");
     printf("##   8. disconnect all spp connect                  ##\n");
     printf("##   9. received data is written into a file        ##\n");
+#ifdef CFG_SPP_CLT
     printf("##   c. connect to device with specified uuid       ##\n");
     printf("##   f. search remote device sdp information        ##\n");
+#endif
     printf("##   x. received data is not written into a file    ##\n");
     printf("##   d. dump connection information                 ##\n");
     printf("##   s. Show Menu                                   ##\n");
@@ -4164,7 +4166,7 @@ static void bt_hdl_menu_spp_srv(bts2_app_stru *bts2_app_data)
 
         U8 srv_chl = bts2_app_data->input_str[2] - '0';
 
-        bt_spp_srv_rfc_conn_accept_hdl(bts2_app_data, srv_chl, bd);
+        bt_spp_srv_rfc_conn_accept_hdl(srv_chl, bd);
         break;
     }
     case '2':
@@ -4182,7 +4184,7 @@ static void bt_hdl_menu_spp_srv(bts2_app_stru *bts2_app_data)
 
         U8 srv_chl = bts2_app_data->input_str[2] - '0';
 
-        bt_spp_srv_rfc_conn_rej_hdl(bts2_app_data, srv_chl, bd);
+        bt_spp_srv_rfc_conn_rej_hdl(srv_chl, bd);
         break;
     }
     case '3':
@@ -4297,6 +4299,7 @@ static void bt_hdl_menu_spp_srv(bts2_app_stru *bts2_app_data)
         bt_disply_menu(bts2_app_data);
         break;
     }
+#ifdef CFG_SPP_CLT
     case 'c':
     {
         BTS2S_BD_ADDR bd;
@@ -4355,6 +4358,7 @@ static void bt_hdl_menu_spp_srv(bts2_app_stru *bts2_app_data)
         spp_clt_sdp_search_req(&bd, uuid_tmp, uuid_len);
         break;
     }
+#endif
     default:
     {
         break;

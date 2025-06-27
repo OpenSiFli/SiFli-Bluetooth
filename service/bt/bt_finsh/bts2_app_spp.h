@@ -12,6 +12,10 @@ extern "C" {
 
 #ifdef CFG_SPP_SRV
 
+#define SPP_NOTIFY_RESULT_ACCEPT (0)
+#define SPP_NOTIFY_RESULT_REJECT (1)
+//!User decides whether to accept the connection or not.
+#define SPP_NOTIFY_RESULT_ASYNCHRONOUS_HANDLE (2)
 
 typedef struct
 {
@@ -409,7 +413,7 @@ void bt_spp_msg_hdl(bts2_app_stru *bts2_app_data);
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_spp_srv_rfc_conn_accept_hdl(bts2_app_stru *bts2_app_data, U8 srv_chl, BTS2S_BD_ADDR bd);
+void bt_spp_srv_rfc_conn_accept_hdl(U8 srv_chl, BTS2S_BD_ADDR bd);
 
 
 /*----------------------------------------------------------------------------*
@@ -427,7 +431,7 @@ void bt_spp_srv_rfc_conn_accept_hdl(bts2_app_stru *bts2_app_data, U8 srv_chl, BT
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_spp_srv_rfc_conn_rej_hdl(bts2_app_stru *bts2_app_data, U8 srv_chl, BTS2S_BD_ADDR bd);
+void bt_spp_srv_rfc_conn_rej_hdl(U8 srv_chl, BTS2S_BD_ADDR bd);
 
 
 /*----------------------------------------------------------------------------*
@@ -611,8 +615,8 @@ void bt_spp_sending_data_to_peer(bts2_app_stru *bts2_app_data, U8 device_id, U8 
 #define bt_spp_srv_esc_file_transfer(bts2_app_data)
 #define bt_spp_data_ind_hdl(bts2_app_data)
 #define bt_spp_msg_hdl(bts2_app_data)
-#define bt_spp_srv_rfc_conn_accept_hdl(bts2_app_data)
-#define bt_spp_srv_rfc_conn_rej_hdl(bts2_app_data)
+#define bt_spp_srv_rfc_conn_accept_hdl()
+#define bt_spp_srv_rfc_conn_rej_hdl()
 #define bt_spp_test_req(bts2_app_data)
 #define bt_spp_linest_req(bts2_app_data)
 #define bt_spp_switch_role(bts2_app_data)

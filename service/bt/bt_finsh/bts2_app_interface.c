@@ -1042,6 +1042,26 @@ void bt_interface_add_hid_descriptor(U8 *data, U8 len)
   */
 
 #ifdef CFG_SPP_SRV
+bt_err_t bt_interface_spp_conn_req_hdl(BOOL accept, bt_notify_device_mac_t *rmt_addr, U8 srv_chl)
+{
+    bt_err_t ret = BT_EOK;
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    BTS2S_BD_ADDR bd_addr;
+
+    bt_addr_convert_to_bts((bd_addr_t *)rmt_addr, &bd_addr);
+
+    if (accept)
+    {
+        bt_spp_srv_rfc_conn_accept_hdl(srv_chl, bd_addr);
+    }
+    else
+    {
+        bt_spp_srv_rfc_conn_rej_hdl(srv_chl, bd_addr);
+    }
+
+    return ret;
+}
+
 // @deprecated - please use bt_interface_spp_send_data_ext
 bt_err_t bt_interface_spp_send_data(U8 *data, U16 len, BTS2S_BD_ADDR *bd_addr, U8 srv_chl)
 {
