@@ -909,15 +909,19 @@ void bt_test_rssi_entry(void *param)
     }
 }
 
-static uint8_t crystal_cali_set(int32_t freq_off)
+HAL_RAM_RET_CODE_SECT(crystal_cali_set, uint8_t crystal_cali_set(int32_t freq_off))
 {
-    int16_t code_table[12] = {-23, -48, -73, -101, -130, -161, -293, -228, -266, -305, -348, -394 };
+    int16_t code_table[12] = {0 };
     int32_t cal_value = ((hwp_pmuc->HXT_CR1 & PMUC_HXT_CR1_CBANK_SEL_Msk) >> PMUC_HXT_CR1_CBANK_SEL_Pos);
     uint8_t idx;
     int32_t cal_check = 0;
     int res;
 
-    if (freq_off > 120000 || freq_off < -120000)  //+- 120KHz
+    if (freq_off == 0)
+    {
+        return 0;
+    }
+    else if (freq_off >= 120000 || freq_off <= -120000)  //+- 120KHz
     {
         return 1;
     }
@@ -939,22 +943,30 @@ static uint8_t crystal_cali_set(int32_t freq_off)
     }
     else
     {
+        code_table[0] = -23;
+        code_table[1] = -48;
+        code_table[2] = -73;
+        code_table[3] = -101;
+        code_table[4] = -130;
+        code_table[5] = -161;
+        code_table[6] = -293;
+        code_table[7] = -228;
+        code_table[8] = -266;
+        code_table[9] = -305;
+        code_table[10] = -348;
+        code_table[11] = -394;
         freq_off *= -1;
     }
 
     idx = freq_off / 10000;
 
-    if (idx > 0 && idx < 11)
+    if (idx > 0 && idx <= 11)
     {
-        cal_value += code_table[idx] + ((code_table[idx + 1] - code_table[idx]) * (freq_off % 10000)) / 10000;
+        cal_value += code_table[idx - 1] + (((int32_t)(code_table[idx] - code_table[idx - 1])) * (freq_off % 10000)) / 10000;
     }
     else if (idx == 0)
     {
-        cal_value += (code_table[idx] * (freq_off % 10000)) / 10000;
-    }
-    else if (idx == 11)
-    {
-        cal_value += code_table[idx];
+        cal_value += (((int32_t)code_table[idx]) * (freq_off % 10000)) / 10000;
     }
 
     if (cal_value >= 0 && cal_value < 0x3FF)
@@ -965,8 +977,38 @@ static uint8_t crystal_cali_set(int32_t freq_off)
             res = rt_flash_config_read(FACTORY_CFG_ID_CRYSTAL, (uint8_t *)&cal_check, sizeof(cal_check));
             if (res > 0 && cal_check == cal_value)
             {
-                hwp_pmuc->HXT_CR1 &= ~PMUC_HXT_CR1_CBANK_SEL_Msk;
-                hwp_pmuc->HXT_CR1 |= cal_value << PMUC_HXT_CR1_CBANK_SEL_Pos;
+                rt_base_t level = rt_hw_interrupt_disable();
+
+                int clk_src = HAL_RCC_HCPU_GetClockSrc(RCC_CLK_MOD_SYS);
+                uint32_t dll1_freq = HAL_RCC_HCPU_GetDLL1Freq();
+                uint32_t dll2_freq = HAL_RCC_HCPU_GetDLL2Freq();
+                uint32_t rc48_flag = READ_BIT(hwp_pmuc->HRC_CR, PMUC_HRC_CR_EN);
+
+                if (!rc48_flag)
+                {
+                    SET_BIT(hwp_pmuc->HRC_CR, PMUC_HRC_CR_EN);
+                    HAL_Delay_us(60);
+                }
+
+                HAL_RCC_HCPU_ClockSelect(RCC_CLK_MOD_SYS, RCC_SYSCLK_HRC48);
+                HAL_PMU_SET_HXT_CBANK(cal_value);
+                HAL_Delay_us(40);
+
+                HAL_RCC_HCPU_DisableDLL1();
+                HAL_RCC_HCPU_DisableDLL2();
+
+                HAL_RCC_HCPU_EnableDLL1(dll1_freq);
+                HAL_RCC_HCPU_EnableDLL2(dll2_freq);
+                HAL_RCC_HCPU_ClockSelect(RCC_CLK_MOD_SYS, clk_src);
+                HAL_Delay_us(0);
+
+                if (!rc48_flag)
+                {
+                    CLEAR_BIT(hwp_pmuc->HRC_CR, PMUC_HRC_CR_EN);
+                }
+
+                rt_hw_interrupt_enable(level);
+
                 return 0;
             }
         }
@@ -975,7 +1017,7 @@ static uint8_t crystal_cali_set(int32_t freq_off)
     return 1;
 }
 
-static uint8_t crystal_cali_reset(void)
+HAL_RAM_RET_CODE_SECT(crystal_cali_reset, uint8_t crystal_cali_reset(void))
 {
     int32_t cal_value = ((hwp_pmuc->HXT_CR1 & PMUC_HXT_CR1_CBANK_SEL_Msk) >> PMUC_HXT_CR1_CBANK_SEL_Pos);
     int32_t cal_check;
@@ -991,8 +1033,6 @@ static uint8_t crystal_cali_reset(void)
     }
 
     cal_value = 0x1CA;
-    hwp_pmuc->HXT_CR1 &= ~PMUC_HXT_CR1_CBANK_SEL_Msk;
-    hwp_pmuc->HXT_CR1 |= cal_value << PMUC_HXT_CR1_CBANK_SEL_Pos;
 
     res = rt_flash_config_write(FACTORY_CFG_ID_CRYSTAL, (uint8_t *)&cal_value, sizeof(cal_value));
     if (res > 0)
@@ -1000,6 +1040,38 @@ static uint8_t crystal_cali_reset(void)
         res = rt_flash_config_read(FACTORY_CFG_ID_CRYSTAL, (uint8_t *)&cal_check, sizeof(cal_check));
         if (res > 0 && cal_check == cal_value)
         {
+            rt_base_t level = rt_hw_interrupt_disable();
+
+            int clk_src = HAL_RCC_HCPU_GetClockSrc(RCC_CLK_MOD_SYS);
+            uint32_t dll1_freq = HAL_RCC_HCPU_GetDLL1Freq();
+            uint32_t dll2_freq = HAL_RCC_HCPU_GetDLL2Freq();
+            uint32_t rc48_flag = READ_BIT(hwp_pmuc->HRC_CR, PMUC_HRC_CR_EN);
+
+            if (!rc48_flag)
+            {
+                SET_BIT(hwp_pmuc->HRC_CR, PMUC_HRC_CR_EN);
+                HAL_Delay_us(60);
+            }
+
+            HAL_RCC_HCPU_ClockSelect(RCC_CLK_MOD_SYS, RCC_SYSCLK_HRC48);
+            HAL_PMU_SET_HXT_CBANK(cal_value);
+            HAL_Delay_us(40);
+
+            HAL_RCC_HCPU_DisableDLL1();
+            HAL_RCC_HCPU_DisableDLL2();
+
+            HAL_RCC_HCPU_EnableDLL1(dll1_freq);
+            HAL_RCC_HCPU_EnableDLL2(dll2_freq);
+            HAL_RCC_HCPU_ClockSelect(RCC_CLK_MOD_SYS, clk_src);
+            HAL_Delay_us(0);
+
+            if (!rc48_flag)
+            {
+                CLEAR_BIT(hwp_pmuc->HRC_CR, PMUC_HRC_CR_EN);
+            }
+
+            rt_hw_interrupt_enable(level);
+
             return 0;
         }
     }
