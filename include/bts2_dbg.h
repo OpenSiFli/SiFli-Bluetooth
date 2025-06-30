@@ -6,6 +6,11 @@
 
 #ifndef _BTS2_DBG_H_
 #define _BTS2_DBG_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "stdint.h"
 #include "rtconfig.h"
 #include "bf0_ble_common.h"
@@ -309,6 +314,10 @@ typedef struct BTS2S_STK_INFO_TAG
     *----------------------------------------------------------------------------*/
     void dbg_stk_task(U16 id);
 
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif

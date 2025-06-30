@@ -7,6 +7,11 @@
 #ifndef _BTS2_GLOBAL_H_
 #define _BTS2_GLOBAL_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #include "rtthread.h"
 #include "config.h"
 #include "string.h"
@@ -30,6 +35,11 @@
 #endif
 
 #define CFG_SBC
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif
 
