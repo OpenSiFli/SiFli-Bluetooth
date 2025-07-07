@@ -11,7 +11,6 @@
 #include "bts2_app_pan.h"
 #include "bt_lwip.h"
 #include "bt_prot.h"
-#include "lwip/pbuf.h"
 #include "bts2_app_demo.h"
 
 #include "rtdef.h"
@@ -23,6 +22,8 @@
 #ifdef RT_USING_LWIP
 #include <netif/ethernetif.h>
 #include <lwip/netifapi.h>
+#include "lwip/pbuf.h"
+#include "lwip/timeouts.h"
 #ifdef LWIP_USING_DHCPD
     #include <dhcp_server.h>
 #endif
@@ -59,7 +60,7 @@ void rt_bt_lwip_event_handle(struct rt_bt_lwip_pan_dev *bt_dev, int event)
     {
         LOG_D("event: CONNECT");
         lwip_prot->connected_flag = RT_TRUE;
-        lwip_sys_init();//to restart timer
+        sys_timeouts_init();//to restart timer
         netifapi_netif_common(eth_dev->netif, netif_set_link_up, NULL);
 #ifdef RT_LWIP_DHCP
         dhcp_start(eth_dev->netif);

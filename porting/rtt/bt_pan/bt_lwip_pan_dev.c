@@ -12,7 +12,6 @@ extern "C" {
 #endif
 #include <rthw.h>
 #include <rtthread.h>
-#include "lwip/pbuf.h"
 #include "rtdef.h"
 #include "bts2_app_inc.h"
 #include "bt_prot.h"
@@ -31,7 +30,7 @@ struct rt_bt_dev_ops dev_ops =
     bt_lwip_pan_dev_send_data
 };
 
-struct rt_bt_lwip_pan_dev * bt_lwip_get_default_pan_dev()
+struct rt_bt_lwip_pan_dev *bt_lwip_get_default_pan_dev()
 {
     return &bt_lwip_pan_dev[0];
 }
@@ -58,9 +57,9 @@ void rt_lwip_instance_register_event_handler(struct rt_bt_lwip_pan_dev *bt_dev, 
 
 void bt_lwip_pan_dev_recv_data(void *buff, int len)
 {
-    struct rt_bt_lwip_pan_dev * bt_dev = bt_lwip_get_default_pan_dev();
+    struct rt_bt_lwip_pan_dev *bt_dev = bt_lwip_get_default_pan_dev();
 
-    if(bt_dev)
+    if (bt_dev)
     {
         rt_bt_prot_recv_data(bt_dev, buff, len);
     }
@@ -68,13 +67,13 @@ void bt_lwip_pan_dev_recv_data(void *buff, int len)
 
 extern void rt_bt_lwip_event_handle(struct rt_bt_lwip_pan_dev *bt_dev, int event);
 rt_err_t bt_pan_connect_event_handle(uint16_t event_id)
- {
-    
+{
+
     switch (event_id)
     {
     case BT_NOTIFY_PAN_PROFILE_CONNECTED:
     {
-        struct rt_bt_lwip_pan_dev * bt_dev = bt_lwip_get_default_pan_dev();
+        struct rt_bt_lwip_pan_dev *bt_dev = bt_lwip_get_default_pan_dev();
 
         if (bt_dev && bt_dev->prot)
         {
@@ -96,20 +95,20 @@ rt_err_t bt_pan_connect_event_handle(uint16_t event_id)
     }
     default:
         break;
-     }
-     return RT_EOK;
- }
+    }
+    return RT_EOK;
+}
 
- rt_err_t bt_lwip_pan_dev_send_data(struct rt_bt_lwip_pan_dev *bt_dev, void *buff, int len)
- {
+rt_err_t bt_lwip_pan_dev_send_data(struct rt_bt_lwip_pan_dev *bt_dev, void *buff, int len)
+{
 
-    if(bt_dev)
+    if (bt_dev)
     {
         extern void bt_pan_send_data(void *buff, int len);
         bt_pan_send_data(buff, len);
     }
     return RT_EOK;
- }
+}
 #ifdef __cplusplus
 }
 #endif

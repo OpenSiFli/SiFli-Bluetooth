@@ -6,7 +6,6 @@
 
 #include <rthw.h>
 #include <rtthread.h>
-#include "lwip/pbuf.h"
 #include "rtdef.h"
 #include "bts2_bt.h"
 #include "bts2_app_pan.h"
