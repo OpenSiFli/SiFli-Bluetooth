@@ -84,7 +84,7 @@ struct bt_buf_data
 #endif
 
 /** Data size needed for HCI Event RX buffers */
-#define BT_BUF_EVT_RX_SIZE BT_BUF_EVT_SIZE(CONFIG_BT_BUF_EVT_RX_SIZE2)
+#define BT_BUF_EVT_RX_SIZE BT_BUF_EVT_SIZE(CONFIG_BT_BUF_EVT_RX_SIZE)
 
 #if defined(CONFIG_BT_ISO)
 #define BT_BUF_ISO_RX_SIZE BT_BUF_ISO_SIZE(CONFIG_BT_ISO_RX_MTU)
@@ -104,7 +104,7 @@ struct bt_buf_data
                  BT_BUF_ISO_RX_COUNT))
 
 /** Data size needed for HCI Command buffers. */
-#define BT_BUF_CMD_TX_SIZE BT_BUF_CMD_SIZE(CONFIG_BT_BUF_CMD_TX_SIZE2)
+#define BT_BUF_CMD_TX_SIZE BT_BUF_CMD_SIZE(CONFIG_BT_BUF_CMD_TX_SIZE)
 
 /** Allocate a buffer for incoming data
  *
