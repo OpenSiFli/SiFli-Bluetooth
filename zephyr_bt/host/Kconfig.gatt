@@ -249,7 +249,7 @@ config BT_PERIPHERAL_PREF_LATENCY
 
 config BT_PERIPHERAL_PREF_TIMEOUT
 	int "Peripheral preferred supervision timeout in 10ms units"
-	default 42
+	default 400
 	range 10 65535 if !BT_CONN_PARAM_ANY
 	help
 	  It is up to user to provide valid timeout which pass required minimum
