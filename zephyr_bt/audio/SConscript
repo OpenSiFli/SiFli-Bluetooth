@@ -91,6 +91,12 @@ if GetDepend(['BT_BAP_SCAN_DELEGATOR']):
 if GetDepend(['BT_BAP_BROADCAST_ASSISTANT']):
     src+= ['bap_broadcast_assistant.c']
 
+if GetDepend(['BT_CCP_CALL_CONTROL_CLIENT']):
+    src+= ['ccp_call_control_client.c']   
+
+if GetDepend(['BT_CCP_CALL_CONTROL_SERVER']):
+    src+= ['ccp_call_control_server.c']  
+    
 if GetDepend(['BT_HAS']):
     src+= ['has.c']
 
@@ -120,6 +126,7 @@ if GetDepend(['BT_GMAP']):
 
 if GetDepend(['BT_PBP']):
     src+= ['pbp.c']
+
 
 CPPPATH = [cwd]
 
