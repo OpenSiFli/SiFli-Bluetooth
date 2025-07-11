@@ -85,7 +85,7 @@ static hfp_audio_env_t g_hfp_audio_env;
 /****************************************func define*************************************************/
 static int hfp_audio_client_callback(audio_server_callback_cmt_t cmd, void *userdata, uint32_t unused)
 {
-    audio_type_t type = (audio_type_t)userdata;
+    audio_type_t type = (audio_type_t)(uint32_t)userdata;
     //BT_DBG_D("hfp_audio_client_callback cmd=%d type=%d\r\n", cmd, type);
     return 0;
 }
