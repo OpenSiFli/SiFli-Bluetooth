@@ -150,6 +150,10 @@ __WEAK uint8_t sibles_advertising_data_compose(sibles_advertising_context_t *con
     return ret;
 }
 
+__WEAK uint8_t sibles_advertising_primary_phy_get()
+{
+    return GAP_PHY_TYPE_LE_1M;
+}
 
 /*
  * FUNCTION DEFINITIONS
@@ -201,7 +205,11 @@ uint8_t sibles_advertising_init(sibles_advertising_context_t *context, sibles_ad
         context->adv_para.filter_pol = ADV_ALLOW_SCAN_ANY_CON_ANY;
 
         context->adv_para.prim_cfg.chnl_map = 0x07;
+#if defined(SF32LB55X) || defined(SF32LB58X)
+        context->adv_para.prim_cfg.phy = sibles_advertising_primary_phy_get();
+#else
         context->adv_para.prim_cfg.phy = GAP_PHY_TYPE_LE_1M;
+#endif
         context->adv_mode = para->config.adv_mode;
 
 
