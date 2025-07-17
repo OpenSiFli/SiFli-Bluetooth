@@ -8,13 +8,16 @@
 #include <../host/l2cap_internal.h>
 #include <zephyr/sys_clock.h>
 #include <zephyr/sys/iterable_sections.h>
+#include <zephyr/console/console.h>
+
 #ifdef BT_MESH
     #include <zephyr/bluetooth/mesh.h>
     #include <mesh/subnet.h>
     #include <mesh/mesh.h>
 #endif
 #include "bf0_sibles.h"
-
+#include <stdio.h>
+#include <rtdef.h>
 
 k_timepoint_t sys_timepoint_calc(k_timeout_t timeout)
 {
@@ -490,4 +493,41 @@ int mnt_init(void)
 }
 INIT_ENV_EXPORT(mnt_init);
 #endif
+
+static struct rt_semaphore zbt_rx_sem;
+static rt_device_t rt_console;
+
+rt_err_t (*old_rx_ind)(rt_device_t dev, rt_size_t size);
+
+static rt_err_t console_rx_ind(rt_device_t dev, rt_size_t size)
+{
+    RT_ASSERT(rt_console != RT_NULL);
+
+    /* release semaphore to let finsh thread rx data */
+    rt_sem_release(&zbt_rx_sem);
+
+    return RT_EOK;
+}
+
+int console_init(void)
+{
+    rt_sem_init(&zbt_rx_sem, "zbt_con", 0, RT_IPC_FLAG_FIFO);
+    rt_console = rt_console_get_device();
+    RT_ASSERT(rt_console != RT_NULL);
+
+    old_rx_ind = rt_console->rx_indicate;
+    rt_device_set_rx_indicate(rt_console, console_rx_ind);
+
+    return 0;
+}
+
+int console_getchar(void)
+{
+    char ch = 0;
+
+    while (rt_device_read(rt_console, -1, &ch, 1) != 1)
+        rt_sem_take(&zbt_rx_sem, RT_WAITING_FOREVER);
+
+    return (int)ch;
+}
 

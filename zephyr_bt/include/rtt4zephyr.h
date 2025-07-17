@@ -296,7 +296,7 @@ static ALWAYS_INLINE unsigned int find_lsb_set(uint32_t op)
 #define k_sem rt_semaphore
 #define K_SEM_DEFINE(sem,a,b) struct rt_semaphore sem = {.value=a}
 #define k_sem_count_get(a) (a)->value
-#define k_sem_reset(a) (a)->value=0
+#define k_sem_reset(a) ((a)->value=0)
 int k_sem_init(struct k_sem *sem, unsigned int initial_count, unsigned int limit);
 void k_sem_give(struct k_sem *sem);
 int k_sem_take(struct k_sem *sem, k_timeout_t timeout);
@@ -344,7 +344,7 @@ typedef void (*k_thread_entry_t)(void *p1, void *p2, void *p3);
 #define k_current_get() rt_current_thread
 void k_thread_start(k_tid_t thread);
 #define k_sleep(s) rt_thread_mdelay(s.ticks*1000)
-#define k_msleep(s) rt_thread_mdelay(s)
+#define k_msleep(s) rt_thread_mdelay(s.ticks)
 #define k_thread rt_thread
 k_tid_t k_thread_create(struct k_thread *new_thread,
                         uint32_t *stack,
