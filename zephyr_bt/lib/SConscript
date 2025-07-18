@@ -1,0 +1,8 @@
+from building import *
+
+cwd = GetCurrentDir()
+src = ["ead.c"]
+
+group = DefineGroup('zbt_ead', src, depend = ['BT_EAD'])
+
+Return('group')

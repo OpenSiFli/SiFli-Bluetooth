@@ -1431,9 +1431,9 @@ static void l2cap_chan_destroy(struct bt_l2cap_chan *chan)
      * In the case where we are in the context of executing the rtx_work
      * item, we don't sync as it will deadlock the workqueue.
      */
-    struct k_work_q *rtx_work_queue = le_chan->rtx_work.queue;
+    struct k_work_q *rtx_work_queue = le_chan->rtx_work.workqueue;
 
-    if (rtx_work_queue == NULL || k_current_get() != &rtx_work_queue->thread)
+    if (rtx_work_queue == NULL || k_current_get() != rtx_work_queue->work_thread)
     {
         k_work_cancel_delayable_sync(&le_chan->rtx_work, &le_chan->rtx_sync);
     }

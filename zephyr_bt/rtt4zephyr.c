@@ -349,9 +349,30 @@ int k_poll_signal_raise(struct k_poll_signal *sig, int result)
 __syscall int k_poll(struct k_poll_event *events, int num_events,
                      k_timeout_t timeout)
 {
-    // TODO
+    int r = 0;
 
-    return 0;
+    if (events->type == _POLL_TYPE_SIGNAL)
+    {
+        struct k_poll_signal *sig = events->signal;
+        if (sig->waiting_list.prev == NULL && sig->waiting_list.next == NULL)
+            rt_wqueue_init(sig);
+        rt_wqueue_wait(events->signal, 0, timeout.ticks);
+        if (rt_get_errno() == -RT_ETIMEOUT)
+        {
+            r = -EAGAIN;
+            rt_set_errno(RT_EOK);
+        }
+    }
+    else
+    {
+        // TODO
+    }
+    return r;
+}
+
+void k_poll_signal_reset(struct k_poll_signal *sig)
+{
+    sig->flag = RT_WQ_FLAG_CLEAN;
 }
 
 void k_fifo_cancel_wait(struct k_fifo *queue)
@@ -530,4 +551,61 @@ int console_getchar(void)
 
     return (int)ch;
 }
+
+
+
+void sys_reboot(int type)
+{
+    HAL_PMU_Reboot();
+}
+
+
+/**
+ * @brief Fill the destination buffer with random data values that should
+ * pass general randomness tests.
+ *
+ * @note The random values returned are not considered cryptographically
+ * secure random number values.
+ *
+ * @param [out] dst destination buffer to fill with random data.
+ * @param len size of the destination buffer.
+ *
+ */
+void sys_rand_get(void *dst, size_t len)
+{
+    RNG_HandleTypeDef hrng;
+    uint32_t val, seed;
+    uint8_t *p_dst = (uint8_t *)dst;
+
+    memset(&hrng, 0, sizeof(hrng));
+    hrng.Instance = hwp_trng;
+    HAL_RNG_Init(&hrng);
+
+    HAL_RNG_GenerateRandomSeed(&hrng, &seed);
+    for (int i = 0; i < len; i += sizeof(val))
+    {
+        HAL_RNG_GenerateRandomNumber(&hrng, &val);
+        memcpy(p_dst + i, &val, len - i > sizeof(val) ? sizeof(val) : len - i);
+    }
+}
+
+/**
+ * @brief Fill the destination buffer with cryptographically secure
+ * random data values.
+ *
+ * @note If the random values requested do not need to be cryptographically
+ * secure then use sys_rand_get() instead.
+ *
+ * @param [out] dst destination buffer to fill.
+ * @param len size of the destination buffer.
+ *
+ * @return 0 if success, -EIO if entropy reseed error
+ *
+ */
+int sys_csrand_get(void *dst, size_t len)
+{
+    sys_rand_get(dst, len);
+}
+
+
 

@@ -1,0 +1,15 @@
+from building import *
+
+cwd = GetCurrentDir()
+src = ['ots.c', 'ots_l2cap.c', 'ots_obj_manager.c', 'ots_oacp.c', 'ots_olcp.c']
+CPPPATH = [cwd]
+
+if GetDepend('BT_OTS_DIR_LIST_OBJ'):
+    src += ['ots_dir_list.c']
+    
+if GetDepend('BT_OTS_CLIENT'):
+    src += ['ots_client.c', 'ots_l2cap']
+    
+group = DefineGroup('zbt_ots', src, depend = ['BT_OTS'],CPPPATH = CPPPATH)
+
+Return('group')

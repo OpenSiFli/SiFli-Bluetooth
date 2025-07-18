@@ -240,6 +240,7 @@ rsource "Kconfig.iso"
 rsource "common/Kconfig"
 rsource "host/Kconfig"
 rsource "Kconfig.tinycrypt"
+rsource "lib/Kconfig"
 
 config BT_SHELL
 	bool "Bluetooth shell"

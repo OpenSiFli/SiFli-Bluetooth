@@ -117,6 +117,7 @@ enum
 
 #define BUILD_ASSERT(...)
 #define ALWAYS_INLINE __inline
+#define FUNC_NORETURN    __attribute__((__noreturn__))
 #define __noasan
 #define __fallthrough
 #define __noinit
@@ -165,6 +166,13 @@ enum
 
 #define CONFIG_SYS_CLOCK_EXISTS 1
 #define CONFIG_SYS_CLOCK_TICKS_PER_SEC RT_TICK_PER_SECOND
+
+#define k_cycle_get_32() \
+    HAL_DBG_DWT_GetCycles()
+
+#ifndef CONFIG_SYS_CLOCK_MAX_TIMEOUT_DAYS
+    #define CONFIG_SYS_CLOCK_MAX_TIMEOUT_DAYS 365
+#endif
 
 /**
  * @brief Generate null timeout delay.
@@ -343,7 +351,7 @@ typedef void (*k_thread_entry_t)(void *p1, void *p2, void *p3);
 #define K_KERNEL_STACK_DEFINE(sym, size) uint8_t sym[size]
 #define k_current_get() rt_current_thread
 void k_thread_start(k_tid_t thread);
-#define k_sleep(s) rt_thread_mdelay(s.ticks*1000)
+#define k_sleep(s) rt_thread_mdelay(s.ticks)
 #define k_msleep(s) rt_thread_mdelay(s.ticks)
 #define k_thread rt_thread
 k_tid_t k_thread_create(struct k_thread *new_thread,
@@ -411,6 +419,10 @@ rt_tick_t k_work_delayable_remaining_get(const struct rt_delayed_work *dwork);
 int k_work_reschedule2(struct k_work_delayable *dwork, rt_tick_t delay);
 bool k_work_flush(struct k_work *work, struct k_work_sync *sync);
 #define k_work_busy_get(work) (work)->flags
+static inline bool k_work_is_pending(const struct k_work *work)
+{
+    return k_work_busy_get(work) != 0;
+}
 
 
 /*********** k_work_queue -> rt_workqueue *********************************/
@@ -791,6 +803,14 @@ uint32_t unused:
 
 __syscall int k_poll(struct k_poll_event *events, int num_events,
                      k_timeout_t timeout);
+
+
+/**
+ * @brief Reset a poll signal object's state to unsignaled.
+ *
+ * @param sig A poll signal object
+ */
+__syscall void k_poll_signal_reset(struct k_poll_signal *sig);
 
 #endif
 
