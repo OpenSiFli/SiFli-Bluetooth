@@ -8,7 +8,7 @@ if GetDepend('BT_OTS_DIR_LIST_OBJ'):
     src += ['ots_dir_list.c']
     
 if GetDepend('BT_OTS_CLIENT'):
-    src += ['ots_client.c', 'ots_l2cap']
+    src += ['ots_client.c']
     
 group = DefineGroup('zbt_ots', src, depend = ['BT_OTS'],CPPPATH = CPPPATH)
 

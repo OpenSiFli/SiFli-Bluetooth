@@ -292,18 +292,6 @@ int k_work_submit(struct k_work *work)
 
 /***********************Not implemented*********************************/
 
-int bt_hci_ecc_send(struct net_buf *buf)
-{
-    return 0;
-}
-
-void bt_hci_ecc_supported_commands(uint8_t *supported_commands)
-{
-    return;
-}
-
-
-
 void k_work_queue_start(struct k_work_q *queue,
                         void *stack,
                         rt_size_t stack_size,

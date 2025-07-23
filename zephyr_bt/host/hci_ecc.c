@@ -14,6 +14,8 @@
 #include <zephyr/debug/stack.h>
 #include <zephyr/sys/byteorder.h>
 
+#define DT_HAS_CHOSEN(zephyr_bt_hci) 1
+
 #if defined(CONFIG_BT_USE_PSA_API)
     #include <psa/crypto.h>
 #else /* !CONFIG_BT_USE_PSA_API */

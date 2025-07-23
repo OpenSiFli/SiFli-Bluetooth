@@ -326,15 +326,18 @@ static void l2cap_rtx_timeout(struct k_work *work)
     struct bt_l2cap_le_chan *chan = LE_CHAN_RTX(work);
     struct bt_conn *conn = chan->chan.conn;
 
-    LOG_ERR("chan %p timeout", chan);
+    LOG_ERR("chan %p timeout, conn %p", chan, conn);
 
-    bt_l2cap_chan_remove(conn, &chan->chan);
-    bt_l2cap_chan_del(&chan->chan);
-
-    /* Remove other channels if pending on the same ident */
-    while ((chan = l2cap_remove_ident(conn, chan->ident)))
+    if (conn)
     {
+        bt_l2cap_chan_remove(conn, &chan->chan);
         bt_l2cap_chan_del(&chan->chan);
+
+        /* Remove other channels if pending on the same ident */
+        while ((chan = l2cap_remove_ident(conn, chan->ident)))
+        {
+            bt_l2cap_chan_del(&chan->chan);
+        }
     }
 }
 

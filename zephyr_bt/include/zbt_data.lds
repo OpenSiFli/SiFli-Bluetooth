@@ -1,1 +1,2 @@
     _net_buf_pool_list_start = .; KEEP(*(SORT_BY_NAME(._net_buf_pool.static.*))); _net_buf_pool_list_end = .; 
+    _bt_nus_inst_list_start = .; KEEP(*(SORT_BY_NAME(._bt_nus_inst.static.*))); _bt_nus_inst_list_end = .; 
