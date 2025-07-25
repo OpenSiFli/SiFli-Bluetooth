@@ -31,11 +31,11 @@
 /** SAR Receiver Configuration state initializer */
 #define BT_MESH_SAR_RX_INIT                                                    \
     {                                                                      \
-        CONFIG_BT_MESH_SAR_RX_SEG_THRESHOLD2,                           \
+        CONFIG_BT_MESH_SAR_RX_SEG_THRESHOLD,                           \
             CONFIG_BT_MESH_SAR_RX_ACK_DELAY_INC,                   \
             CONFIG_BT_MESH_SAR_RX_DISCARD_TIMEOUT,                 \
             CONFIG_BT_MESH_SAR_RX_SEG_INT_STEP,                    \
-            CONFIG_BT_MESH_SAR_RX_ACK_RETRANS_COUNT2,               \
+            CONFIG_BT_MESH_SAR_RX_ACK_RETRANS_COUNT,               \
     }
 
 #define BT_MESH_SAR_TX_SEG_INT_MS ((bt_mesh.sar_tx.seg_int_step + 1) * 10)

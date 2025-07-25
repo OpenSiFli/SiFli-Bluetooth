@@ -411,12 +411,13 @@ int k_work_submit(struct k_work *work);
 
 #define k_work_cancel_delayable_sync(dwork,sync) rt_workqueue_cancel_work_sync(rt_workqueue_sysq(),(struct rt_work *)dwork)
 #define k_work_delayable_is_pending(dwork) ((dwork)->work.flags&RT_WORK_STATE_PENDING)
-#define k_work_schedule(dwork,delay) rt_work_submit((struct rt_work*)dwork,delay.ticks)
 #define k_work_init(work,handler) rt_work_init(work, (void(*)(struct rt_work*, void*))handler, NULL)
 #define k_work_delayable_busy_get(dwork) ((dwork)->work.flags&RT_WORK_STATE_RUNNING)
 #define k_work_reschedule(dwork,delay) k_work_reschedule2(dwork,delay.ticks)
 rt_tick_t k_work_delayable_remaining_get(const struct rt_delayed_work *dwork);
 int k_work_reschedule2(struct k_work_delayable *dwork, rt_tick_t delay);
+int k_work_schedule(struct k_work_delayable *dwork, k_timeout_t delay);
+
 bool k_work_flush(struct k_work *work, struct k_work_sync *sync);
 #define k_work_busy_get(work) (work)->flags
 static inline bool k_work_is_pending(const struct k_work *work)
@@ -518,6 +519,7 @@ void *k_lifo_get(struct k_lifo *lifo, k_timeout_t timeout);
 #define k_poll_signal rt_wqueue
 int k_poll_signal_raise(struct k_poll_signal *sig, int result);
 #define K_POLL_SIGNAL_INITIALIZER(obj) {}
+
 
 /*********** mem_slab -> rt_mempool ********************/
 #define k_mem_slab rt_mempool
@@ -811,6 +813,16 @@ __syscall int k_poll(struct k_poll_event *events, int num_events,
  * @param sig A poll signal object
  */
 __syscall void k_poll_signal_reset(struct k_poll_signal *sig);
+
+/**
+ * @brief Initialize a poll signal object.
+ *
+ * Ready a poll signal object to be signaled via k_poll_signal_raise().
+ *
+ * @param sig A poll signal.
+ */
+
+__syscall void k_poll_signal_init(struct k_poll_signal *sig);
 
 #endif
 

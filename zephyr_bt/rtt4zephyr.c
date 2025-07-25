@@ -290,7 +290,13 @@ int k_work_submit(struct k_work *work)
     return rt_work_submit(work, 0);
 }
 
-/***********************Not implemented*********************************/
+int k_work_schedule(struct k_work_delayable *dwork,
+                    k_timeout_t delay)
+{
+    if (dwork->work.list.next == NULL && dwork->work.list.prev == NULL)
+        rt_delayed_work_init(dwork, dwork->work.work_func, dwork->work.work_data);
+    rt_work_submit((struct rt_work *)dwork, delay.ticks);
+}
 
 void k_work_queue_start(struct k_work_q *queue,
                         void *stack,
@@ -367,6 +373,20 @@ void k_fifo_cancel_wait(struct k_fifo *queue)
 {
     // TODO
 }
+
+/**
+ * @brief Initialize a poll signal object.
+ *
+ * Ready a poll signal object to be signaled via k_poll_signal_raise().
+ *
+ * @param sig A poll signal.
+ */
+
+__syscall void k_poll_signal_init(struct k_poll_signal *sig)
+{
+    rt_wqueue_init(sig);
+}
+
 
 int k_work_cancel_delayable(struct k_work_delayable *dwork)
 {
