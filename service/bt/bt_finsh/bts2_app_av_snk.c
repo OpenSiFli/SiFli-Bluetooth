@@ -889,14 +889,12 @@ bt_err_t bt_a2dp_source_connect_request(BTS2S_BD_ADDR *bd)
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avsnk_disc_2_src(BOOL is_close)
+void bt_avsnk_close_a2dp(void)
 {
     bts2s_av_inst_data *inst_data;
     inst_data = bt_av_get_inst_data();
-    if (is_close)
-    {
-        inst_data->close_pending = TRUE;
-    }
+
+    inst_data->close_pending = TRUE;
     for (uint32_t i = 0; i < MAX_CONNS; i++)
     {
         if (inst_data->con[i].cfg == AV_AUDIO_SNK)
@@ -904,14 +902,22 @@ void bt_avsnk_disc_2_src(BOOL is_close)
     }
 }
 
-void bt_avsnk_disc_by_addr(BTS2S_BD_ADDR *bd_addr, BOOL is_close)
+void bt_avsnk_disc_2_src(void)
 {
     bts2s_av_inst_data *inst_data;
     inst_data = bt_av_get_inst_data();
-    if (is_close)
+
+    for (uint32_t i = 0; i < MAX_CONNS; i++)
     {
-        inst_data->close_pending = TRUE;
+        if (inst_data->con[i].cfg == AV_AUDIO_SNK)
+            bt_av_disconnect(i);
     }
+}
+
+void bt_avsnk_disc_by_addr(BTS2S_BD_ADDR *bd_addr)
+{
+    bts2s_av_inst_data *inst_data;
+    inst_data = bt_av_get_inst_data();
 
     for (uint32_t i = 0; i < MAX_CONNS; i++)
     {

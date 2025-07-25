@@ -282,7 +282,7 @@ bt_err_t bt_interface_disc_ext(unsigned char *mac, bt_profile_t ext_profile)
     {
     case BT_PROFILE_A2DP:
 #ifdef CFG_AV_SNK
-        bt_avsnk_disc_by_addr(&bd_addr, FALSE);
+        bt_avsnk_disc_by_addr(&bd_addr);
 #endif
         break;
 

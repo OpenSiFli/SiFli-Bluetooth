@@ -277,10 +277,44 @@ void bt_avsrc_recfg(bts2_app_stru *bts2_app_data)
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avsrc_disc_2_snk(bts2_app_stru *bts2_app_data)
+void bt_avsrc_disc_2_snk(void)
 {
+    bts2s_av_inst_data *inst_data;
+    inst_data = bt_av_get_inst_data();
+
     for (uint32_t i = 0; i < MAX_CONNS; i++)
-        bt_av_disconnect(i);
+    {
+        if (inst_data->con[i].cfg == AV_AUDIO_SRC)
+            bt_av_disconnect(i);
+    }
+}
+
+void bt_avsrc_close_a2dp(void)
+{
+    bts2s_av_inst_data *inst_data;
+    inst_data = bt_av_get_inst_data();
+
+    inst_data->close_pending = TRUE;
+    for (uint32_t i = 0; i < MAX_CONNS; i++)
+    {
+        if (inst_data->con[i].cfg == AV_AUDIO_SRC)
+            bt_av_disconnect(i);
+    }
+}
+
+void bt_avsrc_disc_by_addr(BTS2S_BD_ADDR *bd_addr)
+{
+    bts2s_av_inst_data *inst_data;
+    inst_data = bt_av_get_inst_data();
+
+    for (uint32_t i = 0; i < MAX_CONNS; i++)
+    {
+        if (bd_eq(bd_addr, &inst_data->con[i].av_rmt_addr))
+        {
+            bt_av_disconnect(i);
+            break;
+        }
+    }
 }
 
 /*----------------------------------------------------------------------------*

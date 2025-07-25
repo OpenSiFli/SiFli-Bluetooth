@@ -3541,7 +3541,7 @@ static void bt_hdl_menu_av_snk(bts2_app_stru *bts2_app_data)
         bt_a2dp_source_connect_request(&(bts2_app_data->last_conn_bd));
         break;
     case '2':
-        bt_avsnk_disc_2_src(FALSE);
+        bt_avsnk_disc_2_src();
         break;
     case '3':
         bt_avsnk_suspend_stream(bts2_app_data);
@@ -3561,7 +3561,7 @@ static void bt_hdl_menu_av_snk(bts2_app_stru *bts2_app_data)
     case '7':
         if (bt_av_conn_check())
         {
-            bt_avsnk_disc_2_src(TRUE);
+            bt_avsnk_disc_2_src();
         }
         else
         {
@@ -4003,7 +4003,7 @@ static void bt_hdl_menu_av_src(bts2_app_stru *bts2_app_data)
         bt_a2dp_sink_connect_request(&(bts2_app_data->last_conn_bd));
         break;
     case '2':
-        bt_avsrc_disc_2_snk(bts2_app_data);
+        bt_avsrc_disc_2_snk();
         break;
     case '3':
         bt_avsrc_suspend_stream(bts2_app_data);

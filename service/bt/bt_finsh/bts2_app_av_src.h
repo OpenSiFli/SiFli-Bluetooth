@@ -58,7 +58,9 @@ int bt_a2dp_sink_connect_request(BTS2S_BD_ADDR *bd);
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avsrc_disc_2_snk(bts2_app_stru *bts2_app_data);
+void bt_avsrc_disc_2_snk(void);
+void bt_avsrc_close_a2dp(void);
+void bt_avsrc_disc_by_addr(BTS2S_BD_ADDR *bd_addr);
 
 /*----------------------------------------------------------------------------*
  *
@@ -183,7 +185,9 @@ BOOL bt_avsrc_get_start_flag(void);
 
 #define bt_avsrc_init(inst,bts2_app_data)
 #define bt_a2dp_sink_connect_request(bts2_app_data)
-#define bt_avsrc_disc_2_snk(bts2_app_data)
+#define bt_avsrc_disc_2_snk()
+#define bt_avsrc_close_a2dp()
+#define bt_avsrc_disc_by_addr(BTS2S_BD_ADDR)
 #define bt_avsrc_start_stream(bts2_app_data)
 #define bt_avsrc_release_stream(bts2_app_data)
 #define bt_avsrc_suspend_stream(bts2_app_data)

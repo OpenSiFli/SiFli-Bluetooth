@@ -98,9 +98,10 @@ void bt_avsnk_abort_stream(bts2_app_stru *bts2_app_data);
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_avsnk_disc_2_src(BOOL is_close);
+void bt_avsnk_close_a2dp(void);
+void bt_avsnk_disc_2_src(void);
 
-void bt_avsnk_disc_by_addr(BTS2S_BD_ADDR *bd_addr, BOOL is_close);
+void bt_avsnk_disc_by_addr(BTS2S_BD_ADDR *bd_addr);
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
@@ -171,7 +172,8 @@ void bt_avsnk_msg_handler(bts2_app_stru *bts2_app_data);
 #define bt_avsnk_rel(inst)
 #define bt_a2dp_source_connect_request(bts2_app_data) (-BT_ERROR_INPARAM)
 #define bt_avsnk_abort_stream(bts2_app_data)
-#define bt_avsnk_disc_2_src(is_close)
+#define bt_avsnk_close_a2dp()
+#define bt_avsnk_disc_2_src()
 #define bt_avsnk_start_stream(bts2_app_data)
 #define bt_avsnk_suspend_stream(bts2_app_data)
 #define bt_avsnk_release_stream(bts2_app_data)
