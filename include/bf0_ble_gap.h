@@ -2354,7 +2354,7 @@ uint8_t ble_gap_security_request(ble_gap_sec_req_t *req);
 //uint8_t ble_gap_set_passkey(ble_gap_set_passkey_t *key);
 
 /**
- * @brief Update phy configuration with peer device. The event #BLE_GAP_PHY_UPDATE_IND will indicate the result.
+ * @brief Update phy configuration with peer device. The event #BLE_GAP_REMOTE_PHY_IND will indicate the result.
    @param[in] phy Phy updated parameters.
    @retval The status of send to BLE subsystem.
  */
