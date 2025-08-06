@@ -11,6 +11,8 @@
 extern "C" {
 #endif
 
+#include "hfp_type_api.h"
+
 #define MAX_VGS_VAL            (15)
 #define MAX_VGM_VAL            (15)
 #define HF_MSG_BASE            0x0000
@@ -21,18 +23,18 @@ extern "C" {
 
 enum
 {
-    BTS2MU_HF_ENB_CFM = BTS2MU_START,
-    BTS2MU_HF_DISB_CFM,
+    BTS2MU_HF_REG_CFM = BTS2MU_START,
+    BTS2MU_HF_UNREG_CFM,
     BTS2MU_HF_CONN_IND,
     BTS2MU_HF_CONN_CFM,
     BTS2MU_HF_DISC_CFM,
     BTS2MU_HF_DISC_IND,
-    BTS2MU_HF_AUDIO_CFM,
+    BTS2MU_HF_AUDIO_CONN_CFM,
+    BTS2MU_HF_AUDIO_DISC_CFM,
+    BTS2MU_HF_AUDIO_DISC_IND,
     BTS2MU_HF_AUDIO_IND,
     BTS2MU_HF_AT_CMD_CFM,
     BTS2MU_HF_REQ_ACCEPT_CFM,
-    BTS2MU_HF_SCO_RENEGOTIATE_IND,
-    BTS2MU_HF_SCO_RENEGOTIATE_CFM,
     BTS2MU_HF_SPK_GAIN_IND,
     BTS2MU_HF_MIC_GAIN_IND,
     BTS2MU_HF_AT_DATA_IND,
@@ -49,7 +51,6 @@ enum
     BTS2MU_HF_STS_IND,
     BTS2MU_HF_CIEV_IND,
     BTS2MU_HF_CMEE_IND,
-    BTS2MU_HF_AG_EVENT_IND,
     BTS2MU_HF_BRSF_IND,
     BTS2MU_HF_CIND_IND,
     BTS2MU_HF_BSIR_IND,
@@ -99,6 +100,7 @@ enum
 typedef struct
 {
     U16 type;
+    U8 mux_id;
     U8  at_cmd_id;
     U8  res;
 } BTS2S_HF_AT_CMD_CFM;
@@ -106,6 +108,8 @@ typedef struct
 typedef struct
 {
     U16 type;
+    U8 mux_id;
+    U8 profile_type;
     S16 command_id;
     S16 val;
     U8  payload[1];
@@ -114,6 +118,8 @@ typedef struct
 typedef struct
 {
     U16 type;
+    U8 mux_id;
+    U8 profile_type;
     U16 payload_len;
     U8  cmd_id;
     U8 *payload;
@@ -130,7 +136,7 @@ typedef struct
 {
     U16 type;
     U8 res;
-    U8 conn_type;
+    U8 profile_type;
 } BTS2S_HF_ENB_CFM;
 
 typedef struct
@@ -156,11 +162,12 @@ typedef struct
 typedef struct
 {
     U16 type;
-    U8 conn_type;
+    U8 profile_type;
     U8 res;
     U8 rfcomm_channel;
+    U8 device_state;
+    U8 mux_id;
     U32 supp_featr;
-    BTS2S_DEV_NAME svc_name;
     BTS2S_BD_ADDR bd;
 } BTS2S_HF_CONN_CFM;
 
@@ -228,17 +235,23 @@ typedef struct
 {
     U16 type;
     U8 gain;
+    U8 profile_type;
+    U8 mux_id;
 } BTS2S_HF_SPK_GAIN_IND;
 
 typedef struct
 {
     U16 type;
     U8  gain;
+    U8 profile_type;
+    U8 mux_id;
 } BTS2S_HF_MIC_GAIN_IND;
 
 typedef struct
 {
     U16 type;
+    U8 profile_type;
+    U8 mux_id;
     U16 payload_len;
     U8  *payload;
 } BTS2S_HF_AT_DATA_IND;
@@ -246,6 +259,8 @@ typedef struct
 typedef struct
 {
     U16  type;
+    U8 profile_type;
+    U8 mux_id;
     char chld_str[CHLD_LEN + 1];
     U8   supp;
 } BTS2S_HF_CHLD_IND;
@@ -253,6 +268,8 @@ typedef struct
 typedef struct
 {
     U16 type;
+    U8 profile_type;
+    U8 mux_id;
     U8  res;
     U8  mode;
     U8  fmt;
@@ -263,6 +280,8 @@ typedef struct
 typedef struct
 {
     U16 type;
+    U8 profile_type;
+    U8 mux_id;
     U8  idx;
     U8  dir;
     U8  st;
@@ -277,6 +296,8 @@ typedef struct
 typedef struct
 {
     U16 type;
+    U8 profile_type;
+    U8 mux_id;
     U16 phone_len;
     U8 phone_type;
     U8 *phone_number;
@@ -285,6 +306,8 @@ typedef struct
 typedef struct
 {
     U16 type;
+    U8 profile_type;
+    U8 mux_id;
     U16 phone_len;
     U8 phone_type;
     U8 *phone_number;
@@ -293,12 +316,16 @@ typedef struct
 typedef struct
 {
     U16 type;
+    U8 profile_type;
+    U8 mux_id;
     U8 res;
 } BTS2S_HF_BINP_CFM;
 
 typedef struct
 {
     U16 type;
+    U8 profile_type;
+    U8 mux_id;
     U8 res;
     U16 phone_len;
     U8 phone_type;
@@ -308,12 +335,16 @@ typedef struct
 typedef struct
 {
     U16 type;
+    U8 profile_type;
+    U8 mux_id;
     U8  val;
 } BTS2S_HF_BTRH_IND;
 
 typedef struct
 {
     U16 type;
+    U8 profile_type;
+    U8 mux_id;
     U8  val;
 } BTS2S_HF_VOICE_RECOG_IND;
 
@@ -321,6 +352,8 @@ typedef struct
 typedef struct
 {
     U16 type;
+    U8 profile_type;
+    U8 mux_id;
     U8 res;
     U8 phone_type;
     U16 phone_len;
@@ -330,23 +363,31 @@ typedef struct
 typedef struct
 {
     U16 type;
+    U8 profile_type;
+    U8 mux_id;
     U8 res;
 } BTS2S_HF_COMMON_CFM;
 
 typedef struct
 {
     U16 type;
+    U8 profile_type;
+    U8 mux_id;
 } BTS2S_HF_RING_IND;
 
 typedef struct
 {
     U16 type;
+    U8 profile_type;
+    U8 mux_id;
     U8  st_ev;
 } BTS2S_HF_ST_IND;
 
 typedef struct
 {
     U16  type;
+    U8 profile_type;
+    U8 mux_id;
     char name[CIEV_NAME_LEN + 1];
     U8   val;
 } BTS2S_HF_CIEV_IND;
@@ -354,18 +395,24 @@ typedef struct
 typedef struct
 {
     U16  type;
+    U8 profile_type;
+    U8 mux_id;
     bts2_hfp_hf_cind cind_status;
 } BTS2S_HF_CALL_STATUS_IND;
 
 typedef struct
 {
     U16 type;
+    U8 profile_type;
+    U8 mux_id;
     U8  cmee_err_code;
 } BTS2S_HF_CMEE_IND;
 
 typedef struct
 {
     U16 type;
+    U8 profile_type;
+    U8 mux_id;
     U16  supp_feature;
 } BTS2S_HF_BRSF_IND;
 
@@ -384,10 +431,10 @@ typedef struct
  *      void.
  *
  * NOTE:
- *      Message BTS2MU_HF_ENB_CFM with structure BTS2S_HF_ENB_CFM will
+ *      Message BTS2MU_HF_REG_CFM with structure BTS2S_HF_ENB_CFM will
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
-void hfp_hf_enb_req(U32 supp_featr);
+void hfp_hf_register(U32 supp_featr);
 
 /*----------------------------------------------------------------------------*
  *
@@ -402,10 +449,10 @@ void hfp_hf_enb_req(U32 supp_featr);
  *      void.
  *
  * NOTE:
- *      Message BTS2MU_HF_DISB_CFM with structure BTS2S_HF_DISB_CFM will
+ *      Message BTS2MU_HF_UNREG_CFM with structure BTS2S_HF_DISB_CFM will
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
-void hfp_hf_disb_req(void);
+void hfp_hf_deregister(void);
 
 /*----------------------------------------------------------------------------*
  *
@@ -422,7 +469,7 @@ void hfp_hf_disb_req(void);
  *      Message BTS2MU_HF_CONN_CFM with structure BTS2S_HF_CONN_CFM will
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
-void hfp_hf_conn_req(BTS2S_BD_ADDR *bd, U8 conn_type);
+void hfp_hf_connect(BTS2S_BD_ADDR *bd, U8 profile_type);
 
 /*----------------------------------------------------------------------------*
  *
@@ -438,10 +485,10 @@ void hfp_hf_conn_req(BTS2S_BD_ADDR *bd, U8 conn_type);
  *      void.
  *
  * NOTE:
- *      Message BTS2MU_HF_CONN_RSP with structure BTS2S_HF_CONN_RSP will
+ *      Message BTS2MD_HF_CONN_RSP with structure BTS2S_HF_CONN_RSP will
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
-void hfp_hf_conn_rsp(BTS2S_BD_ADDR *bd, U8 srv_chnl, U8 res);
+void hfp_hf_connect_ind_res(BTS2S_BD_ADDR *bd, U8 srv_chnl, U8 res);
 
 /*----------------------------------------------------------------------------*
  *
@@ -458,7 +505,7 @@ void hfp_hf_conn_rsp(BTS2S_BD_ADDR *bd, U8 srv_chnl, U8 res);
  *      Message BTS2MU_HF_DISC_CFM with structure BTS2S_HF_DISC_CFM will
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
-void hfp_hf_disc_req();
+void hfp_hf_disconnect(BTS2S_BD_ADDR *bd, U8 profile_type);
 
 /*----------------------------------------------------------------------------*
  *
@@ -472,12 +519,12 @@ void hfp_hf_disc_req();
  *      void.
  *
  * NOTE:
- *      Message BTS2MU_HF_AUDIO_CFM with structure BTS2S_HF_AUDIO_CFM will
+ *      Message BTS2MU_HF_AUDIO_CONN_CFM with structure BTS2S_HF_AUDIO_CFM will
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
-void hfp_hf_audio_transfer_req(BOOL audio_on);
+void hfp_hf_connect_audio(BTS2S_BD_ADDR *bd, U8 profile_type);
 
-
+void hfp_hf_disconnect_audio(BTS2S_BD_ADDR *bd, U8 profile_type);
 /*-------------------------------------------------------------------------------------------AT_CMD FUNC------------------------------------------------------------------------*/
 
 
@@ -498,7 +545,7 @@ void hfp_hf_audio_transfer_req(BOOL audio_on);
  *      Message BTS2MU_HF_AT_CMD_CFM with cmd_id HFP_HF_AT_CIND_STATUS will
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
-void hfp_hf_send_at_cind_status_api(void);
+void hfp_hf_send_at_cind_status_api(uint8_t mux_id,  U8 profile_type);
 
 /*----------------------------------------------------------------------------*
  *
@@ -517,7 +564,7 @@ void hfp_hf_send_at_cind_status_api(void);
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
 
-void hfp_hf_send_at_cmer_api(BOOL active);
+void hfp_hf_send_at_cmer_api(uint8_t mux_id,  U8 profile_type, BOOL active);
 
 /*----------------------------------------------------------------------------*
  *
@@ -549,7 +596,7 @@ void hfp_hf_send_at_cmer_api(BOOL active);
  *      Message BTS2MU_HF_AT_CMD_CFM with cmd_id HFP_HF_AT_CHLD_CMD will
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
-void hfp_hf_send_at_chld_control_api(U8 *payload, U8 payload_len);
+void hfp_hf_send_at_chld_control_api(uint8_t mux_id,  U8 profile_type, U8 *payload, U8 payload_len);
 
 /*----------------------------------------------------------------------------*
  *
@@ -566,7 +613,7 @@ void hfp_hf_send_at_chld_control_api(U8 *payload, U8 payload_len);
  *      Message BTS2MU_HF_AT_CMD_CFM with structure HFP_HF_AT_CMEE will
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
-void hfp_hf_send_at_cmee_api(BOOL val);
+void hfp_hf_send_at_cmee_api(uint8_t mux_id,  U8 profile_type, BOOL val);
 
 /*----------------------------------------------------------------------------*
  *
@@ -583,7 +630,7 @@ void hfp_hf_send_at_cmee_api(BOOL val);
  *      Message BTS2MU_HF_AT_CMD_CFM with structure HFP_HF_AT_CLIP will
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
-void hfp_hf_send_at_clip_api(U8 active);
+void hfp_hf_send_at_clip_api(uint8_t mux_id,  U8 profile_type, U8 active);
 
 /*----------------------------------------------------------------------------*
  *
@@ -600,7 +647,7 @@ void hfp_hf_send_at_clip_api(U8 active);
  *      Message BTS2MU_HF_AT_CMD_CFM with structure HFP_HF_AT_CCWA will
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
-void hfp_hf_send_at_ccwa_api(U8 active);
+void hfp_hf_send_at_ccwa_api(uint8_t mux_id,  U8 profile_type, U8 active);
 
 /*----------------------------------------------------------------------------*
  *
@@ -620,7 +667,7 @@ void hfp_hf_send_at_ccwa_api(U8 active);
  *      Message BTS2MU_HF_AT_CMD_CFM with structure HFP_HF_AT_COPS_CMD will
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
-void hfp_hf_send_at_cops_cmd_api(U8 *payload, U8 payload_len);
+void hfp_hf_send_at_cops_cmd_api(uint8_t mux_id,  U8 profile_type, U8 *payload, U8 payload_len);
 
 /*----------------------------------------------------------------------------*
  *
@@ -637,7 +684,7 @@ void hfp_hf_send_at_cops_cmd_api(U8 *payload, U8 payload_len);
  *      Message BTS2MU_HF_AT_CMD_CFM with structure HFP_HF_AT_CLCC will
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
-void hfp_hf_send_at_clcc_api(void);
+void hfp_hf_send_at_clcc_api(uint8_t mux_id,  U8 profile_type);
 
 /*----------------------------------------------------------------------------*
  *
@@ -654,7 +701,7 @@ void hfp_hf_send_at_clcc_api(void);
  *      Message BTS2MU_HF_AT_CMD_CFM with structure HFP_HF_AT_BVRA will
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
-void hfp_hf_send_at_bvra_api(U8 active);
+void hfp_hf_send_at_bvra_api(uint8_t mux_id,  U8 profile_type, U8 active);
 
 /*----------------------------------------------------------------------------*
  *
@@ -671,7 +718,7 @@ void hfp_hf_send_at_bvra_api(U8 active);
  *      Message BTS2MU_HF_AT_CMD_CFM with structure HFP_HF_AT_VGS will
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
-void hfp_hf_send_at_vgs_api(U8 vol);
+void hfp_hf_send_at_vgs_api(uint8_t mux_id,  U8 profile_type, U8 vol);
 
 /*----------------------------------------------------------------------------*
  *
@@ -688,7 +735,7 @@ void hfp_hf_send_at_vgs_api(U8 vol);
  *      Message BTS2MU_HF_AT_CMD_CFM with structure HFP_HF_AT_VGM will
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
-void hfp_hf_send_at_vgm_api(U8 vol);
+void hfp_hf_send_at_vgm_api(uint8_t mux_id,  U8 profile_type, U8 vol);
 
 /*----------------------------------------------------------------------------*
  *
@@ -706,7 +753,7 @@ void hfp_hf_send_at_vgm_api(U8 vol);
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
 
-void hfp_hf_send_at_atd_api(U8 *payload, U8 payload_len);
+void hfp_hf_send_at_atd_api(uint8_t mux_id,  U8 profile_type, U8 *payload, U8 payload_len);
 
 /*----------------------------------------------------------------------------*
  *
@@ -724,7 +771,7 @@ void hfp_hf_send_at_atd_api(U8 *payload, U8 payload_len);
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
 
-void hfp_hf_send_at_bldn_api(void);
+void hfp_hf_send_at_bldn_api(uint8_t mux_id,  U8 profile_type);
 
 /*----------------------------------------------------------------------------*
  *
@@ -741,7 +788,7 @@ void hfp_hf_send_at_bldn_api(void);
  *      Message BTS2MU_HF_AT_CMD_CFM with structure HFP_HF_AT_ATA will
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
-void hfp_hf_send_at_ata_api(void);
+void hfp_hf_send_at_ata_api(uint8_t mux_id,  U8 profile_type);
 
 /*----------------------------------------------------------------------------*
  *
@@ -758,7 +805,7 @@ void hfp_hf_send_at_ata_api(void);
  *      Message BTS2MU_HF_AT_CMD_CFM with structure HFP_HF_AT_CHUP will
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
-void hfp_hf_send_at_chup_api(void);
+void hfp_hf_send_at_chup_api(uint8_t mux_id,  U8 profile_type);
 
 /*----------------------------------------------------------------------------*
  *
@@ -775,7 +822,7 @@ void hfp_hf_send_at_chup_api(void);
  *      Message BTS2MU_HF_AT_CMD_CFM with structure HFP_HF_AT_BTRH will
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
-void hfp_hf_send_at_btrh_api(void);
+void hfp_hf_send_at_btrh_api(uint8_t mux_id,  U8 profile_type);
 
 /*----------------------------------------------------------------------------*
  *
@@ -795,7 +842,7 @@ void hfp_hf_send_at_btrh_api(void);
  *      Message BTS2MU_HF_AT_CMD_CFM with structure HFP_HF_AT_BTRH_MODE will
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
-void hfp_hf_send_at_btrh_mode_api(U8 mode);
+void hfp_hf_send_at_btrh_mode_api(uint8_t mux_id,  U8 profile_type, U8 mode);
 
 /*----------------------------------------------------------------------------*
  *
@@ -812,7 +859,7 @@ void hfp_hf_send_at_btrh_mode_api(U8 mode);
  *      Message BTS2MU_HF_AT_CMD_CFM with structure HFP_HF_AT_VTS will
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
-void hfp_hf_send_at_vts_api(char payload);
+void hfp_hf_send_at_vts_api(uint8_t mux_id,  U8 profile_type, char payload);
 
 /*----------------------------------------------------------------------------*
  *
@@ -830,7 +877,7 @@ void hfp_hf_send_at_vts_api(char payload);
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
 
-void hfp_hf_send_at_cnum_api(void);
+void hfp_hf_send_at_cnum_api(uint8_t mux_id,  U8 profile_type);
 
 /*----------------------------------------------------------------------------*
  *
@@ -847,7 +894,7 @@ void hfp_hf_send_at_cnum_api(void);
  *      Message BTS2MU_HF_AT_CMD_CFM with structure HFP_HF_AT_NREC will
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
-void hfp_hf_send_at_nrec_api(void);
+void hfp_hf_send_at_nrec_api(uint8_t mux_id,  U8 profile_type);
 
 /*----------------------------------------------------------------------------*
  *
@@ -864,7 +911,7 @@ void hfp_hf_send_at_nrec_api(void);
  *      Message BTS2MU_HF_AT_CMD_CFM with structure HFP_HF_AT_BINP will
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
-void hfp_hf_send_at_binp_api(void);
+void hfp_hf_send_at_binp_api(uint8_t mux_id,  U8 profile_type);
 
 /*----------------------------------------------------------------------------*
  *
@@ -882,7 +929,7 @@ void hfp_hf_send_at_binp_api(void);
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
 
-void hfp_hf_send_at_batt_update_api(U8 *payload, U8 payload_len);
+void hfp_hf_send_at_batt_update_api(uint8_t mux_id,  U8 profile_type, U8 *payload, U8 payload_len);
 
 /*----------------------------------------------------------------------------*
  *
@@ -899,7 +946,7 @@ void hfp_hf_send_at_batt_update_api(U8 *payload, U8 payload_len);
  *      Message BTS2MU_HF_AT_CMD_CFM with structure HFP_HS_AT_CKPD will
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
-void hfp_hs_send_at_ckpd_api(void);
+void hfp_hs_send_at_ckpd_api(uint8_t mux_id,  U8 profile_type);
 
 
 /*----------------------------------------------------------------------------*
@@ -918,10 +965,10 @@ void hfp_hs_send_at_ckpd_api(void);
  *      Message BTS2MU_HF_AT_CMD_CFM with structure HFP_AT_EXTERN_AT_CMD will
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
-void hfp_hf_at_data_req(U8 *payload, U16 payload_len);
+void hfp_hf_at_data_req(uint8_t mux_id,  U8 profile_type, U8 *payload, U16 payload_len);
 
-void hfp_hf_send_at_bia_api(void);//reserve
-void hfp_hf_set_wbs(U8 wbs_flag);
+void hfp_hf_send_at_bia_api(uint8_t mux_id,  U8 profile_type);//reserve
+void hfp_hf_set_wbs(uint8_t mux_id,  U8 profile_type, U8 wbs_flag);
 
 
 #ifdef __cplusplus

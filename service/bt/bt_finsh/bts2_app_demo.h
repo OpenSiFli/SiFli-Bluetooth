@@ -168,10 +168,10 @@ typedef struct
 {
     bts2_hfp_st st;
     /*
-      conn_type 0 indicate hf connect
-      conn_type 1 indicate hs connect
+      profile_type 0 indicate hf connect
+      profile_type 1 indicate hs connect
      */
-    U8 conn_type;
+    U8 profile_type;
     U8 srv_chnl;
     U8 esco_flag;
     BOOL voice_flag;

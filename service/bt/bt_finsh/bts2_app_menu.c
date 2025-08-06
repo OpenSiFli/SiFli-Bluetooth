@@ -1963,7 +1963,7 @@ static void bt_hdl_menu_hfp_hf(bts2_app_stru *bts2_app_data)
         bd.uap = (U8)mac[2];
         bd.nap = (U16)((mac[0] << 8) | mac[1]);
 
-        hfp_hf_conn_req(&bd, HF_CONN);
+        hfp_hf_connect(&bd, HF_CONN);
         break;
     }
     case '2':
@@ -2058,7 +2058,7 @@ static void bt_hdl_menu_hfp_hf(bts2_app_stru *bts2_app_data)
     case 'g':
     {
         int val = atoi((const char *)bts2_app_data->input_str + 1);
-        hfp_hf_send_at_ccwa_api((BOOL)val);
+        hfp_hf_send_at_ccwa_api(0, HF_CONN, (BOOL)val);
         break;
     }
     case 'h':
@@ -2118,18 +2118,18 @@ static void bt_hdl_menu_hfp_hf(bts2_app_stru *bts2_app_data)
         bd.uap = (U8)mac[2];
         bd.nap = (U16)((mac[0] << 8) | mac[1]);
 
-        hfp_hf_conn_req(&bd, HS_CONN);
+        hfp_hf_connect(&bd, HS_CONN);
         break;
     }
     case 'q':
     {
-        hfp_hs_send_at_ckpd_api();
+        hfp_hs_send_at_ckpd_api(0, HF_CONN);
         break;
     }
     case 't':
     {
         int wbs_flag = atoi((const char *)bts2_app_data->input_str + 1);
-        hfp_hf_set_wbs((U8) wbs_flag);
+        hfp_hf_set_wbs(0, HF_CONN, (U8) wbs_flag);
         break;
     }
     case 's':

@@ -44,6 +44,7 @@ bt_err_t bt_hfp_hf_at_cops_cmd_send(void);
 bt_err_t bt_hfp_hf_at_dtmf_send(char key);
 bt_err_t bt_hfp_hf_at_nrec_send(void);
 bt_err_t bt_hfp_hf_update_batt_send(U8 batt_val);
+bt_err_t hfp_hf_get_at_cind_status();
 
 void bt_hfp_hf_rfc_conn_accept_hdl(void);
 void bt_hfp_hf_rfc_conn_rej_hdl(void);

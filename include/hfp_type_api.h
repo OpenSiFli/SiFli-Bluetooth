@@ -185,6 +185,16 @@ typedef enum
 /* for clcc_res var end */
 
 /****************************************struct define***************************************/
+typedef struct
+{
+    U16 type;
+} BTS2S_HFP_CMD_TYPE;
+
+typedef struct
+{
+    U16 type;
+    U32 supp_featr;
+} BTS2S_HFP_ENB_REQ;
 
 typedef struct
 {
@@ -198,7 +208,7 @@ typedef struct
     * 0x01 Reserved for future use
     * 0x02 eSCO connection
     */
-    U8 link_type;
+    U8 profile_type;
     U8 tx_intvl;
     /* Retransmission Window */
     U8 we_sco;

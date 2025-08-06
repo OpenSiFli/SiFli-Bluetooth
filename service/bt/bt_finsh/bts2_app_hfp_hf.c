@@ -35,6 +35,7 @@
 // static void hfp_hf_audio_cb_fn(U16 sco_hdl, U8 sco_len, U8 *data)
 // {
 // }
+uint8_t g_mux_id = 0;
 
 static bts2_hfp_hf_inst_data *bt_hfp_hf_get_context()
 {
@@ -83,7 +84,7 @@ void bt_hfp_hf_init(bts2_app_stru *bts2_app_data)
     bts2_app_data->hfp_hf_ptr = &bts2_app_data->hfp_hf_inst;
     bts2_app_data->hfp_hf_inst.voice_flag = 0;
     bts2_app_data->esco_flag = FALSE;
-    bts2_app_data->hfp_hf_inst.conn_type = HF_CONN;
+    bts2_app_data->hfp_hf_inst.profile_type = HF_CONN;
     bts2_app_data->hfp_hf_inst.peer_features = 0x0000;
     bts2_app_data->hfp_hf_inst.sco_hdl = 0xffff;
     memset(&bts2_app_data->hfp_hf_inst.cind_status, 0x00, sizeof(bts2_hfp_hf_cind));
@@ -122,7 +123,7 @@ bt_err_t bt_hfp_hf_start_enb(bts2_app_stru *bts2_app_data)
     case hfp_disb:
     {
         bt_hfp_hf_app_service_state_update(hfp_enbd);
-        hfp_hf_enb_req(HFP_HF_LOCAL_FEATURES);
+        hfp_hf_register(HFP_HF_LOCAL_FEATURES);
         ret = BT_EOK;
         break;
     }
@@ -161,7 +162,7 @@ bt_err_t bt_hfp_hf_start_disb(bts2_app_stru *bts2_app_data)
     {
     case hfp_enbd:
     {
-        hfp_hf_disb_req();
+        hfp_hf_deregister();
         hfp_context->voice_flag = 0;
         ret = BT_EOK;
         bt_hfp_hf_app_service_state_update(hfp_disb);
@@ -220,7 +221,7 @@ bt_err_t bt_hfp_hf_connect_request(BTS2S_BD_ADDR *bd)
     {
     case hfp_enbd:
     {
-        hfp_hf_conn_req(bd, HF_CONN);
+        hfp_hf_connect(bd, HF_CONN);
         ret = BT_EOK;
         break;
     }
@@ -258,7 +259,7 @@ bt_err_t bt_hfp_hf_start_disc(BTS2S_BD_ADDR *bd)
     case hfp_conned:
     case hfp_calling:
     {
-        hfp_hf_disc_req();
+        hfp_hf_disconnect(bd, 0);
         ptr->voice_flag = 0;
         ret = BT_EOK;
         bt_hfp_hf_app_service_state_update(hfp_enbd);
@@ -302,12 +303,12 @@ bt_err_t bt_hfp_hf_audio_transfer(U8 type)
         // type 0:connect audio type 1 :disconnect audio
         if (type == 0)
         {
-            hfp_hf_audio_transfer_req(1);//connect audio
+            hfp_hf_connect_audio(&ptr->hfp_bd, 0);//connect audio
             ret = BT_EOK;
         }
         else if (type == 1)
         {
-            hfp_hf_audio_transfer_req(0);//disconect audio
+            hfp_hf_disconnect_audio(&ptr->hfp_bd, 0);//disconect audio
             ret = BT_EOK;
         }
         else
@@ -351,7 +352,7 @@ bt_err_t bt_hfp_hf_voice_recog_send(U8 active)
     {
         if (active == 0 || active == 1)
         {
-            hfp_hf_send_at_bvra_api(active);
+            hfp_hf_send_at_bvra_api(g_mux_id, HF_CONN, active);
             ret = BT_EOK;
         }
         else
@@ -394,7 +395,7 @@ bt_err_t bt_hfp_hf_dial_by_mem_send(U16 memory)
         char data[6];
         int at_len = 0;
         at_len = snprintf(data, sizeof(data), ">%u;", memory);
-        hfp_hf_send_at_atd_api((U8 *)data, (U8) at_len);
+        hfp_hf_send_at_atd_api(g_mux_id, HF_CONN, (U8 *)data, (U8) at_len);
         ret = BT_EOK;
         break;
     }
@@ -429,7 +430,7 @@ bt_err_t bt_hfp_hf_last_num_dial_send(void)
     case hfp_conned:
     case hfp_calling:
     {
-        hfp_hf_send_at_bldn_api();
+        hfp_hf_send_at_bldn_api(g_mux_id, HF_CONN);
         ret = BT_EOK;
         //ptr->st = hfp_calling;
         break;
@@ -473,7 +474,7 @@ bt_err_t bt_hfp_hf_make_call_by_number_send(U8 *payload, U8 payload_len)
         {
             bmemcpy(data, payload, payload_len);
             data[payload_len] = ';';
-            hfp_hf_send_at_atd_api((U8 *)data, (U8) p_payload_len);
+            hfp_hf_send_at_atd_api(g_mux_id, HF_CONN, (U8 *)data, (U8) p_payload_len);
             USER_TRACE("data %s len %d input_len %d", data, p_payload_len, payload_len);
             ret = BT_EOK;
             bfree(data);
@@ -515,7 +516,7 @@ bt_err_t bt_hfp_hf_answer_call_send(void)
     {
     case hfp_conned:
     {
-        hfp_hf_send_at_ata_api();
+        hfp_hf_send_at_ata_api(g_mux_id, HF_CONN);
         USER_TRACE(">> Answer the incoming call\n");
         ret = BT_EOK;
         break;
@@ -551,7 +552,7 @@ bt_err_t bt_hfp_hf_hangup_call_send(void)
     case hfp_conned:
     case hfp_calling:
     {
-        hfp_hf_send_at_chup_api();
+        hfp_hf_send_at_chup_api(g_mux_id, HF_CONN);
         ptr->voice_flag = 0;
         USER_TRACE(">> hfp_hf reject terminal the call\n");
         ret = BT_EOK;
@@ -590,7 +591,7 @@ bt_err_t bt_hfp_hf_update_spk_vol(U8 vol)
     {
         if (0 <= vol && vol <= 15)
         {
-            hfp_hf_send_at_vgs_api((U8)vol); //just send 0---15
+            hfp_hf_send_at_vgs_api(g_mux_id, HF_CONN, (U8)vol); //just send 0---15
             ret = BT_EOK;
         }
         else
@@ -632,7 +633,7 @@ bt_err_t bt_hfp_hf_update_mic_vol(U8 vol)
     {
         if (0 <= vol && vol <= 15)
         {
-            hfp_hf_send_at_vgm_api(vol); //just send 0---15
+            hfp_hf_send_at_vgm_api(g_mux_id, HF_CONN, vol); //just send 0---15
             ret = BT_EOK;
         }
         else
@@ -671,7 +672,7 @@ bt_err_t bt_hfp_hf_at_btrh_query_send(void)
     {
     case hfp_conned:
     {
-        hfp_hf_send_at_btrh_api();
+        hfp_hf_send_at_btrh_api(g_mux_id, HF_CONN);
         ret = BT_EOK;
         break;
     }
@@ -708,7 +709,7 @@ bt_err_t bt_hfp_hf_at_btrh_cmd_send(U8 mode)
     case hfp_conned:
     case hfp_calling:
     {
-        hfp_hf_send_at_btrh_mode_api(mode);
+        hfp_hf_send_at_btrh_mode_api(g_mux_id, HF_CONN, mode);
         ret = BT_EOK;
         break;
     }
@@ -743,7 +744,7 @@ bt_err_t bt_hfp_hf_at_binp_send(void)
     case hfp_conned:
     {
         //Attach a Phone Number to a Voice Tag.
-        hfp_hf_send_at_binp_api();
+        hfp_hf_send_at_binp_api(g_mux_id, HF_CONN);
         ret = BT_EOK;
         break;
     }
@@ -780,7 +781,7 @@ bt_err_t bt_hfp_hf_at_clip_send(U8 enable)
         //Enable calling Line Identification (CLI) Notification.
         if (enable == 0 || enable == 1)
         {
-            hfp_hf_send_at_clip_api(enable);
+            hfp_hf_send_at_clip_api(g_mux_id, HF_CONN, enable);
             ret = BT_EOK;
         }
         else
@@ -821,7 +822,7 @@ bt_err_t bt_hfp_hf_at_cmee_send(BOOL val)
     {
         if (val == 0 || val == 1)
         {
-            hfp_hf_send_at_cmee_api(val);
+            hfp_hf_send_at_cmee_api(g_mux_id, HF_CONN, val);
             ret = BT_EOK;
         }
         else
@@ -860,7 +861,7 @@ bt_err_t bt_hfp_hf_at_cnum_send(void)
     {
     case hfp_conned:
     {
-        hfp_hf_send_at_cnum_api();
+        hfp_hf_send_at_cnum_api(g_mux_id, HF_CONN);
         ret = BT_EOK;
         break;
     }
@@ -896,7 +897,7 @@ bt_err_t bt_hfp_hf_at_ccwa_send(BOOL val)
     {
         if (val == 0 || val == 1)
         {
-            hfp_hf_send_at_ccwa_api(val); //active
+            hfp_hf_send_at_ccwa_api(g_mux_id, HF_CONN, val); //active
             ret = BT_EOK;
         }
         else
@@ -936,7 +937,7 @@ bt_err_t bt_hfp_hf_at_chld_send(U8 *payload, U8 payload_len)
     case hfp_conned:
     case hfp_calling:
     {
-        hfp_hf_send_at_chld_control_api(payload, payload_len);
+        hfp_hf_send_at_chld_control_api(g_mux_id, HF_CONN, payload, payload_len);
         ret = BT_EOK;
         break;
     }
@@ -971,7 +972,7 @@ bt_err_t bt_hfp_hf_at_clcc_send(void)
     case hfp_conned:
     case hfp_calling:
     {
-        hfp_hf_send_at_clcc_api();
+        hfp_hf_send_at_clcc_api(g_mux_id, HF_CONN);
         // ok
         //during a call process, solution can send clcc the get info. so ptr->st maybe hfp_conned or hfp_calling
         //ptr->st = hfp_conned;
@@ -1010,7 +1011,7 @@ bt_err_t bt_hfp_hf_at_cops_cmd_send(void)
         //hfp_hf_copp_srv_req(COPSMODE, COPSFMTE);
         char *payload =  "3,0";
         U8 payload_len = strlen(payload);
-        hfp_hf_send_at_cops_cmd_api((U8 *)payload, payload_len);
+        hfp_hf_send_at_cops_cmd_api(g_mux_id, HF_CONN, (U8 *)payload, payload_len);
         ret = BT_EOK;
         USER_TRACE(">> set the cops information\n");
     }
@@ -1047,7 +1048,7 @@ bt_err_t bt_hfp_hf_at_dtmf_send(char key)
     case hfp_conned:
     case hfp_calling:
     {
-        hfp_hf_send_at_vts_api(key);
+        hfp_hf_send_at_vts_api(g_mux_id, HF_CONN, key);
         ret = BT_EOK;
         break;
     }
@@ -1083,7 +1084,7 @@ bt_err_t bt_hfp_hf_at_nrec_send(void)
     case hfp_conned:
     {
         //The HF may disable the echo canceling and noise reduction functions resident in the AG via the AT+NREC command.
-        hfp_hf_send_at_nrec_api();
+        hfp_hf_send_at_nrec_api(g_mux_id, HF_CONN);
         ret = BT_EOK;
         break;
     }
@@ -1124,7 +1125,7 @@ bt_err_t bt_hfp_hf_update_batt_send(U8 batt_val)
             char data[8];
             int at_len = 0;
             at_len = snprintf(data, sizeof(data), "1,1,%d", batt_val);
-            hfp_hf_send_at_batt_update_api((U8 *)data, (U8) at_len); //just 0~9
+            hfp_hf_send_at_batt_update_api(g_mux_id, HF_CONN, (U8 *)data, (U8) at_len); //just 0~9
             ret = BT_EOK;
         }
         else
@@ -1140,6 +1141,26 @@ bt_err_t bt_hfp_hf_update_batt_send(U8 batt_val)
     return ret;
 }
 
+bt_err_t hfp_hf_get_at_cind_status()
+{
+    bts2_hfp_hf_inst_data *ptr = bt_hfp_hf_get_context();
+    bt_err_t ret = BT_ERROR_STATE;
+
+    switch (ptr->st)
+    {
+    case hfp_conned:
+    case hfp_calling:
+    {
+        hfp_hf_send_at_cind_status_api(g_mux_id, HF_CONN);
+        ret = BT_EOK;
+        break;
+    }
+    default:
+        break;
+    }
+
+    return ret;
+}
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
@@ -1158,7 +1179,7 @@ bt_err_t bt_hfp_hf_update_batt_send(U8 batt_val)
 void bt_hfp_hf_rfc_conn_accept_hdl(void)
 {
     bts2_hfp_hf_inst_data *ptr = bt_hfp_hf_get_context();
-    hfp_hf_conn_rsp(&ptr->hfp_bd, ptr->srv_chnl, TRUE);
+    hfp_hf_connect_ind_res(&ptr->hfp_bd, ptr->srv_chnl, TRUE);
 }
 
 /*----------------------------------------------------------------------------*
@@ -1179,7 +1200,7 @@ void bt_hfp_hf_rfc_conn_accept_hdl(void)
 void bt_hfp_hf_rfc_conn_rej_hdl(void)
 {
     bts2_hfp_hf_inst_data *ptr = bt_hfp_hf_get_context();
-    hfp_hf_conn_rsp(&ptr->hfp_bd, ptr->srv_chnl, FALSE);
+    hfp_hf_connect_ind_res(&ptr->hfp_bd, ptr->srv_chnl, FALSE);
 }
 
 static void bt_hfp_hf_at_cmd_cfm_hdl(BTS2S_HF_AT_CMD_CFM *msg)
@@ -1331,24 +1352,24 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
 
     switch (*msg_type)
     {
-    case BTS2MU_HF_DISB_CFM:
+    case BTS2MU_HF_UNREG_CFM:
     {
         BTS2S_HF_DISB_CFM *msg;
         msg = (BTS2S_HF_DISB_CFM *)bts2_app_data->recv_msg;
         inst_data->voice_flag = 0;
         break;
     }
-    case BTS2MU_HF_ENB_CFM:
+    case BTS2MU_HF_REG_CFM:
     {
         BTS2S_HF_ENB_CFM *msg;
         msg = (BTS2S_HF_ENB_CFM *)bts2_app_data->recv_msg;
         inst_data->voice_flag = 0;
-        if (msg->conn_type == HF_CONN && msg->res == BTS2_SUCC)
+        if (msg->profile_type == HF_CONN && msg->res == BTS2_SUCC)
         {
             USER_TRACE(">> Handfree enable success\n");
         }
 
-        if (msg->conn_type == HS_CONN && msg->res == BTS2_SUCC)
+        if (msg->profile_type == HS_CONN && msg->res == BTS2_SUCC)
         {
             USER_TRACE(">> Headset enable success\n");
         }
@@ -1375,15 +1396,16 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
     {
         BTS2S_HF_CONN_CFM *msg;
         msg = (BTS2S_HF_CONN_CFM *)bts2_app_data->recv_msg;
-
-        if (msg->res == BTS2_SUCC)
+        USER_TRACE("BTS2MU_HF_CONN_CFM state %d res:%x", msg->device_state, msg->res);
+        if ((msg->res == BTS2_SUCC) && (msg->device_state == HFP_DEVICE_CONNECTED))
         {
-            inst_data->conn_type = msg->conn_type;
+            inst_data->profile_type = msg->profile_type;
+            inst_data->hfp_bd = msg->bd;
             bt_hfp_hf_app_service_state_update(hfp_conned);
             bts2_app_data->menu_id = menu_hfp_hf;
             if (bt_hfp_is_support_feature(HFP_AG_FEAT_ECNR))
             {
-                hfp_hf_send_at_nrec_api();
+                hfp_hf_send_at_nrec_api(g_mux_id, HF_CONN);
                 inst_data->peer_features &= (~HFP_AG_FEAT_ECNR);
             }
 
@@ -1410,7 +1432,7 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
             bt_disply_menu(bts2_app_data);
 #endif
 
-            if (msg->conn_type == HF_CONN)
+            if (msg->profile_type == HF_CONN)
             {
                 USER_TRACE("<< HF Conneted success\n");
             }
@@ -1421,14 +1443,9 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
 
             bts2_app_data->last_conn_bd = msg->bd;
 
-            USER_TRACE("conn_cfm bd: %04X:%04X:%04X\n",
-                       msg->bd.lap, msg->bd.uap, msg->bd.nap);
-            //bts2_app_stru bt_app_data = {0};
-            //bt_app_data.menu_id = menu_gen_7;
-            //bt_app_data.input_str[0] = '0';
-            //bt_hdl_menu(&bt_app_data);
+            USER_TRACE("conn_cfm bd: %04X:%04X:%04X\n", msg->bd.lap, msg->bd.uap, msg->bd.nap);
         }
-        else
+        else if (msg->device_state == HFP_DEVICE_DISCONNECTED)
         {
             bt_hfp_hf_clean_flag();
 
@@ -1444,12 +1461,12 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
 
     case BTS2MU_HF_DISC_CFM:
     {
-        BTS2S_HF_DISC_CFM *msg;
-        msg = (BTS2S_HF_DISC_CFM *)bts2_app_data->recv_msg;
+        BTS2S_HF_CONN_CFM *msg;
+        msg = (BTS2S_HF_CONN_CFM *)bts2_app_data->recv_msg;
         bt_hfp_hf_clean_flag();
-
+        USER_TRACE("BTS2MU_HF_DISC_CFM state %d res:%x", msg->device_state, msg->res);
         bt_notify_profile_state_info_t profile_state;
-        bt_addr_convert(&msg->cur_bd, profile_state.mac.addr);
+        bt_addr_convert(&msg->bd, profile_state.mac.addr);
         profile_state.profile_type = BT_NOTIFY_HFP_HF;
         profile_state.res = msg->res;
         bt_profile_update_connection_state(BT_NOTIFY_HFP_HF, BT_NOTIFY_HF_PROFILE_DISCONNECTED,  &profile_state);
@@ -1466,12 +1483,12 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
     }
     case BTS2MU_HF_DISC_IND:
     {
-        BTS2S_HF_DISC_IND *msg;
-        msg = (BTS2S_HF_DISC_IND *)bts2_app_data->recv_msg;
+        BTS2S_HF_CONN_CFM *msg;
+        msg = (BTS2S_HF_CONN_CFM *)bts2_app_data->recv_msg;
         bt_hfp_hf_clean_flag();
-
+        USER_TRACE("BTS2MU_HF_DISC_IND state %d res:%x", msg->device_state, msg->res);
         bt_notify_profile_state_info_t profile_state;
-        bt_addr_convert(&msg->cur_bd, profile_state.mac.addr);
+        bt_addr_convert(&msg->bd, profile_state.mac.addr);
         profile_state.profile_type = BT_NOTIFY_HFP_HF;
         profile_state.res = msg->res;
         bt_profile_update_connection_state(BT_NOTIFY_HFP_HF, BT_NOTIFY_HF_PROFILE_DISCONNECTED, &profile_state);
@@ -1481,9 +1498,6 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
 #endif // AUDIO_USING_MANAGER
 
         USER_TRACE("<< Disconnet sucess %x\n", msg->res);
-        //bts2_app_data->last_conn_bd.lap = CFG_BD_LAP;
-        //bts2_app_data->last_conn_bd.uap = CFG_BD_UAP;
-        //bts2_app_data->last_conn_bd.nap = CFG_BD_NAP;
         break;
     }
 
@@ -1545,28 +1559,15 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
         bt_interface_bt_event_notify(BT_NOTIFY_HFP_HF, BT_NOTIFY_HF_VOICE_RECOG_STATUS_CHANGE, &msg->val, sizeof(uint8_t));
         break;
     }
-    case BTS2MU_HF_AUDIO_CFM:
-    {
-        BTS2S_HF_AUDIO_CFM *msg;
-        msg = (BTS2S_HF_AUDIO_CFM *)bts2_app_data->recv_msg;
-
-        if (msg->audio_on == TRUE)
-        {
-            USER_TRACE(">> Transfer audio to Hands-free\n");
-        }
-        else
-        {
-            USER_TRACE(">> Transfer audio to AG\n");
-        }
-        break;
-    }
-    case BTS2MU_HF_AUDIO_IND:
+    case BTS2MU_HF_AUDIO_CONN_CFM:
+    case BTS2MU_HF_AUDIO_DISC_CFM:
+    case BTS2MU_HF_AUDIO_DISC_IND:
     {
         BTS2S_HF_AUDIO_INFO *msg;
         msg = (BTS2S_HF_AUDIO_INFO *)bts2_app_data->recv_msg;
         inst_data->voice_flag = msg->audio_on;
 
-        if (msg->link_type >= 2)
+        if (msg->profile_type >= 2)
         {
             bts2_app_data->esco_flag = TRUE;
         }
@@ -1609,6 +1610,10 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
                                          &sco_info, sizeof(bt_notify_device_sco_info_t));
             gap_unreg_sco_callback(msg->sco_hdl);
         }
+        break;
+    }
+    case BTS2MU_HF_AUDIO_IND:
+    {
         break;
     }
     case BTS2MU_HF_AT_CMD_CFM:

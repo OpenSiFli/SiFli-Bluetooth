@@ -1496,8 +1496,7 @@ bt_err_t bt_interface_get_remote_ph_num(void)
 
 bt_err_t bt_interface_get_remote_call_status(void)
 {
-    bt_err_t ret = BT_EOK;
-    hfp_hf_send_at_cind_status_api();
+    bt_err_t ret = hfp_hf_get_at_cind_status();
     return ret;
 }
 
@@ -1643,7 +1642,7 @@ bt_err_t bt_interface_hf_update_battery(U8 batt_val)
 bt_err_t bt_interface_set_wbs_status(U8 status)
 {
     bt_err_t ret = BT_EOK;
-    hfp_hf_set_wbs(status);
+    hfp_hf_set_wbs(0, HF_CONN, status);
     return ret;
 }
 #endif

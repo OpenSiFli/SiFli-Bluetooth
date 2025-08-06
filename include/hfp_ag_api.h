@@ -110,17 +110,6 @@ typedef enum
 typedef struct
 {
     U16 type;
-} BTS2S_HFP_CMD_TYPE;
-
-typedef struct
-{
-    U16 type;
-    U32 supp_featr;
-} BTS2S_HFP_ENB_REQ;
-
-typedef struct
-{
-    U16 type;
     BTS2S_BD_ADDR bd;
     U16 rfcomm_chnl; //for reconnect not need sdp search
 } BTS2S_AG_CONN_REQ;
