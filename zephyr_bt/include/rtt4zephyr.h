@@ -539,8 +539,10 @@ int k_poll_signal_raise(struct k_poll_signal *sig, int result);
 
 int k_mem_slab_alloc(struct k_mem_slab *slab, void **mem,
                      k_timeout_t timeout);
-#define k_mem_slab_free(slab,mem) rt_mp_free(mem)
-#define k_mem_slab_num_free_get(mp) (mp)->block_free_count
+void k_mem_slab_free(struct k_mem_slab *slab, void *mem);
+
+uint32_t k_mem_slab_num_free_get(struct k_mem_slab *slab);
+
 
 
 /***********************************************************/

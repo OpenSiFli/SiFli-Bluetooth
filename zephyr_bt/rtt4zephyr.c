@@ -92,13 +92,16 @@ rt_tick_t k_work_delayable_remaining_get(const struct rt_delayed_work *dwork)
 int k_work_reschedule2(struct rt_delayed_work *dwork, rt_tick_t delay)
 {
     k_timeout_t t;
+    int r;
 
     if (dwork->work.list.next == NULL && dwork->work.list.prev == NULL)
         rt_work_init(&(dwork->work), dwork->work.work_func, dwork->work.work_data);
 
     t.ticks = delay;
-    k_work_cancel_delayable_sync(dwork, NULL);
-    return k_work_schedule(dwork, t);
+    if (dwork->workqueue)
+        r = rt_workqueue_cancel_work(dwork->workqueue, &(dwork->work));
+    r = k_work_schedule(dwork, t);
+    return r;
 }
 
 int k_mutex_init(struct rt_mutex *mutex)
@@ -130,9 +133,14 @@ int k_sem_init(struct k_sem *sem, unsigned int initial_count, unsigned int limit
 
 int k_sem_take(struct k_sem *sem, k_timeout_t timeout)
 {
+    int r = RT_EOK;
+
     if (sem->parent.parent.type == 0)
         k_sem_init(sem, sem->value, 0);
-    return rt_sem_take(sem, timeout.ticks);
+    r = rt_sem_take(sem, timeout.ticks);
+    if (r == -RT_ETIMEOUT)
+        r = -EAGAIN;
+    return r;
 }
 
 void k_sem_give(struct k_sem *sem)
@@ -161,22 +169,43 @@ bool k_work_flush(struct k_work *work,
 }
 
 /***********************slab memory*********************************/
+
+static void slab_init(struct rt_mempool *slab)
+{
+    char *name = (char *)slab->start_address;
+    uint32_t size = (slab->block_size + sizeof(rt_uint8_t *)) * slab->block_total_count;
+    uint8_t *m = rt_malloc(size);
+    rt_mp_init(slab, name, m, size, slab->block_size);
+}
+
 int k_mem_slab_alloc(struct rt_mempool *slab, void **mem,
                      k_timeout_t timeout)
 {
 
     if (slab->size == 0)
     {
-        char *name = (char *)slab->start_address;
-        uint32_t size = (slab->block_size + sizeof(rt_uint8_t *)) * slab->block_total_count;
-        uint8_t *m = rt_malloc(size);
-        rt_mp_init(slab, name, m, size, slab->block_size);
+        slab_init(slab);
     }
     *mem = rt_mp_alloc(slab, timeout.ticks);
     if (*mem == NULL)
         return -ENOMEM;
     else
         return RT_EOK;
+}
+
+void k_mem_slab_free(struct rt_mempool *slab, void *mem)
+{
+    rt_mp_free(mem);
+}
+
+
+uint32_t k_mem_slab_num_free_get(struct k_mem_slab *slab)
+{
+    if (slab->size == 0)
+    {
+        slab_init(slab);
+    }
+    return slab->block_free_count;
 }
 
 #ifdef __ARMCC_VERSION
@@ -340,12 +369,13 @@ int k_poll_signal_raise(struct k_poll_signal *sig, int result)
     return 0;
 }
 
+
 __syscall int k_poll(struct k_poll_event *events, int num_events,
                      k_timeout_t timeout)
 {
     int r = 0;
 
-    if (events->type == _POLL_TYPE_SIGNAL)
+    if (events->type == K_POLL_TYPE_SIGNAL)
     {
         struct k_poll_signal *sig = events->signal;
         if (sig->waiting_list.prev == NULL && sig->waiting_list.next == NULL)
@@ -356,10 +386,30 @@ __syscall int k_poll(struct k_poll_event *events, int num_events,
             r = -EAGAIN;
             rt_set_errno(RT_EOK);
         }
+        else
+        {
+            events->state = _POLL_STATE_SIGNALED;
+        }
     }
-    else
+    else if (events->type == K_POLL_TYPE_FIFO_DATA_AVAILABLE)
     {
-        // TODO
+        int tick_cnt = 0;
+
+        while (tick_cnt <= timeout.ticks)
+        {
+            for (int i = 0; i < num_events; i++, events++)
+            {
+                if (!k_fifo_is_empty(events->fifo))
+                {
+                    events->state = K_POLL_STATE_FIFO_DATA_AVAILABLE;
+                    break;
+                }
+            }
+            rt_thread_delay(10);
+            tick_cnt += 10;
+        }
+        if (tick_cnt >= timeout.ticks && timeout.ticks)
+            r = - ETIME;
     }
     return r;
 }

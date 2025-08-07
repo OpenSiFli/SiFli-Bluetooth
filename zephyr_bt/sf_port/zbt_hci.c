@@ -72,6 +72,8 @@ LOG_MODULE_REGISTER(bt_hci_core);
 #if 0
     #undef LOG_DBG
     #define LOG_DBG(fmt,...) rt_kprintf("%s "fmt"\n",__FUNCTION__,##__VA_ARGS__)
+    #undef LOG_INF
+    #define LOG_INF(fmt,...) rt_kprintf("I:%s "fmt"\n",__FUNCTION__,##__VA_ARGS__)
     #undef LOG_WRN
     #define LOG_WRN(fmt,...) rt_kprintf("W:%s "fmt"\n",__FUNCTION__,##__VA_ARGS__)
     #undef LOG_ERR
