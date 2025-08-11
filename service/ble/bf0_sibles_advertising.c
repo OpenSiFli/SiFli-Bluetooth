@@ -155,6 +155,11 @@ __WEAK uint8_t sibles_advertising_primary_phy_get()
     return GAP_PHY_TYPE_LE_1M;
 }
 
+__WEAK uint8_t sibles_advertising_disc_mode_get()
+{
+    return GAPM_ADV_MODE_NON_DISC;
+}
+
 /*
  * FUNCTION DEFINITIONS
  ****************************************************************************************
@@ -200,7 +205,7 @@ uint8_t sibles_advertising_init(sibles_advertising_context_t *context, sibles_ad
         {
             context->adv_para.type = GAPM_ADV_TYPE_LEGACY;
         }
-        context->adv_para.disc_mode = GAPM_ADV_MODE_NON_DISC;
+        context->adv_para.disc_mode = sibles_advertising_disc_mode_get();
         context->adv_para.max_tx_pwr = para->config.max_tx_pwr;
         context->adv_para.filter_pol = ADV_ALLOW_SCAN_ANY_CON_ANY;
 

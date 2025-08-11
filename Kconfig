@@ -147,6 +147,10 @@ menu "Bluetooth"
             bool "Enable BLE device information service server"
             depends on BSP_BLE_SIBLES
             default n
+        config BSP_BLE_TPSS
+            bool "Enable BLE Tx Power service server"
+            depends on BSP_BLE_SIBLES
+            default n
         config BSP_BLE_AMS
             bool "Enable BLE AMS"
             depends on BSP_BLE_SIBLES
