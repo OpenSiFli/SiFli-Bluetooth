@@ -2210,6 +2210,17 @@ int ble_connection_manager_handler(uint16_t event_id, uint8_t *data, uint16_t le
 #endif //BLE_CM_BOND_DISABLE
     case BLE_GAP_REMOTE_FEATURE_IND:
     {
+        ble_gap_remote_features_ind_t *ind = (ble_gap_remote_features_ind_t *)data;
+        LOG_I("read remote feature %d", ind->conn_idx);
+        LOG_HEX("feature", 16, ind->features, GAP_LE_FEATS_LEN);
+
+        uint8_t le_data_len_ext_bit;
+        uint8_t le_2m_phy_bit;
+
+        le_data_len_ext_bit = (ind->features[0] & LE_DATA_LENGTH_EXTENSION_FLAG) >> LE_DATA_LENGTH_EXTENSION_OFFSET;
+        le_2m_phy_bit = (ind->features[1] & LE_2M_PHY_FLAG) >> LE_2M_PHY_OFFSET;
+        LOG_I("remote le data length extension: %d, 2m phy: %d", le_data_len_ext_bit, le_2m_phy_bit);
+
         connection_manager_event_process(CM_READ_REMOTE_FEATURE_IND, len, data);
         break;
     }
@@ -2404,14 +2415,6 @@ static uint8_t cm_update_parameter(uint8_t conn_idx, uint8_t interval_level, uin
     case CONNECTION_MANAGER_INTERVAL_HIGH_PERFORMANCE:
     {
         connection_parameter_get_high_performance(&interval_min, &interval_max, &latency, &time_out);
-
-#ifdef BLE_CONNECTION_PRIORITY_SYNC
-        ble_gap_update_phy_t phy;
-        phy.conn_idx = conn_idx;
-        phy.rx_phy = GAP_PHY_LE_2MBPS;
-        phy.tx_phy = GAP_PHY_LE_2MBPS;
-        ble_gap_update_phy(&phy);
-#endif
         break;
     }
     case CONNECTION_MANAGER_INTERVAL_BALANCED:
@@ -2422,14 +2425,6 @@ static uint8_t cm_update_parameter(uint8_t conn_idx, uint8_t interval_level, uin
     case CONNECTION_MANAGER_INTERVAL_LOW_POWER:
     {
         connection_parameter_get_low_power(&interval_min, &interval_max, &latency, &time_out);
-
-#ifdef BLE_CONNECTION_PRIORITY_SYNC
-        ble_gap_update_phy_t phy;
-        phy.conn_idx = conn_idx;
-        phy.rx_phy = GAP_PHY_LE_CODED;
-        phy.tx_phy = GAP_PHY_LE_CODED;
-        ble_gap_update_phy(&phy);
-#endif
         break;
     }
     case CONNECTION_MANAGER_INTERVAL_CUSTOMIZE:
@@ -2986,6 +2981,12 @@ static void cm_cmd(uint8_t argc, char **argv)
         {
             int val = atoi(argv[2]);
             HAL_Set_backup(RTC_BACKUP_NAND_OTA_DES, val);
+        }
+        else if (strcmp(argv[1], "read_feature") == 0)
+        {
+            bt_gap_get_remote_feature_t feature;
+            feature.conn_idx = atoi(argv[2]);
+            ble_gap_get_remote_feature(&feature);
         }
         else if (strcmp(argv[1], "reboot") == 0)
         {

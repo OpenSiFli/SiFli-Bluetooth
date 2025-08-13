@@ -64,11 +64,6 @@ menu "Bluetooth"
             depends on BSP_BLE_SIBLES
             default y
             if BSP_BLE_CONNECTION_MANAGER
-                config BLE_CONNECTION_PRIORITY_SYNC
-                bool "Enable priority sync"
-                default n
-            endif
-            if BSP_BLE_CONNECTION_MANAGER
                 config BLE_CM_RESOLVE_ADDRESS
                 bool "Enable resolve address"
                 default n
