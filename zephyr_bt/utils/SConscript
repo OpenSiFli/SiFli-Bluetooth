@@ -3,6 +3,9 @@ from building import *
 cwd = GetCurrentDir()
 src = Glob('*.c')
 
+if (not GetDepend("MESH_SHELL")):
+    SrcRemove(src, 'shell_utils.c')
+
 CPPPATH = [cwd]
 
 group = DefineGroup('zbt_utils', src, depend = ['ZBT'],CPPPATH = CPPPATH)

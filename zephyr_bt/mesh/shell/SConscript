@@ -1,0 +1,44 @@
+Import('RTT_ROOT')
+Import('rtconfig')
+from building import *
+
+cwd = GetCurrentDir()
+src = ['shell.c','utils.c']
+
+if GetDepend('BT_MESH_SHELL_HEALTH_CLI'):
+    src += ['health.c']
+if GetDepend('BT_MESH_SHELL_CFG_CLI'):
+    src += ['cfg.c']
+
+if GetDepend('BT_MESH_SHELL_LARGE_COMP_DATA_CLI'):
+    src += ['large_comp_data.c']
+
+if GetDepend('BT_MESH_SHELL_OP_AGG_CLI'):
+    src += ['op_agg.c']
+if GetDepend('BT_MESH_SHELL_PRIV_BEACON_CLI'):
+    src += ['priv_beacon.c']
+if GetDepend('BT_MESH_SHELL_RPR_CLI'):
+    src += ['rpr.c']
+if GetDepend('BT_MESH_SHELL_SAR_CFG_CLI'):
+    src += ['sar.c']
+    
+if GetDepend("BT_MESH_SHELL_BLOB_CLI") or GetDepend("BT_MESH_SHELL_BLOB_SRV") or GetDepend("BT_MESH_SHELL_BLOB_IO_FLASH"):
+    src += ['blob.c']
+    
+if GetDepend("BT_MESH_SHELL_DFU_SLOT") or GetDepend("BT_MESH_SHELL_DFU_METADATA") or GetDepend("BT_MESH_SHELL_DFU_CLI") or GetDepend("BT_MESH_SHELL_DFU_SRV"):
+    src += ['dfu.c']
+       
+if GetDepend('BT_MESH_SHELL_DFD_SRV'):
+    src += ['dfd.c']
+if GetDepend('CONFIG_BT_MESH_OD_PRIV_PROXY_CLI'):
+    src += ['od_priv_proxy.c']
+if GetDepend('CONFIG_BT_MESH_SOL_PDU_RPL_CLI'):
+    src += ['sol_pdu_rpl.c']
+if GetDepend('CONFIG_BT_MESH_SHELL_BRG_CFG_CLI'):
+    src += ['brg_cfg.c']
+if GetDepend('CONFIG_BT_HCI_MESH_EXT'):
+    src += ['hci.c']
+
+CPPPATH = [cwd]
+objs = DefineGroup('zbt_mesh_shell', src, depend = ['BT_MESH_SHELL'], CPPPATH = CPPPATH)
+Return('objs')

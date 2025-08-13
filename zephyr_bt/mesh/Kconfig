@@ -1603,7 +1603,7 @@ config BT_MESH_LPN_MIN_QUEUE_SIZE
 	  the Friend node can store in its Friend Queue. As an example,
 	  MinQueueSizeLog value 1 gives N = 2, and value 7 gives N = 128.
 
-config BT_MESH_LPN_RECV_DELAY
+config BT_MESH_LPN_RECV_DELAY2
 	int "Receive delay requested by the local node"
 	range 50 255 if BT_MESH_ADV_LEGACY
 	range 10 255

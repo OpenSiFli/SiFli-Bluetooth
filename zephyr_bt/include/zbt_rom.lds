@@ -68,5 +68,43 @@ bt_mesh_proxy_cb_area : SUBALIGN(4)
         _bt_mesh_proxy_cb_list_end = .; 
 } > ROM
 
+
+bt_mesh_lpn_cb_area : SUBALIGN(4) 
+{ 
+        _bt_mesh_lpn_cb_list_start = .; 
+        KEEP(*(SORT_BY_NAME(._bt_mesh_lpn_cb.static.*))); 
+        _bt_mesh_lpn_cb_list_end = .; 
+} > ROM
+
+#ifdef BT_MESH_SHELL
+shell_area : SUBALIGN(4) 
+{ 
+        _shell_list_start = .; 
+        KEEP(*(SORT_BY_NAME(._bt_shell.static.*))); 
+        _shell_list_end = .; 
+} > ROM
+
+shell_root_cmds_area : SUBALIGN(4) 
+{ 
+        _shell_root_cmds_list_start = .; 
+        KEEP(*(SORT_BY_NAME(._shell_root_cmds.static.*))); 
+        _shell_root_cmds_list_end = .; 
+} > ROM
+
+shell_subcmds_area : SUBALIGN(4) 
+{ 
+        _shell_subcmds_list_start = .; 
+        KEEP(*(SORT_BY_NAME(._shell_subcmds.static.*))); 
+        _shell_subcmds_list_end = .; 
+} > ROM
+
+shell_dynamic_subcmds_area : SUBALIGN(4) 
+{ 
+        _shell_dynamic_subcmds_list_start = .; 
+        KEEP(*(SORT_BY_NAME(._shell_dynamic_subcmds.static.*))); 
+        _shell_dynamic_subcmds_list_end = .; 
+} > ROM
+#endif
+
 #endif
  

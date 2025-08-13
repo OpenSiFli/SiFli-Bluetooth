@@ -18,6 +18,7 @@
 #include "bf0_sibles.h"
 #include <stdio.h>
 #include <rtdef.h>
+#include <stdarg.h>
 
 k_timepoint_t sys_timepoint_calc(k_timeout_t timeout)
 {
@@ -393,20 +394,24 @@ __syscall int k_poll(struct k_poll_event *events, int num_events,
     }
     else if (events->type == K_POLL_TYPE_FIFO_DATA_AVAILABLE)
     {
-        int tick_cnt = 0;
+        int tick_cnt = 0, i;
+        struct k_poll_event *ev;
 
         while (tick_cnt <= timeout.ticks)
         {
-            for (int i = 0; i < num_events; i++, events++)
+            ev = events;
+            for (i = 0; i < num_events; i++, ev++)
             {
-                if (!k_fifo_is_empty(events->fifo))
+                if (!k_fifo_is_empty(ev->fifo))
                 {
-                    events->state = K_POLL_STATE_FIFO_DATA_AVAILABLE;
+                    ev->state = K_POLL_STATE_FIFO_DATA_AVAILABLE;
                     break;
                 }
             }
-            rt_thread_delay(10);
-            tick_cnt += 10;
+            if (i < num_events)
+                break;
+            rt_thread_delay(RT_THREAD_TICK_DEFAULT);
+            tick_cnt += RT_THREAD_TICK_DEFAULT;
         }
         if (tick_cnt >= timeout.ticks && timeout.ticks)
             r = - ETIME;
@@ -459,6 +464,39 @@ void k_thread_start(rt_thread_t thread)
     if ((thread->stat & RT_THREAD_STAT_MASK) == RT_THREAD_INIT)
         rt_thread_startup(thread);
 }
+
+int k_thread_join(struct k_thread *thread, k_timeout_t timeout)
+{
+    int t = 0;
+    int r = 0;
+
+    if (thread == NULL)
+        return 0;
+
+    /* Lock the scheduler */
+    rt_enter_critical();
+    while (t < timeout.ticks)
+    {
+        /* If thread already exited, return immediately */
+        if (thread->stat & RT_THREAD_CLOSE)
+        {
+            break;;
+        }
+        t += RT_THREAD_TICK_DEFAULT;
+        rt_exit_critical();
+        rt_thread_delay(RT_THREAD_TICK_DEFAULT);
+        rt_enter_critical();
+    }
+    if (t >= timeout.ticks)
+    {
+        rt_thread_detach(thread);
+        r = -ETIMEDOUT;
+    }
+    rt_exit_critical();
+
+    return r;
+}
+
 
 /**
  * determine the number of characters before the first separator
@@ -665,5 +703,101 @@ int sys_csrand_get(void *dst, size_t len)
     sys_rand_get(dst, len);
 }
 
+/********************************** Shell **************************************/
+#include "zephyr/shell/shell.h"
 
+static char rt_log_buf[RT_CONSOLEBUF_SIZE];
+void shell_fprintf_normal(const struct shell *sh, const char *fmt, ...)
+{
+    va_list args;
+    extern void rt_kputs(const char *str);
+
+    va_start(args, fmt);
+    rt_vsnprintf(rt_log_buf, sizeof(rt_log_buf) - 1, fmt, args);
+    rt_kputs(rt_log_buf);
+    va_end(args);
+}
+
+
+void shell_fprintf_error(const struct shell *sh, const char *fmt, ...)
+{
+    va_list args;
+    extern void rt_kputs(const char *str);
+
+    rt_kputs("E:");
+    va_start(args, fmt);
+    rt_vsnprintf(rt_log_buf, sizeof(rt_log_buf) - 1, fmt, args);
+    rt_kputs(rt_log_buf);
+    va_end(args);
+}
+
+void shell_fprintf_warn(const struct shell *sh, const char *fmt, ...)
+{
+    va_list args;
+    extern void rt_kputs(const char *str);
+
+    rt_kputs("W:");
+    va_start(args, fmt);
+    rt_vsnprintf(rt_log_buf, sizeof(rt_log_buf) - 1, fmt, args);
+    rt_kputs(rt_log_buf);
+    va_end(args);
+}
+
+
+#ifdef RT_USING_FINSH
+
+#if 0
+static cmd_function_t zbt_get_cmd(char *cmd, int size)
+{
+    struct finsh_syscall *index;
+    cmd_function_t cmd_func = RT_NULL;
+
+    for (index = _syscall_table_begin;
+            index < _syscall_table_end;
+            FINSH_NEXT_SYSCALL(index))
+    {
+        if (strncmp(index->name, "__cmd_", 6) != 0) continue;
+
+        if (strncmp(&index->name[6], cmd, size) == 0 &&
+                index->name[6 + size] == '\0')
+        {
+            cmd_func = (cmd_function_t)index->func;
+            break;
+        }
+    }
+
+    return cmd_func;
+}
+
+#endif
+
+#ifdef BT_MESH_SHELL
+void shell_help(const struct shell *sh)
+{
+}
+
+extern const struct shell_static_entry *z_shell_get_last_command(
+    const struct shell_static_entry *entry,
+    size_t argc,
+    const char *argv[],
+    size_t *match_arg,
+    struct shell_static_entry *dloc,
+    bool only_static);
+
+void zbt(int argc, char **argv)
+{
+    const struct shell_static_entry *r = NULL;
+    struct shell_static_entry dloc;
+
+    int i;
+
+    r = z_shell_get_last_command(NULL, argc - 1, (const char **) & (argv[1]), &i, &dloc, 0);
+    if (r != NULL)
+    {
+        r->handler(NULL, argc - i, (char **) & (argv[i]));
+    }
+}
+MSH_CMD_EXPORT(zbt, Zephyr shell command)
+#endif
+#endif
 

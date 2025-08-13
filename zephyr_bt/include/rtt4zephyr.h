@@ -28,6 +28,13 @@ bool device_is_ready(const struct device *dev);
 
 #define LOG_MODULE_DECLARE(a,b)
 
+/* Check if a pointer is aligned for against a specific byte boundary  */
+#define IS_PTR_ALIGNED_BYTES(ptr, bytes) ((((uintptr_t)ptr) % bytes) == 0)
+
+/* Check if a pointer is aligned enough for a particular data type. */
+#define IS_PTR_ALIGNED(ptr, type) IS_PTR_ALIGNED_BYTES(ptr, __alignof(type))
+
+
 //------------------------After this is implmemented.-------------------------------
 
 #ifndef BIT
@@ -366,6 +373,8 @@ k_tid_t k_thread_create(struct k_thread *new_thread,
 }
 
 extern struct rt_thread *rt_current_thread;
+int k_thread_join(struct k_thread *thread, k_timeout_t timeout);
+
 
 //*********** k_mutex -> k_mutex ***********************
 #define k_mutex rt_mutex
@@ -590,6 +599,26 @@ static inline int64_t k_uptime_delta(int64_t *reftime)
 
     return delta;
 }
+
+/*********************************************************************************/
+
+/**
+ * Event Structure
+ * @ingroup event_apis
+ */
+
+struct k_event
+{
+    uint32_t          events;
+    struct k_spinlock lock;
+};
+
+#define Z_EVENT_INITIALIZER(obj) \
+    { \
+    .events = 0, \
+    .lock = {}, \
+    }
+
 
 
 /**********************************************************************************/
@@ -826,5 +855,7 @@ __syscall void k_poll_signal_reset(struct k_poll_signal *sig);
 
 __syscall void k_poll_signal_init(struct k_poll_signal *sig);
 
+
 #endif
+
 

@@ -243,7 +243,7 @@ int bt_mesh_adv_terminate(struct bt_mesh_adv *adv)
 
 void bt_mesh_adv_init(void)
 {
-    k_thread_create(&adv_thread_data, adv_thread_stack,
+    k_thread_create(&adv_thread_data, (uint32_t *)adv_thread_stack,
                     K_KERNEL_STACK_SIZEOF(adv_thread_stack), adv_thread,
                     NULL, NULL, NULL, K_PRIO_COOP(CONFIG_BT_MESH_ADV_PRIO),
                     0, K_FOREVER);
