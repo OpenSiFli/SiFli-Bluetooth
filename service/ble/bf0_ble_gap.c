@@ -1888,6 +1888,14 @@ void ble_gap_event_process(sibles_msg_para_t *header, uint8_t *data_ptr, uint16_
             ble_event_publish(BLE_GAP_UPDATE_CHANNEL_MAP_CNF, &ret, sizeof(ble_gap_update_channel_map_cnf_t));
             break;
         }
+        case GAPC_SET_PHY:
+        {
+            ble_gap_set_phy_cnf_t ret;
+            ret.status = evt->status;
+            ret.conn_idx = conn_idx;
+            ble_event_publish(BLE_GAP_SET_PHY_CNF, &ret, sizeof(ble_gap_set_phy_cnf_t));
+            break;
+        }
         default:
             break;
         }

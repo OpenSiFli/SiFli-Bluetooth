@@ -145,6 +145,8 @@ enum ble_gap_event_t
     BLE_GAP_PERIODIC_ADV_SYNC_STOPPED_IND,   /**< This event indicates periodic advertising sync stopped. */
     BLE_GAP_PERIODIC_ADV_SYNC_ESTABLISHED_IND, /**< This event indicates periodic advertising sync established. */
     BLE_GAP_CREATE_CONNECTION_STOP_IND,      /**< This event indicates create connection stopped. */
+
+    BLE_GAP_SET_PHY_CNF,                     /**< This event indicates set phy finished. */
 };
 
 /**
@@ -1960,6 +1962,14 @@ typedef struct
     uint32_t peer_sign_counter;      /**< Peer SignCounter value. */
 } ble_gap_sign_counter_update_ind_t;
 
+/**
+ * @brief The structure of #BLE_GAP_GAPC_SET_PHY_CNF.
+ */
+typedef struct
+{
+    uint8_t conn_idx;
+    uint8_t status;
+} ble_gap_set_phy_cnf_t;
 
 
 /**
