@@ -43,10 +43,11 @@ static int uart_fifo_fill(const struct device *dev, const uint8_t *tx_data, int 
 
 
 #define DT_DRV_COMPAT zephyr_bt_hci_uart
+#define DISCARD_LENGTH 40
 
 #if 0
-    #undef LOG_DBG
-    #define LOG_DBG(fmt,...) rt_kprintf("%s "fmt"\n",__FUNCTION__,##__VA_ARGS__)
+    //#undef LOG_DBG
+    //#define LOG_DBG(fmt,...) rt_kprintf("%s "fmt"\n",__FUNCTION__,##__VA_ARGS__)
     #undef LOG_WRN
     #define LOG_WRN(fmt,...) rt_kprintf("W:%s "fmt"\n",__FUNCTION__,##__VA_ARGS__)
     #undef LOG_ERR
@@ -254,6 +255,7 @@ static inline void get_sco_hdr(const struct device *dev)
 
         h4->rx.remaining = hdr->len;
         LOG_DBG("Got SCO header. Payload %u bytes", h4->rx.remaining);
+        h4->rx.discardable = true;
         h4->rx.have_hdr = true;
     }
 }
@@ -272,6 +274,7 @@ static inline void get_iso_hdr(const struct device *dev)
         h4->rx.remaining = bt_iso_hdr_len(sys_le16_to_cpu(hdr->len));
         LOG_DBG("Got ISO header. Payload %u bytes", h4->rx.remaining);
 
+        h4->rx.discardable = true;
         h4->rx.have_hdr = true;
     }
 }
@@ -304,9 +307,10 @@ static inline void get_evt_hdr(const struct device *dev)
     if (!h4->rx.remaining)
     {
         if (h4->rx.evt.evt == BT_HCI_EVT_LE_META_EVENT &&
-                (h4->rx.hdr[sizeof(*hdr)] == BT_HCI_EVT_LE_ADVERTISING_REPORT))
+                ((h4->rx.hdr[sizeof(*hdr)] == BT_HCI_EVT_LE_ADVERTISING_REPORT)
+                 || (h4->rx.hdr[sizeof(*hdr)] == BT_HCI_EVT_LE_EXT_ADVERTISING_REPORT)))
         {
-            LOG_DBG("Marking adv report as discardable");
+            LOG_DBG("Marking adv/ext adv report as discardable");
             h4->rx.discardable = true;
         }
 
@@ -373,12 +377,10 @@ static void rx_thread(void *p1, void *p2, void *p3)
             {
                 LOG_DBG("Calling bt_recv(%p),len=%d,data=%p", buf, buf->len, buf->data);
 
-#if 1
                 if (buf->len && buf->data)
                     log_hci_to_console(buf);
                 else
                     break;
-#endif
 
                 if (ble_stack_filter(buf))
                 {
@@ -396,7 +398,7 @@ static void rx_thread(void *p1, void *p2, void *p3)
 
 static size_t h4_discard(const struct device *uart, size_t len)
 {
-    uint8_t buf[33];
+    uint8_t buf[DISCARD_LENGTH];
     int err;
 
     err = uart_fifo_read(uart, buf, MIN(len, sizeof(buf)));
@@ -425,13 +427,16 @@ static inline void read_payload(const struct device *dev)
         {
             if (h4->rx.discardable)
             {
-                LOG_WRN("Discarding event 0x%02x", h4->rx.evt.evt);
+                static int discard = 0;
+                discard++;
+                if ((discard % 100) == 0)
+                    LOG_WRN("Discarding %d type %d, len=%d", discard, h4->rx.type, h4->rx.remaining);
                 h4->rx.discard = h4->rx.remaining;
                 reset_rx(h4);
                 return;
             }
 
-            LOG_WRN("Failed to allocate, deferring to rx_thread");
+            LOG_WRN("Failed to allocate, deferring to rx_thread, %d", h4->rx.type);
             uart_irq_rx_disable(cfg->uart);
             return;
         }

@@ -131,7 +131,7 @@ config BT_BUF_EVT_DISCARDABLE_SIZE
 	default 255 if BT_CLASSIC
 	# Le Advertising Report event
 	default 43 if !BT_EXT_ADV
-	default 58 if BT_EXT_ADV
+	default 255 if BT_EXT_ADV
 	help
 	  Maximum support discardable HCI event size of buffers in the separate
 	  discardable event buffer pool. This value does not include the
@@ -143,6 +143,7 @@ config BT_BUF_EVT_DISCARDABLE_COUNT
 	int "Number of discardable HCI Event buffers"
 	range 1 255
 	default 20 if BT_MESH
+	default 10 if BT_EXT_ADV
 	default 3
 	depends on !BT_HCI_RAW
 	help
