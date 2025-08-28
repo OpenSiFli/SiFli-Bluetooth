@@ -513,7 +513,7 @@ void bt_conn_recv(struct bt_conn *conn, struct net_buf *buf, uint8_t flags)
      * Always do so from the same context for sanity. In this case that will
      * be either a dedicated Bluetooth connection TX workqueue or system workqueue.
      */
-#if 1
+#if 0
     bt_conn_tx_notify(conn, true);
 #else
     bt_conn_tx_notify(conn, false);

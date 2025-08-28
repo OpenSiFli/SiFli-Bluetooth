@@ -710,10 +710,9 @@ static inline void process_rx(const struct device *dev)
             h4->rx.remaining, h4->rx.discard, h4->rx.have_hdr, h4->rx.buf,
             h4->rx.buf ? h4->rx.buf->len : 0);
 
-    if (h4->rx.discard)
+    while (h4->rx.discard)
     {
         h4->rx.discard -= h4_discard(cfg->uart, h4->rx.discard);
-        return;
     }
 
     if (h4->rx.have_hdr)
