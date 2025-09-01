@@ -47,7 +47,7 @@ void rwip_timer_co_set(uint32_t target_bts)
 
     if (rw_rttimer.timeout_func == NULL)
     {
-        rt_timer_init(&rw_rttimer, "BLEHost", timeout_isr, NULL, rwip_ticks, RT_TIMER_FLAG_ONE_SHOT);
+        rt_timer_init(&rw_rttimer, "BLEHost", timeout_isr, NULL, rwip_ticks, RT_TIMER_FLAG_ONE_SHOT | RT_TIMER_FLAG_SOFT_TIMER);
         rt_timer_start(&rw_rttimer);
     }
     else
