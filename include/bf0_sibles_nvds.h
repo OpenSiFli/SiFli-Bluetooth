@@ -129,6 +129,9 @@ enum app_nvds_tag
 #define SIFLI_NVDS_TYPE_CM   3
 #define SIFLI_NVDS_TYPE_BT_HOST 4
 #define SIFLI_NVDS_TYPE_BT_CM 5
+#ifdef PKG_USING_FMNA
+    #define SIFLI_NVDS_TYPE_FIND_MY 6
+#endif
 typedef uint8_t sifli_nvds_type_t;
 
 
@@ -136,6 +139,9 @@ typedef uint8_t sifli_nvds_type_t;
 #define SIFLI_NVDS_KEY_LEN_STACK 512
 #define SIFLI_NVDS_KEY_LEN_CM 3072
 #define SIFLI_NVDS_KEY_LEN_BT_CM 512
+#ifdef PKG_USING_FMNA
+    #define SIFLI_NVDS_KEY_LEN_FIND_MY 2048
+#endif
 
 
 typedef uint8_t nvds_tag_len_t;

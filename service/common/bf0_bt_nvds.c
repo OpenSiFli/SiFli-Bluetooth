@@ -65,6 +65,9 @@
 #define SIFLI_NVDS_KEY_CM "SIF_CM"
 #define SIFLI_NVDS_KEY_BT_HOST "SIF_BT"
 #define SIFLI_NVDS_KEY_BT_CM "SIF_BT_CM"
+#ifdef PKG_USING_FMNA
+    #define SIFLI_NVDS_KEY_FIND_MY "SIF_FIND_MY"
+#endif
 #define BLE_DEFAULT_BDADDR  {{0x12, 0x34, 0x56, 0x78, 0xab, 0xcd}}
 
 
@@ -624,6 +627,19 @@ static uint8_t *sifli_nvds_read_int(sifli_nvds_type_t type, uint16_t *len)
 
         break;
     }
+#ifdef PKG_USING_FMNA
+    case SIFLI_NVDS_TYPE_FIND_MY:
+    {
+        ptr = bt_mem_alloc(SIFLI_NVDS_KEY_LEN_FIND_MY);
+        if (ptr == NULL)
+            break;
+
+        memset(ptr, 0, SIFLI_NVDS_KEY_LEN_FIND_MY);
+        read_len = sifli_nvds_flash_read(SIFLI_NVDS_KEY_FIND_MY, ptr, SIFLI_NVDS_KEY_LEN_FIND_MY);
+        OS_ASSERT(read_len <= SIFLI_NVDS_KEY_LEN_FIND_MY);
+        break;
+    }
+#endif
     default:
         break;
     }
@@ -752,6 +768,18 @@ uint8_t sifli_nvds_write(sifli_nvds_type_t type, uint16_t len, uint8_t *ptr)
         ret = sifli_nvds_flash_write(SIFLI_NVDS_KEY_BT_CM, ptr, len);
         break;
     }
+#ifdef PKG_USING_FMNA
+    case SIFLI_NVDS_TYPE_FIND_MY:
+    {
+        if (len > SIFLI_NVDS_KEY_LEN_FIND_MY)
+        {
+            ret = NVDS_FAIL;
+            break;
+        }
+        ret = sifli_nvds_flash_write(SIFLI_NVDS_KEY_FIND_MY, ptr, len);
+        break;
+    }
+#endif
     case SIFLI_NVDS_TYPE_BT_HOST:
     {
         ret = sifli_nvds_flash_write(SIFLI_NVDS_KEY_BT_HOST, ptr, len);

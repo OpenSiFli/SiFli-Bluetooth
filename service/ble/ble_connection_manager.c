@@ -23,6 +23,10 @@
     #include "bt_gatt_api.h"
 #endif
 
+#ifdef PKG_USING_FMNA
+    #include "fmna_connection_platform.h"
+#endif
+
 
 //#if defined(SOC_SF32LB58X) && defined(BT_FINSH)
 #ifdef BT_FINSH
@@ -2143,7 +2147,27 @@ int ble_connection_manager_handler(uint16_t event_id, uint8_t *data, uint16_t le
                 {
                     cfm->found = true;
                     cfm->key_size = 16;
+#ifdef PKG_USING_FMNA
+                    extern bool fmna_connection_is_fmna_paired(void);
+                    if (fmna_connection_is_fmna_paired())
+                    {
+                        bd_addr_t fmna_addr = fmna_get_paired_addr();
+
+                        if (memcmp(fmna_addr.addr, g_bond_info.peer_addr[g_conn_manager[manager_index].bond_index].addr.addr, BD_ADDR_LEN) == 0)
+                        {
+                            LOG_I("USING NEW LTK");
+
+                            extern uint8_t *fmna_connection_get_active_ltk(void);
+                            rt_memcpy(&cfm->ltk, fmna_connection_get_active_ltk(), sizeof(ble_gap_sec_key_t));
+                        }
+                    }
+                    else
+                    {
+                        rt_memcpy(&cfm->ltk, &ltk.ltk, sizeof(ble_gap_sec_key_t));
+                    }
+#else
                     rt_memcpy(&cfm->ltk, &ltk.ltk, sizeof(ble_gap_sec_key_t));
+#endif
                 }
             }
         }
