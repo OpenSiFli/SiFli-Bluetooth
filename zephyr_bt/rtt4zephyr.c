@@ -545,6 +545,53 @@ int settings_name_next(const char *name, const char **next)
     return rc;
 }
 
+
+int settings_name_steq(const char *name, const char *key, const char **next)
+{
+    if (next)
+    {
+        *next = NULL;
+    }
+
+    if ((!name) || (!key))
+    {
+        return 0;
+    }
+
+    /* name might come from flash directly, in flash the name would end
+     * with '=' or '\0' depending how storage is done. Flash reading is
+     * limited to what can be read
+     */
+
+    while ((*key != '\0') && (*key == *name) &&
+            (*name != '\0') && (*name != SETTINGS_NAME_END))
+    {
+        key++;
+        name++;
+    }
+
+    if (*key != '\0')
+    {
+        return 0;
+    }
+
+    if (*name == SETTINGS_NAME_SEPARATOR)
+    {
+        if (next)
+        {
+            *next = name + 1;
+        }
+        return 1;
+    }
+
+    if ((*name == SETTINGS_NAME_END) || (*name == '\0'))
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
 /*
  * Append a single value to persisted config. Don't store duplicate value.
  */
@@ -570,6 +617,45 @@ int settings_delete(const char *name)
     return 0;
 }
 
+/**
+ * Load limited set of serialized items using given callback.
+ *
+ * This function bypasses the normal data workflow in settings module.
+ * All the settings values that are found are passed to the given callback.
+ *
+ * @note
+ * This function does not call commit function.
+ * It works as a blocking function, so it is up to the user to call
+ * any kind of commit function when this operation ends.
+ *
+ * @param[in]     subtree subtree name of the subtree to be loaded.
+ * @param[in]     cb      pointer to the callback function.
+ * @param[in,out] param   parameter to be passed when callback
+ *                        function is called.
+ * @return 0 on success, non-zero on failure.
+ */
+int settings_load_subtree_direct(
+    const char             *subtree,
+    settings_load_direct_cb cb,
+    void                   *param)
+{
+    return 0;
+}
+
+
+/**
+ * Initialization of settings and backend
+ *
+ * Can be called at application startup.
+ * In case the backend is a FS Remember to call it after the FS was mounted.
+ * For FCB backend it can be called without such a restriction.
+ *
+ * @return 0 on success, non-zero on failure.
+ */
+int settings_subsys_init(void)
+{
+    return 0;
+}
 
 void sibles_set_trc_cfg(sibles_trc_cfg_t cfg_mode, uint32_t mask_ext)
 {
