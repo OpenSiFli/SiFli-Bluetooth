@@ -151,6 +151,8 @@ enum
     #define ESHUTDOWN 110
 #endif
 
+#define k_malloc rt_malloc
+#define k_free rt_free
 /**
  * @brief Register an initialization function.
  *
@@ -378,8 +380,32 @@ int k_thread_join(struct k_thread *thread, k_timeout_t timeout);
 
 //*********** k_mutex -> k_mutex ***********************
 #define k_mutex rt_mutex
-#define k_mutex_lock(a,timeout) rt_mutex_take(a,timeout.ticks)
+#define K_MUTEX_DEFINE(name) struct k_mutex name
 #define k_mutex_unlock(a) rt_mutex_release(a)
+
+/**
+ * @brief Lock a mutex.
+ *
+ * This routine locks @a mutex. If the mutex is locked by another thread,
+ * the calling thread waits until the mutex becomes available or until
+ * a timeout occurs.
+ *
+ * A thread is permitted to lock a mutex it has already locked. The operation
+ * completes immediately and the lock count is increased by 1.
+ *
+ * Mutexes may not be locked in ISRs.
+ *
+ * @param mutex Address of the mutex.
+ * @param timeout Waiting period to lock the mutex,
+ *                or one of the special values K_NO_WAIT and
+ *                K_FOREVER.
+ *
+ * @retval 0 Mutex locked.
+ * @retval -EBUSY Returned without waiting.
+ * @retval -EAGAIN Waiting period timed out.
+ */
+__syscall int k_mutex_lock(struct k_mutex *mutex, k_timeout_t timeout);
+
 
 extern int k_mutex_init(struct rt_mutex *mutex);
 

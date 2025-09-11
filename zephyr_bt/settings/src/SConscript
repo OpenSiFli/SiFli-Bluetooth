@@ -1,0 +1,41 @@
+from building import *
+
+cwd = GetCurrentDir()
+src =   ['settings_store.c', 'settings.c', 'settings_init.c', 'settings_line.c']
+
+
+
+if GetDepend(['SETTINGS_RUNTIME']):
+	src+= ['settings_runtime.c']
+
+if GetDepend(['SETTINGS_FILE']):
+	src+= ['settings_file.c']
+
+if GetDepend(['SETTINGS_FCB']):
+	src+= ['settings_fcb.c']
+
+if GetDepend(['SETTINGS_NVS']):
+	src+= ['settings_nvs.c']
+
+if GetDepend(['SETTINGS_NONE']):
+	src+= ['settings_none.c']
+
+if GetDepend(['SETTINGS_SHELL']):
+	src+= ['settings_shell.c']
+
+if GetDepend(['SETTINGS_ZMS']):
+	src+= ['settings_zms.c']
+
+if GetDepend(['SETTINGS_TFM_ITS']):
+	src+= ['settings_its.c']
+
+if GetDepend(['SETTINGS_RETENTION']):
+	src+= ['settings_retention.c']   
+
+if GetDepend(['SETTINGS_SIFLI']):
+	src+= ['settings_sifli.c']
+
+CPPPATH = [cwd, cwd+"../include"]
+group = DefineGroup('zbt_settings', src, depend = ['SETTINGS'],CPPPATH = CPPPATH)
+
+Return('group')

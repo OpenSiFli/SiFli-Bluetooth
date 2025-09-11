@@ -3,7 +3,7 @@ from building import *
 cwd = GetCurrentDir()
 src = Glob('*.c')
 
-if (not GetDepend("MESH_SHELL")):
+if (not GetDepend("SHELL")):
     SrcRemove(src, 'shell_utils.c')
 
 CPPPATH = [cwd]

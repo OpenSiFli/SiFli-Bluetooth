@@ -1,3 +1,12 @@
+#ifdef SETTINGS
+    bt_conn_cb_area : SUBALIGN(4) 
+    { 
+        _settings_handler_static_list_start = .; 
+        KEEP(*(SORT_BY_NAME(._settings_handler_static.static.*))); 
+        _settings_handler_static_list_end = .; 
+    } > ROM
+#endif
+
 bt_conn_cb_area : SUBALIGN(4) 
 { 
     _bt_conn_cb_list_start = .; 
@@ -75,8 +84,10 @@ bt_mesh_lpn_cb_area : SUBALIGN(4)
         KEEP(*(SORT_BY_NAME(._bt_mesh_lpn_cb.static.*))); 
         _bt_mesh_lpn_cb_list_end = .; 
 } > ROM
+#endif
 
-#ifdef BT_MESH_SHELL
+
+#ifdef SHELL
 shell_area : SUBALIGN(4) 
 { 
         _shell_list_start = .; 
@@ -106,5 +117,4 @@ shell_dynamic_subcmds_area : SUBALIGN(4)
 } > ROM
 #endif
 
-#endif
  

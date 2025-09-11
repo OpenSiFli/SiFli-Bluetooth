@@ -122,6 +122,19 @@ int k_mutex_init(struct rt_mutex *mutex)
 }
 
 
+int k_mutex_lock(struct k_mutex *mutex, k_timeout_t timeout)
+{
+    int r = RT_EOK;
+
+    if (mutex->parent.parent.type == 0)
+    {
+        k_mutex_init(mutex);
+    }
+    r = rt_mutex_take(mutex, timeout.ticks);
+    return r;
+}
+
+
 int k_sem_init(struct k_sem *sem, unsigned int initial_count, unsigned int limit)
 {
     static int idx = 0;
@@ -497,166 +510,6 @@ int k_thread_join(struct k_thread *thread, k_timeout_t timeout)
     return r;
 }
 
-
-/**
- * determine the number of characters before the first separator
- *
- * @param[in] name in string format
- * @param[out] next pointer to remaining of name (excluding separator)
- *
- * @return index of the first separator, in case no separator was found this
- * is the size of name
- *
- */
-int settings_name_next(const char *name, const char **next)
-{
-    int rc = 0;
-
-    if (next)
-    {
-        *next = NULL;
-    }
-
-    if (!name)
-    {
-        return 0;
-    }
-
-    /* name might come from flash directly, in flash the name would end
-     * with '=' or '\0' depending how storage is done. Flash reading is
-     * limited to what can be read
-     */
-    while ((*name != '\0') && (*name != SETTINGS_NAME_END) &&
-            (*name != SETTINGS_NAME_SEPARATOR))
-    {
-        rc++;
-        name++;
-    }
-
-    if (*name == SETTINGS_NAME_SEPARATOR)
-    {
-        if (next)
-        {
-            *next = name + 1;
-        }
-        return rc;
-    }
-
-    return rc;
-}
-
-
-int settings_name_steq(const char *name, const char *key, const char **next)
-{
-    if (next)
-    {
-        *next = NULL;
-    }
-
-    if ((!name) || (!key))
-    {
-        return 0;
-    }
-
-    /* name might come from flash directly, in flash the name would end
-     * with '=' or '\0' depending how storage is done. Flash reading is
-     * limited to what can be read
-     */
-
-    while ((*key != '\0') && (*key == *name) &&
-            (*name != '\0') && (*name != SETTINGS_NAME_END))
-    {
-        key++;
-        name++;
-    }
-
-    if (*key != '\0')
-    {
-        return 0;
-    }
-
-    if (*name == SETTINGS_NAME_SEPARATOR)
-    {
-        if (next)
-        {
-            *next = name + 1;
-        }
-        return 1;
-    }
-
-    if ((*name == SETTINGS_NAME_END) || (*name == '\0'))
-    {
-        return 1;
-    }
-
-    return 0;
-}
-
-/*
- * Append a single value to persisted config. Don't store duplicate value.
- */
-int settings_save_one(const char *name, const void *value, size_t val_len)
-{
-    // TODO
-    return 0;
-}
-
-/**
- * Delete a single serialized in persisted storage.
- *
- * Deleting an existing key-value pair in the settings mean
- * to set its value to NULL.
- *
- * @param name Name/key of the settings item.
- *
- * @return 0 on success, non-zero on failure.
- */
-int settings_delete(const char *name)
-{
-    // TODO
-    return 0;
-}
-
-/**
- * Load limited set of serialized items using given callback.
- *
- * This function bypasses the normal data workflow in settings module.
- * All the settings values that are found are passed to the given callback.
- *
- * @note
- * This function does not call commit function.
- * It works as a blocking function, so it is up to the user to call
- * any kind of commit function when this operation ends.
- *
- * @param[in]     subtree subtree name of the subtree to be loaded.
- * @param[in]     cb      pointer to the callback function.
- * @param[in,out] param   parameter to be passed when callback
- *                        function is called.
- * @return 0 on success, non-zero on failure.
- */
-int settings_load_subtree_direct(
-    const char             *subtree,
-    settings_load_direct_cb cb,
-    void                   *param)
-{
-    return 0;
-}
-
-
-/**
- * Initialization of settings and backend
- *
- * Can be called at application startup.
- * In case the backend is a FS Remember to call it after the FS was mounted.
- * For FCB backend it can be called without such a restriction.
- *
- * @return 0 on success, non-zero on failure.
- */
-int settings_subsys_init(void)
-{
-    return 0;
-}
-
 void sibles_set_trc_cfg(sibles_trc_cfg_t cfg_mode, uint32_t mask_ext)
 {
     // Dummy for compile
@@ -857,9 +710,14 @@ static cmd_function_t zbt_get_cmd(char *cmd, int size)
 
 #endif
 
-#ifdef BT_MESH_SHELL
+#ifdef SHELL
 void shell_help(const struct shell *sh)
 {
+}
+
+void shell_hexdump(const struct shell *sh, const uint8_t *data, size_t len)
+{
+    HAL_DBG_print_data(data, 0, len);
 }
 
 extern const struct shell_static_entry *z_shell_get_last_command(
