@@ -587,7 +587,10 @@ int console_getchar(void)
     return (int)ch;
 }
 
-
+void console_done(void)
+{
+    rt_device_set_rx_indicate(rt_console, old_rx_ind);
+}
 
 void sys_reboot(int type)
 {

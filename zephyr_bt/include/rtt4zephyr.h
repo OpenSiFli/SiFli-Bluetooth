@@ -34,6 +34,8 @@ bool device_is_ready(const struct device *dev);
 /* Check if a pointer is aligned enough for a particular data type. */
 #define IS_PTR_ALIGNED(ptr, type) IS_PTR_ALIGNED_BYTES(ptr, __alignof(type))
 
+void console_done(void);
+
 
 //------------------------After this is implmemented.-------------------------------
 

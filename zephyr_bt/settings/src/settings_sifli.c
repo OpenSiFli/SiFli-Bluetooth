@@ -41,6 +41,9 @@ LOG_MODULE_REGISTER(settings_sifli, LOG_LEVEL_INF);
 #ifndef BT_SC_STORAGE_LEN
     #define BT_SC_STORAGE_LEN 4 // Length of security config per device (bytes)
 #endif
+#ifndef BT_DEVICE_NAME_MAX
+    #define BT_DEVICE_NAME_MAX 28
+#endif
 
 
 // Key Name Constants
@@ -102,12 +105,7 @@ struct settings_nvds_store
 };
 
 // Static singleton instance of the NVDS backend
-static struct settings_nvds_store nvds_backend =
-{
-    .is_initialized = false,
-    .bundle_dirty = false,
-    .bt_cache = {0} // Zero-initialize (all entries marked as unused)
-};
+static struct settings_nvds_store nvds_backend;
 
 // --------------------------
 // Bluetooth Address Helpers
