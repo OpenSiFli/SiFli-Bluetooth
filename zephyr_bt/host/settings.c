@@ -169,7 +169,7 @@ static int set_setting(const char *name, size_t len_rd, settings_read_cb read_cb
         }
 
         len = read_cb(cb_arg, &bt_dev.id_addr, sizeof(bt_dev.id_addr));
-        if (len < sizeof(bt_dev.id_addr[0]))
+        if (len < sizeof(bt_dev.id_addr[0]) || (bt_addr_le_eq(bt_dev.id_addr, BT_ADDR_LE_ANY)))
         {
             if (len < 0)
             {

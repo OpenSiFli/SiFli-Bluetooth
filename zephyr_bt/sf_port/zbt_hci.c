@@ -4673,6 +4673,11 @@ void bt_finalize_init(void)
 {
     atomic_set_bit(bt_dev.flags, BT_DEV_READY);
 
+#ifdef BSP_BLE_SIBLES
+    extern void bts2_main(void);
+    bts2_main();
+#endif
+
     if (IS_ENABLED(CONFIG_BT_OBSERVER))
     {
         bt_scan_reset();
@@ -4719,11 +4724,6 @@ static int bt_init(void)
 
         atomic_set_bit(bt_dev.flags, BT_DEV_PRESET_ID);
     }
-
-#ifdef BSP_BLE_SIBLES
-    extern void bts2_main(void);
-    bts2_main();
-#endif
 
     bt_finalize_init();
     return 0;

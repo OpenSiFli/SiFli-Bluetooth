@@ -15,6 +15,12 @@
     #include <mesh/subnet.h>
     #include <mesh/mesh.h>
 #endif
+
+#ifdef SETTINGS
+    #include <zephyr/settings/settings.h>
+#endif
+
+
 #include "bf0_sibles.h"
 #include <stdio.h>
 #include <rtdef.h>
@@ -240,6 +246,12 @@ uint32_t k_mem_slab_num_free_get(struct k_mem_slab *slab)
         __USED const struct bt_ias_cb _bt_ias_cb_list_end  SPACE1("._bt_ias_cb.static.zz_end");
     #endif
 
+    #ifdef SETTINGS
+        __USED const struct settings_handler_static _settings_handler_static_list_start  SPACE1("._settings_handler_static.static.00_start");
+        __USED const struct settings_handler_static _settings_handler_static_list_end  SPACE1("._settings_handler_static.static.zz_end");
+    #endif
+
+
     #ifdef BT_MESH
         __USED const struct bt_mesh_subnet_cb _bt_mesh_subnet_cb_list_start SPACE1("._bt_conn_cb.static.00_start");
         __USED const struct bt_mesh_subnet_cb  _bt_mesh_subnet_cb_list_end SPACE1("._bt_conn_cb.static.zz_end");
@@ -338,7 +350,7 @@ int k_work_schedule(struct k_work_delayable *dwork,
 {
     if (dwork->work.list.next == NULL && dwork->work.list.prev == NULL)
         rt_delayed_work_init(dwork, dwork->work.work_func, dwork->work.work_data);
-    rt_work_submit((struct rt_work *)dwork, delay.ticks);
+    return rt_work_submit((struct rt_work *)dwork, delay.ticks);
 }
 
 void k_work_queue_start(struct k_work_q *queue,
