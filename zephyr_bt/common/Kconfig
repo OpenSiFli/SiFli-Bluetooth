@@ -174,7 +174,7 @@ config BT_BUF_CMD_TX_SIZE2
 
 config BT_BUF_CMD_TX_COUNT
 	int "Number of HCI command buffers"
-	default 2
+	default 3
 	range 2 64
 	help
 	  Number of buffers available for outgoing HCI commands from the Host.

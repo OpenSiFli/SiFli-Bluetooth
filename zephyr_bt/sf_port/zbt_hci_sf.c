@@ -789,6 +789,12 @@ static int h4_open(const struct device *dev, bt_hci_recv_t recv)
 }
 
 #if defined(CONFIG_BT_HCI_SETUP)
+
+int bt_h4_vnd_setup(const struct device *dev)
+{
+    return 0;
+}
+
 static int h4_setup(const struct device *dev, const struct bt_hci_setup_params *params)
 {
     const struct h4_config *cfg = h4_cfg(dev);

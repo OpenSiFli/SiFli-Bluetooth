@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/bluetooth/bluetooth.h>
+#include <../../host/keys.h>
 
 // NVDS Adapter Header (update path for your project)
 #include "bf0_sibles_nvds.h"
@@ -35,14 +36,12 @@ LOG_MODULE_REGISTER(settings_sifli, LOG_LEVEL_INF);
 // --------------------------
 // Configuration Constants
 // --------------------------
-#ifndef BT_KEYS_STORAGE_LEN
-    #define BT_KEYS_STORAGE_LEN 124 // Length of key data per device (bytes)
-#endif
 #ifndef BT_SC_STORAGE_LEN
     #define BT_SC_STORAGE_LEN 4 // Length of security config per device (bytes)
 #endif
+
 #ifndef BT_DEVICE_NAME_MAX
-    #define BT_DEVICE_NAME_MAX 28
+    #define BT_DEVICE_NAME_MAX 32
 #endif
 
 
@@ -52,7 +51,7 @@ LOG_MODULE_REGISTER(settings_sifli, LOG_LEVEL_INF);
 #define BT_NAME_KEY "bt/name" // Device name key
 #define BT_ID_KEY "bt/id" // Base path for identity addresses (bt/id/<index>)
 #define BT_IRK_KEY "bt/irk" // Base path for identity resolving keys
-#define BT_BUNDLE_ROOT_KEY "bt/bundle"// Root key for NVDS bundle storage
+#define BT_BUNDLE_ROOT_KEY "bt_bundle"// Root key for NVDS bundle storage
 
 // Bluetooth Address Constants
 #define BT_ADDR_LEN sizeof(bt_addr_le_t) // 6 bytes (fixed for bt_addr_le_t)
@@ -88,6 +87,7 @@ struct bt_settings_bundle
     uint8_t name[BT_DEVICE_NAME_MAX + 1]; // Device name (null-terminated)
     bt_addr_le_t id[BT_ID_MAX]; // bt/id/<index>: BLE addresses (7 bytes each)
     uint8_t irk[BT_ID_MAX][16]; // bt/irk/<index>: IRKs (16 bytes each)
+    size_t id_available; // Count of active/available bt/id entries
 };
 
 /**
@@ -123,7 +123,7 @@ static int bt_addr_to_hex(const bt_addr_le_t *addr, char *hex_buf, size_t buf_le
 {
     if (!addr || !hex_buf || buf_len < BT_ADDR_LE_SIZE)
     {
-        LOG_ERR("Invalid parameters (addr=%p, buf=%p, len=%zu)", addr, hex_buf, buf_len);
+        LOG_ERR("Invalid parameters (addr=%p, buf=%p, len=%d)", addr, hex_buf, buf_len);
         return -EINVAL;
     }
 // Format 6-byte address as 12-character hex string (no colons, uppercase)
@@ -144,7 +144,7 @@ static int bt_hex_to_addr(const char *hex_str, bt_addr_le_t *addr)
 {
     if (!hex_str || !addr || strlen(hex_str) != BT_ADDR_HEX_LEN)
     {
-        LOG_ERR("Invalid address string: %s (length=%zu, expected %d)",
+        LOG_ERR("Invalid address string: %s (length=%d, expected %d)",
                 hex_str, strlen(hex_str), BT_ADDR_HEX_LEN);
         return -EINVAL;
     }
@@ -233,7 +233,7 @@ static int generate_addr_based_key(char *key_buf, size_t buf_len,
     ret = snprintf(key_buf, buf_len, "%s/%s", base_key, addr_hex);
     if (ret < 0 || (size_t)ret >= buf_len)
     {
-        LOG_ERR("Key buffer too small (required: %d, available: %zu)", ret + 1, buf_len);
+        LOG_ERR("Key buffer too small (required: %d, available: %d)", ret + 1, buf_len);
         return -EINVAL;
     }
     return 0;
@@ -274,13 +274,13 @@ static int generate_indexed_key(char *key_buf, size_t buf_len, const char *base_
 {
     if (index >= BT_ID_MAX)
     {
-        LOG_ERR("Index %zu exceeds max bt/id/irk entries (%d)", index, BT_ID_MAX - 1);
+        LOG_ERR("Index %d exceeds max bt/id/irk entries (%d)", index, BT_ID_MAX - 1);
         return -EINVAL;
     }
-    int ret = snprintf(key_buf, buf_len, "%s/%zu", base_key, index);
+    int ret = snprintf(key_buf, buf_len, "%s/%d", base_key, index);
     if (ret < 0 || (size_t)ret >= buf_len)
     {
-        LOG_ERR("Key buffer too small (required: %d, available: %zu)", ret + 1, buf_len);
+        LOG_ERR("Key buffer too small (required: %d, available: %d)", ret + 1, buf_len);
         return -EINVAL;
     }
     return 0;
@@ -336,6 +336,34 @@ static bool key_match(const char *subtree, const char *key)
            (key[subtree_len] == '\0' || key[subtree_len] == '/');
 }
 
+
+/**
+@brief Recalculate id_available by counting non-zero id entries
+Ensures id_available stays in sync with actual used entries
+*/
+static void recalculate_id_available(void)
+{
+    size_t count = 0;
+    for (size_t i = 0; i < BT_ID_MAX; i++)
+    {
+        // Check if address is non-zero (active entry)
+        bool is_non_zero = false;
+        for (size_t j = 0; j < sizeof(bt_addr_le_t); j++)
+        {
+            if (((uint8_t *)&nvds_backend.bt_cache.id[i])[j] != 0)
+            {
+                is_non_zero = true;
+                break;
+            }
+        }
+        if (is_non_zero)
+        {
+            count++;
+        }
+    }
+    nvds_backend.bt_cache.id_available = count;
+}
+
 // --------------------------
 // Settings Framework Callbacks
 // --------------------------
@@ -359,7 +387,7 @@ static int settings_read_callback(void *arg, void *buf, size_t len)
     } *cb_data = arg;
     if (!cb_data || !buf)
     {
-        LOG_ERR("Invalid read callback params (arg=%p, buf=%p, len=%zu > max %zu)",
+        LOG_ERR("Invalid read callback params (arg=%p, buf=%p, len=%d > max %d)",
                 cb_data, buf, len, cb_data->data_len);
         return -EINVAL;
     }
@@ -611,7 +639,7 @@ int settings_bt_name_set(const char *name)
     size_t name_len = strlen(name);
     if (name_len > BT_DEVICE_NAME_MAX)
     {
-        LOG_ERR("Name too long (%zu > %d)", name_len, BT_DEVICE_NAME_MAX);
+        LOG_ERR("Name too long (%d > %d)", name_len, BT_DEVICE_NAME_MAX);
         return -EINVAL;
     }
 // Update device name
@@ -633,7 +661,7 @@ int settings_bt_name_get(char *name_buf, size_t buf_len)
 {
     if (!nvds_backend.is_initialized || !name_buf || buf_len < BT_DEVICE_NAME_MAX + 1)
     {
-        LOG_ERR("Invalid parameters (initialized=%d, buf=%p, len=%zu)",
+        LOG_ERR("Invalid parameters (initialized=%d, buf=%p, len=%d)",
                 nvds_backend.is_initialized, name_buf, buf_len);
         return -EINVAL;
     }
@@ -654,7 +682,7 @@ int settings_bt_id_set(size_t index, const bt_addr_le_t *addr)
 {
     if (!nvds_backend.is_initialized || index >= BT_ID_MAX || !addr)
     {
-        LOG_ERR("Invalid parameters (initialized=%d, index=%zu, addr=%p)",
+        LOG_ERR("Invalid parameters (initialized=%d, index=%d, addr=%p)",
                 nvds_backend.is_initialized, index, addr);
         return -EINVAL;
     }
@@ -663,7 +691,7 @@ int settings_bt_id_set(size_t index, const bt_addr_le_t *addr)
     nvds_backend.bundle_dirty = true;
     char addr_hex[BT_ADDR_HEX_LEN + 1];
     bt_addr_to_hex(addr, addr_hex, sizeof(addr_hex));
-    LOG_DBG("Set %s/%zu to %s", BT_ID_KEY, index, addr_hex);
+    LOG_DBG("Set %s/%d to %s", BT_ID_KEY, index, addr_hex);
     return 0;
 }
 
@@ -678,7 +706,7 @@ int settings_bt_id_get(size_t index, bt_addr_le_t *addr_out)
 {
     if (!nvds_backend.is_initialized || index >= BT_ID_MAX || !addr_out)
     {
-        LOG_ERR("Invalid parameters (initialized=%d, index=%zu, out=%p)",
+        LOG_ERR("Invalid parameters (initialized=%d, index=%d, out=%p)",
                 nvds_backend.is_initialized, index, addr_out);
         return -EINVAL;
     }
@@ -698,14 +726,14 @@ int settings_bt_irk_set(size_t index, const void *irk_data)
 {
     if (!nvds_backend.is_initialized || index >= BT_ID_MAX || !irk_data)
     {
-        LOG_ERR("Invalid parameters (initialized=%d, index=%zu, data=%p)",
+        LOG_ERR("Invalid parameters (initialized=%d, index=%d, data=%p)",
                 nvds_backend.is_initialized, index, irk_data);
         return -EINVAL;
     }
 // Update IRK
     memcpy(nvds_backend.bt_cache.irk[index], irk_data, 16);
     nvds_backend.bundle_dirty = true;
-    LOG_DBG("Set %s/%zu", BT_IRK_KEY, index);
+    LOG_DBG("Set %s/%d", BT_IRK_KEY, index);
     return 0;
 }
 
@@ -720,7 +748,7 @@ int settings_bt_irk_get(size_t index, void *irk_buf)
 {
     if (!nvds_backend.is_initialized || index >= BT_ID_MAX || !irk_buf)
     {
-        LOG_ERR("Invalid parameters (initialized=%d, index=%zu, buf=%p)",
+        LOG_ERR("Invalid parameters (initialized=%d, index=%d, buf=%p)",
                 nvds_backend.is_initialized, index, irk_buf);
         return -EINVAL;
     }
@@ -754,7 +782,7 @@ static ssize_t bt_bundle_serialize(void *buf, size_t buf_len)
 {
     if (!buf || buf_len < bt_bundle_get_size())
     {
-        LOG_ERR("Invalid buffer (size=%zu < required=%zu)", buf_len, bt_bundle_get_size());
+        LOG_ERR("Invalid buffer (size=%d < required=%d)", buf_len, bt_bundle_get_size());
         return -EINVAL;
     }
     memcpy(buf, &nvds_backend.bt_cache, bt_bundle_get_size());
@@ -772,7 +800,7 @@ static int bt_bundle_deserialize(const void *buf, size_t buf_len)
 {
     if (!buf || buf_len < bt_bundle_get_size())
     {
-        LOG_ERR("Invalid buffer (size=%zu < required=%zu)", buf_len, bt_bundle_get_size());
+        LOG_ERR("Invalid buffer (size=%d < required=%d)", buf_len, bt_bundle_get_size());
         return -EINVAL;
     }
     memcpy(&nvds_backend.bt_cache, buf, bt_bundle_get_size());
@@ -831,7 +859,7 @@ static int bt_bundle_save(void)
     }
 
 end:
-    LOG_INF("Saved BT settings bundle (%zu bytes)", bt_bundle_get_size());
+    LOG_INF("Saved BT settings bundle (%d bytes)", bt_bundle_get_size());
     return r;
 }
 
@@ -860,18 +888,25 @@ static int bt_bundle_load_from_nvds(void)
     {
         LOG_WRN("No existing bundle found - initializing empty");
         memset(&nvds_backend.bt_cache, 0, sizeof(struct bt_settings_bundle));
+        nvds_backend.bt_cache.id_available = 0; // Initialize new bundle with 0 available IDs
         k_free(bundle_buf);
         return 0;
     }
 // Validate bundle size
     if (read_len != bt_bundle_get_size())
     {
-        LOG_ERR("Corrupted bundle (read %zu bytes, expected %zu)", read_len, bt_bundle_get_size());
+        LOG_ERR("Corrupted bundle (read %d bytes, expected %d)", read_len, bt_bundle_get_size());
         k_free(bundle_buf);
         return -EIO;
     }
 // Deserialize into cache
     int ret = bt_bundle_deserialize(bundle_buf, read_len);
+    if (ret == 0)
+    {
+        // Recalculate to fix potential inconsistencies in loaded data
+        recalculate_id_available();
+        LOG_DBG("Recalculated id_available to %d after load", nvds_backend.bt_cache.id_available);
+    }
     k_free(bundle_buf);
     return ret;
 }
@@ -1003,6 +1038,7 @@ static int nvds_csi_save_start(struct settings_store *cs)
     return 0;
 }
 
+
 /**
 
 @brief Save a key-value pair (settings framework interface)
@@ -1012,12 +1048,16 @@ static int nvds_csi_save(struct settings_store *cs, const char *name,
                          const char *value, size_t val_len)
 {
     int r;
-    if (!cs || !name || !value)
+    if (!cs || !name)
     {
         LOG_ERR("Invalid parameters (cs=%p, name=%p, value=%p)", cs, name, value);
         r = -EINVAL;
         return r;
     }
+
+    // Handle clear operation (value is NULL and val_len is 0)
+    bool clear_operation = (value == NULL && val_len == 0);
+
 // Handle bt/keys/<addr> entries
     if (strstr(name, BT_KEYS_BASE_KEY) == name)
     {
@@ -1025,14 +1065,37 @@ static int nvds_csi_save(struct settings_store *cs, const char *name,
         r = parse_bt_addr_from_key(name, BT_KEYS_BASE_KEY, &addr);
         if (r == 0)
         {
-            if (val_len != BT_KEYS_STORAGE_LEN)
+            if (clear_operation)
             {
-                LOG_ERR("Invalid key length for %s (got %zu, expected %d)",
+                // Clear operation: zero out the key data for this device
+                int idx = find_paired_dev_by_addr(&addr);
+                if (idx >= 0)
+                {
+                    memset(nvds_backend.bt_cache.paired_devs[idx].key, 0, BT_KEYS_STORAGE_LEN);
+                    nvds_backend.bundle_dirty = true;
+                    r = 0;
+                }
+                else
+                {
+                    LOG_WRN("No device found to clear keys for: %s", name);
+                    r = -ENOENT;
+                }
+            }
+            else if (value == NULL)
+            {
+                LOG_ERR("Invalid NULL value for non-clear operation on %s", name);
+                r = -EINVAL;
+            }
+            else if (val_len != BT_KEYS_STORAGE_LEN)
+            {
+                LOG_ERR("Invalid key length for %s (got %d, expected %d)",
                         name, val_len, BT_KEYS_STORAGE_LEN);
                 r = -EINVAL;
             }
             else
+            {
                 r = settings_bt_keys_set(&addr, (const void *)value);
+            }
         }
     }
 // Handle bt/sc/<addr> entries
@@ -1042,26 +1105,63 @@ static int nvds_csi_save(struct settings_store *cs, const char *name,
         r = parse_bt_addr_from_key(name, BT_SC_BASE_KEY, &addr);
         if (r == 0)
         {
-            if (val_len != BT_SC_STORAGE_LEN)
+            if (clear_operation)
             {
-                LOG_ERR("Invalid SC length for %s (got %zu, expected %d)",
+                // Clear operation: zero out the security config for this device
+                int idx = find_paired_dev_by_addr(&addr);
+                if (idx >= 0)
+                {
+                    memset(nvds_backend.bt_cache.paired_devs[idx].sc, 0, BT_SC_STORAGE_LEN);
+                    nvds_backend.bundle_dirty = true;
+                    r = 0;
+                }
+                else
+                {
+                    LOG_WRN("No device found to clear security config for: %s", name);
+                    r = -ENOENT;
+                }
+            }
+            else if (value == NULL)
+            {
+                LOG_ERR("Invalid NULL value for non-clear operation on %s", name);
+                r = -EINVAL;
+            }
+            else if (val_len != BT_SC_STORAGE_LEN)
+            {
+                LOG_ERR("Invalid SC length for %s (got %d, expected %d)",
                         name, val_len, BT_SC_STORAGE_LEN);
                 r = -EINVAL;
             }
             else
+            {
                 r = settings_bt_sc_set(&addr, (const void *)value);
+            }
         }
     }
 // Handle bt/name entry
     else if (strcmp(name, BT_NAME_KEY) == 0)
     {
-        if (val_len > BT_DEVICE_NAME_MAX)
+        if (clear_operation)
         {
-            LOG_ERR("Name too long (got %zu, max %d)", val_len, BT_DEVICE_NAME_MAX);
+            // Clear operation: zero out the device name
+            memset(nvds_backend.bt_cache.name, 0, BT_DEVICE_NAME_MAX + 1);
+            nvds_backend.bundle_dirty = true;
+            r = 0;
+        }
+        else if (value == NULL)
+        {
+            LOG_ERR("Invalid NULL value for non-clear operation on %s", name);
+            r = -EINVAL;
+        }
+        else if (val_len > BT_DEVICE_NAME_MAX)
+        {
+            LOG_ERR("Name too long (got %d, max %d)", val_len, BT_DEVICE_NAME_MAX);
             r = -EINVAL;
         }
         else
+        {
             r = settings_bt_name_set(value);
+        }
     }
 // Handle bt/id/<index> entries (Bluetooth addresses)
     else if (strstr(name, BT_ID_KEY) == name)
@@ -1070,18 +1170,69 @@ static int nvds_csi_save(struct settings_store *cs, const char *name,
         r = parse_key_index(name, BT_ID_KEY, &index);
         if (r == 0)
         {
-            if (val_len != BT_ADDR_LEN)
+            // Check current state of the ID entry before modification
+            bool was_active = false;
+            for (size_t j = 0; j < sizeof(bt_addr_le_t); j++)
             {
-                LOG_ERR("Invalid ID address length for %s (got %zu, expected %zu)",
+                if (((uint8_t *)&nvds_backend.bt_cache.id[index])[j] != 0)
+                {
+                    was_active = true;
+                    break;
+                }
+            }
+
+            if (clear_operation)
+            {
+                // Clear operation: zero out the identity address
+                memset(&(nvds_backend.bt_cache.id[index]), 0, BT_ADDR_LEN);
+                nvds_backend.bundle_dirty = true;
+
+                // Decrement available count if entry was active
+                if (was_active && nvds_backend.bt_cache.id_available > 0)
+                {
+                    nvds_backend.bt_cache.id_available--;
+                    LOG_DBG("Deleted bt/id/%d, id_available=%d", index, nvds_backend.bt_cache.id_available);
+                }
+                r = 0;
+            }
+            else if (value == NULL)
+            {
+                LOG_ERR("Invalid NULL value for non-clear operation on %s", name);
+                r = -EINVAL;
+            }
+            else if (val_len != BT_ADDR_LEN)
+            {
+                LOG_ERR("Invalid ID address length for %s (got %d, expected %d)",
                         name, val_len, BT_ADDR_LEN);
                 r = -EINVAL;
             }
-            // Convert value buffer to bt_addr_le_t and store
             else
             {
                 bt_addr_le_t addr;
                 memcpy(&addr, value, BT_ADDR_LEN);
-                r = settings_bt_id_set(index, &addr);
+
+                // Check if new address is non-zero (active)
+                bool is_active = false;
+                for (size_t j = 0; j < sizeof(bt_addr_le_t); j++)
+                {
+                    if (((uint8_t *)&addr)[j] != 0)
+                    {
+                        is_active = true;
+                        break;
+                    }
+                }
+
+                // Set the new address
+                memcpy(&(nvds_backend.bt_cache.id[index]), &addr, BT_ADDR_LEN);
+                nvds_backend.bundle_dirty = true;
+                r = 0;
+
+                // Increment available count if transitioning from inactive to active
+                if (is_active && !was_active && nvds_backend.bt_cache.id_available < BT_ID_MAX)
+                {
+                    nvds_backend.bt_cache.id_available++;
+                    LOG_DBG("Added bt/id/%d, id_available=%d", index, nvds_backend.bt_cache.id_available);
+                }
             }
         }
     }
@@ -1092,15 +1243,28 @@ static int nvds_csi_save(struct settings_store *cs, const char *name,
         r = parse_key_index(name, BT_IRK_KEY, &index);
         if (r == 0)
         {
-            if (val_len != 16)
+            if (clear_operation)
             {
-                LOG_ERR("Invalid IRK length for %s (got %zu, expected 16)",
+                // Clear operation: zero out the IRK
+                memset(nvds_backend.bt_cache.irk[index], 0, 16);
+                nvds_backend.bundle_dirty = true;
+                r = 0;
+            }
+            else if (value == NULL)
+            {
+                LOG_ERR("Invalid NULL value for non-clear operation on %s", name);
+                r = -EINVAL;
+            }
+            else if (val_len != 16)
+            {
+                LOG_ERR("Invalid IRK length for %s (got %d, expected 16)",
                         name, val_len, 16);
                 r = -EINVAL;
             }
             else
-// Cast from const char* to const void* for our internal function
+            {
                 r = settings_bt_irk_set(index, (const void *)value);
+            }
         }
     }
     else
@@ -1108,10 +1272,14 @@ static int nvds_csi_save(struct settings_store *cs, const char *name,
         LOG_ERR("Unknown BT key: %s", name);
         r = -ENOTSUP;
     }
+
     if (r == 0)
+    {
         k_work_reschedule(&(nvds_backend.flush_work), K_MSEC(500));
+    }
     return r;
 }
+
 
 /**
 

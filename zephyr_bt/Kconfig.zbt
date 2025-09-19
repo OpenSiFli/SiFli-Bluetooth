@@ -13,3 +13,32 @@ config LIBLC3
     default n if !ZBT
 	help
 	  This option enables the Android liblc3 library for Bluetooth LE Audio            
+
+config BT_HCI_SETUP
+	bool
+	help
+	  Enable the HCI vendor-specific Setup function.
+
+	  This option has to be enabled when the BT Controller requires execution
+	  of the vendor-specific commands sequence to initialize the BT Controller
+	  before the BT Host executes a Reset sequence.
+
+	  The user should generally avoid changing it via menuconfig or in
+	  configuration files. This option are enabled by the vendor-specific
+	  HCI extension, where the Setup function is implemented.
+      
+config BT_HCI_SET_PUBLIC_ADDR
+	bool
+    default y if ZBT
+    default n
+	select BT_HCI_SETUP
+	help
+	  Pass the controller's public address to the HCI driver in setup()
+
+	  This option should be enabled by drivers for controllers that support setting the
+	  public identity through vendor-specific commands. They can then implement the
+	  setup() HCI driver API function and get the address to set from the public_addr field.
+
+	  From the application side, the public address is set using the first call to
+	  bt_id_create(), before calling bt_enable().      
+      

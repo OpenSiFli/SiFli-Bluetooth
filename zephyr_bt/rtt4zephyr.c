@@ -655,6 +655,7 @@ void sys_rand_get(void *dst, size_t len)
 int sys_csrand_get(void *dst, size_t len)
 {
     sys_rand_get(dst, len);
+    return 0;
 }
 
 /********************************** Shell **************************************/
