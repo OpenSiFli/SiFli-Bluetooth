@@ -316,12 +316,6 @@ void bt_interface_set_audio_device(U8 device_type);
  **/
 U8 bt_interface_get_current_audio_device(void);
 
-/**
- * @brief            Check whether the a2dp start command sent by the mobile phone has been received
- * @return           Return results
- *
- **/
-U8 bt_interface_get_receive_a2dp_start(void);
 
 
 /**
@@ -499,13 +493,6 @@ void bt_interface_avrcp_get_play_status_request(void);
  *
  **/
 void bt_interface_avrcp_set_playback_status(U8 playback_status);
-
-/**
- * @brief            Get the playback status of avrcp
- *
- **/
-void bt_interface_avrcp_set_can_play(void);
-
 
 /**
  * @brief            Check the avrcp role valid

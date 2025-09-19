@@ -15,8 +15,22 @@
     #include "audio_server.h"
 #endif
 
+#ifdef PKG_USING_AAC_DECODER_LIBFAAD
+    #define CFG_AV_AAC
+#endif
+
+//!Configure the number of AAC codec
+#ifdef CFG_AV_AAC
+    #define MAX_NUM_LOCAL_SNK_AAC_SEIDS 2
+#else
+    #define MAX_NUM_LOCAL_SNK_AAC_SEIDS 0
+#endif
+
+//!Configure the number of SBC codec
+#define MAX_NUM_LOCAL_SNK_SBC_SEIDS 2
+
 #ifdef CFG_AV_SNK
-    #define MAX_NUM_LOCAL_SNK_SEIDS 2
+    #define MAX_NUM_LOCAL_SNK_SEIDS (MAX_NUM_LOCAL_SNK_SBC_SEIDS + MAX_NUM_LOCAL_SNK_AAC_SEIDS)
 #else
     #define MAX_NUM_LOCAL_SNK_SEIDS 0
 #endif
@@ -27,9 +41,6 @@
     #define MAX_NUM_LOCAL_SRC_SEIDS 0
 #endif
 
-#ifdef PKG_USING_AAC_DECODER_LIBFAAD
-    #define CFG_AV_AAC
-#endif
 
 
 #define MAX_NUM_LOCAL_SEIDS (MAX_NUM_LOCAL_SNK_SEIDS + MAX_NUM_LOCAL_SRC_SEIDS)
@@ -74,10 +85,10 @@
 typedef enum
 {
     avidle,
+    avdisced,
     avconned,
     avconned_open,
     avconned_streaming,
-    avdisced
 } avseid_st;
 
 
@@ -204,6 +215,30 @@ typedef struct
 } bts2_aac_cfg;
 #endif
 
+#ifdef CFG_AV_SNK
+typedef struct
+{
+    U8 slience_filter_enable;
+    U8 slience_count;
+
+    rt_sem_t buf_sem;
+    U8  play_state;
+    U8  codec;
+    play_list_t playlist;
+    U8  *decode_buf;
+    U16 decode_buf_len;
+#if defined(AUDIO_USING_MANAGER) && defined(AUDIO_BT_AUDIO)
+    audio_client_t audio_client;
+#endif
+#if PKG_USING_VBE_DRC
+    void *vbe;
+    uint8_t *vbe_out;
+#endif
+
+    play_data_t *pt_curdata;
+} bts2s_avsnk_inst_data;
+#endif  // CFG_AV_SNK
+
 typedef struct
 {
     bts2_sbc_cfg act_cfg;
@@ -219,11 +254,17 @@ typedef struct
     U8 role; /* INITIATOR, ACPTOR */
     U8 forcefully_suspended;
     U8 in_use;
+    //?Can be optimized???
+    U8 idx;
     U8 stream_hdl;
     U8 rmt_seid_idx;
     U8 is_suspend_cfg;
     U8 is_start_cfg;
     BTS2S_BD_ADDR av_rmt_addr;
+
+#ifdef CFG_AV_SNK
+    bts2s_avsnk_inst_data snk_data;
+#endif
 } bts2_av_conn;
 
 #ifdef CFG_AV_SRC
@@ -243,47 +284,6 @@ typedef struct
 } bts2s_avsrc_inst_data;
 #endif //CFG_AV_SRC
 
-#ifdef CFG_AV_SNK
-typedef struct
-{
-    //char play_buf[AV_PLAY_BUF_SIZE];
-    short *audio_ptr;
-    U32 m_sec_per_pkt;
-    U32 m_sec_time_4_next_pkt;
-    U32 stream_frm_time_begin;
-    U32 stream_frm_time_end;
-
-    int play_wr_idx;
-    int play_rd_idx;
-    //DWORD pcm_playback_thrd;
-
-    U8 can_play;
-    U8 filter_prompt_enable;
-    U8 reveive_start;
-    U8 slience_filter_enable;
-    U8 slience_count;
-
-    //HWAVEOUT play_handle;
-    //HANDLE play_event;
-    rt_sem_t buf_sem;
-    U8  play_state;
-    U8  codec;
-    play_list_t playlist;
-    U8  *decode_buf;
-    U16 decode_buf_len;
-#if defined(AUDIO_USING_MANAGER) && defined(AUDIO_BT_AUDIO)
-    audio_client_t audio_client;
-#endif
-#if PKG_USING_VBE_DRC
-    void *vbe;
-    uint8_t *vbe_out;
-#endif
-
-    play_data_t *pt_curdata;
-} bts2s_avsnk_inst_data;
-#endif  // CFG_AV_SNK
-
-
 typedef struct
 {
     bts2_av_conn con[MAX_CONNS];
@@ -296,10 +296,6 @@ typedef struct
     BOOL suspend_pending;
     local_seid_info_t local_seid_info[MAX_NUM_LOCAL_SEIDS];
     U16 que_id;
-
-#ifdef CFG_AV_SNK
-    bts2s_avsnk_inst_data snk_data;
-#endif
 
 #ifdef CFG_AV_SRC
     bts2s_avsrc_inst_data src_data;
@@ -365,15 +361,13 @@ extern void bt_av_rel(void);
 extern bts2s_av_inst_data *bt_av_get_inst_data(void);
 extern void bt_av_msg_handler(bts2_app_stru *bts2_app_data);
 extern void bt_av_conn(BTS2S_BD_ADDR *bd_addr, uint8_t peer_role);
-void bt_av_set_can_play(void);
-U8 bt_av_get_receive_a2dp_start(void);
-void bt_av_set_slience_filter_enable(U8 enable);
-U8 bt_av_get_slience_filter_enable(void);
+void bt_av_set_slience_filter_enable(U8 enable, U8 con_idx);
+U8 bt_av_get_slience_filter_enable(U8 con_idx);
 U8 bt_av_get_a2dp_stream_state(void);
 void bt_av_hdl_set_bqb_test(U8 value);
 void bt_av_hdl_reset_bqb_test(void);
-void bt_av_set_filter_prompt_enable(U8 enable);
-U8 bt_av_get_filter_prompt_enable(void);
+U8 bt_av_get_idx_from_cid(bts2s_av_inst_data *inst, U16 sought_cid);
+U8 bt_av_get_sink_streaming_number(void);
 
 #else
 
@@ -390,15 +384,11 @@ U8 bt_av_get_filter_prompt_enable(void);
 #define bt_av_get_inst_data() NULL
 #define bt_av_msg_handler(bts2_app_data)
 #define bt_av_conn(bd_addr,peer_role)
-#define bt_av_set_can_play()
-#define bt_av_get_receive_a2dp_start() 0
 #define bt_av_set_slience_filter_enable(enable)
 #define bt_av_get_slience_filter_enable() 0
 #define bt_av_get_a2dp_stream_state() 0
 #define bt_av_hdl_set_bqb_test(value)
 #define bt_av_hdl_reset_bqb_test()
-#define bt_av_set_filter_prompt_enable(enable)
-#define bt_av_get_filter_prompt_enable() 0
 
 #endif //defined(CFG_AV)
 

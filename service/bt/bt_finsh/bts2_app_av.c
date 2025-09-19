@@ -82,12 +82,19 @@ static void bt_av_init_data(bts2s_av_inst_data *inst, bts2_app_stru *bts2_app_da
         inst->local_seid_info[i].local_seid.in_use = FALSE;
         inst->local_seid_info[i].local_seid.media_type = AV_AUDIO;
         inst->local_seid_info[i].local_seid.sep_type = AV_SNK; /*IS_SNK */
-#ifdef CFG_AV_AAC
-        inst->local_seid_info[i].local_seid.codec = i < (MAX_NUM_LOCAL_SNK_SEIDS - 1) ? AV_SBC : AV_MPEG24_AAC;
-#else
-        inst->local_seid_info[i].local_seid.codec = AV_SBC;
-#endif
     }
+
+    for (i = 0; i < MAX_NUM_LOCAL_SNK_SBC_SEIDS; i++)
+    {
+        inst->local_seid_info[i].local_seid.codec = AV_SBC;
+    }
+
+#ifdef CFG_AV_AAC
+    for (i = MAX_NUM_LOCAL_SNK_SBC_SEIDS; i < MAX_NUM_LOCAL_SNK_SEIDS; i++)
+    {
+        inst->local_seid_info[i].local_seid.codec = AV_MPEG24_AAC;
+    }
+#endif
 #endif // CFG_AV_SNK
 
 #ifdef CFG_AV_SRC
@@ -366,7 +373,7 @@ static void bt_av_hdl_discover_cfm(bts2_app_stru *bts2_app_data)
     }
     else
     {
-        INFO_TRACE("connect index %d\n", con_idx);
+        INFO_TRACE("(d%d)connect index %d\n", con_idx, con_idx);
     }
 
     if (msg->res == AV_ACPT)
@@ -422,19 +429,19 @@ static void bt_av_hdl_discover_cfm(bts2_app_stru *bts2_app_data)
         if (inst->con[con_idx].rmt_seid[0] != 0)
         {
             /*ask for the end - points capabilities */
-            INFO_TRACE("<< got available audio end-point\n");
-            INFO_TRACE(">> request to get capabilities of the end-point\n");
+            INFO_TRACE("<< (d%d)got available audio end-point\n", con_idx);
+            INFO_TRACE(">> (d%d)request to get capabilities of the end-point\n", con_idx);
             av_get_capabilities_req(inst->con[con_idx].conn_id, inst->con[con_idx].rmt_seid[0], ASSIGN_TLABEL);
             inst->con[con_idx].rmt_seid_idx = 0;
         }
         else
         {
-            INFO_TRACE("<< remote device not have available audio end-points\n");
+            INFO_TRACE("<< (d%d)remote device not have available audio end-points\n", con_idx);
         }
     }
     else
     {
-        INFO_TRACE("<< stream discover rejected, errorcode is %x\n", msg->res);
+        INFO_TRACE("<< (d%d)stream discover rejected, errorcode is %x\n", con_idx, msg->res);
     }
 }
 
@@ -448,8 +455,11 @@ static void bt_av_hdl_discover_ind(bts2_app_stru *bts2_app_data)
     U8 found = FALSE;
     bts2s_av_inst_data *inst = bt_av_get_inst_data();
 
+    U8 con_idx;
+
     msg = (BTS2S_AV_DISCOVER_IND *)bts2_app_data->recv_msg;
-    INFO_TRACE(" << indication to discover seid \n ");
+    con_idx = bt_av_get_idx_from_cid(inst, msg->conn_id);
+    INFO_TRACE(" << (d%d)indication to discover seid \n ", con_idx);
     for (iter = 0; iter < MAX_NUM_LOCAL_SEIDS; iter++)
     {
         if (!inst->local_seid_info[iter].local_seid.in_use)
@@ -460,11 +470,12 @@ static void bt_av_hdl_discover_ind(bts2_app_stru *bts2_app_data)
     }
     if (len > 0)
     {
-        INFO_TRACE(">> accept the discover indication\n");
+        INFO_TRACE(">> (d%d)accept the discover indication\n", con_idx);
         av_discover_rsp_acp(msg->conn_id, msg->tlabel, len, seid_info);
     }
     else
     {
+        INFO_TRACE(">> (d%d)reject the discover indication\n", con_idx);
         av_discover_rsp_rej(msg->conn_id, msg->tlabel, AV_SEP_IN_USE);
     }
 }
@@ -668,8 +679,8 @@ static void bt_av_find_sep_and_set_cfg(bts2s_av_inst_data *inst, uint16_t con_id
                         RT_ASSERT(0);
                     }
 
-                    INFO_TRACE("<< get the audio end-point capabilities successfully\n");
-                    INFO_TRACE(">> request to set configuration of the stream\n");
+                    INFO_TRACE("<< (d%d)get the audio end-point capabilities successfully\n", con_idx);
+                    INFO_TRACE(">> (d%d)request to set configuration of the stream\n", con_idx);
 
                     found = TRUE;
                     uint8_t local_seid_idx = bt_av_get_local_seid(inst, inst->con[con_idx].cfg, prefer_codec[t]);
@@ -739,7 +750,7 @@ static void bt_av_hdl_get_cap_cfm(bts2_app_stru *bts2_app_data)
             if ((inst->con[con_idx].rmt_seid_idx < MAX_NUM_RMT_SEIDS) && (inst->con[con_idx].rmt_seid[inst->con[con_idx].rmt_seid_idx] != 0))
             {
                 /*ask for the next end - point capabilities */
-                INFO_TRACE(">> request to get capabilities of the end-point\n");
+                INFO_TRACE(">> (d%d)request to get capabilities of the end-point\n", con_idx);
                 av_get_capabilities_req(inst->con[con_idx].conn_id, inst->con[con_idx].rmt_seid[inst->con[con_idx].rmt_seid_idx], ASSIGN_TLABEL);
             }
             else
@@ -750,6 +761,7 @@ static void bt_av_hdl_get_cap_cfm(bts2_app_stru *bts2_app_data)
     }
     else
     {
+        //??????????????
         bt_av_find_sep_and_set_cfg(inst, con_idx);
     }
 }
@@ -815,7 +827,7 @@ static void bt_av_hdl_get_cap_ind(bts2_app_stru *bts2_app_data)
 
 
 
-                INFO_TRACE(">> accept the get capabilities indication\n");
+                INFO_TRACE(">> (d%d)accept the get capabilities indication\n", con_idx);
 
                 av_get_capabilities_rsp_acp(msg->conn_id,
                                             msg->tlabel,
@@ -858,7 +870,7 @@ static void bt_av_hdl_get_cap_ind(bts2_app_stru *bts2_app_data)
 
 
 
-                INFO_TRACE(">> accept the get capabilities indication\n");
+                INFO_TRACE(">> (d%d)accept the get capabilities indication\n", con_idx);
 
                 av_get_capabilities_rsp_acp(msg->conn_id,
                                             msg->tlabel,
@@ -871,12 +883,13 @@ static void bt_av_hdl_get_cap_ind(bts2_app_stru *bts2_app_data)
         else
         {
             //!Unsupported codec
+            INFO_TRACE(">> (d%d)reject the get capabilities indication\n", con_idx);
             av_get_capabilities_rsp_rej(msg->conn_id, msg->tlabel, AV_BAD_ACP_SEID);
         }
     }
     else
     {
-        INFO_TRACE(">> reject the get capabilities indication\n");
+        INFO_TRACE(">> (d%d)reject the get capabilities indication\n", con_idx);
         av_get_capabilities_rsp_rej(msg->conn_id, msg->tlabel, AV_BAD_ACP_SEID);
     }
 
@@ -937,7 +950,7 @@ static void bt_av_hdl_get_all_cap_ind(bts2_app_stru *bts2_app_data)
             inst->con[con_idx].act_cfg.max_bitpool = av_cap_rsp[codec_sel][7];
         }
 
-        INFO_TRACE(">> accept the get all capabilities indication\n");
+        INFO_TRACE(">> (d%d)accept the get all capabilities indication\n", con_idx);
 
         // add delay report capability
         U8 *cap_data;
@@ -971,7 +984,7 @@ static void bt_av_hdl_get_all_cap_ind(bts2_app_stru *bts2_app_data)
     }
     else
     {
-        INFO_TRACE(">> reject the get all capabilities indication\n");
+        INFO_TRACE(">> (d%d)reject the get all capabilities indication\n", con_idx);
         av_get_all_capabilities_rsp_rej(msg->conn_id, msg->tlabel, AV_BAD_ACP_SEID);
     }
 #endif
@@ -1090,7 +1103,7 @@ static void bt_av_hdl_get_cfg_ind(bts2_app_stru *bts2_app_data)
     U8 con_idx;
     msg = (BTS2S_AV_GET_CFG_IND *)bts2_app_data->recv_msg;
     con_idx = bt_av_get_idx_from_shdl(inst, msg->shdl);
-    INFO_TRACE(">> indicate to get configuration of the stream\n");
+    INFO_TRACE(">> (d%d)indicate to get configuration of the stream\n", con_idx);
 
 #ifdef TP_SIG_SMG_BI_10_C
     av_get_cfg_rsp_rej(msg->shdl, msg->tlabel, AV_BAD_ACP_SEID);
@@ -1132,7 +1145,7 @@ static void bt_av_hdl_get_cfg_ind(bts2_app_stru *bts2_app_data)
     }
     else
     {
-        INFO_TRACE(">> reject to the get configuration request\n");
+        INFO_TRACE(">> (d%d)reject to the get configuration request\n", con_idx);
         av_get_cfg_rsp_rej(msg->shdl, msg->tlabel, AV_BAD_ACP_SEID);
     }
 #endif
@@ -1170,9 +1183,9 @@ static void bt_av_hdl_set_cfg_cfm(bts2_app_stru *bts2_app_data)
             inst->local_seid_info[inst->con[con_idx].local_seid_idx].local_seid.in_use = TRUE;
 
             /*rdy to open stream */
-            INFO_TRACE(">> request to open the stream \n");
+            INFO_TRACE(">> (d%d)request to open the stream \n", con_idx);
 #ifdef TP_SIG_SMG_BI_20_C
-            av_start_req(1, ASSIGN_TLABEL, &inst->con[inst->con_idx].stream_hdl);
+            av_start_req(1, ASSIGN_TLABEL, &inst->con[con_idx].stream_hdl);
 #else
             av_open_req(inst->con[con_idx].stream_hdl, ASSIGN_TLABEL);
 #endif
@@ -1201,8 +1214,8 @@ static void bt_av_hdl_set_cfg_ind(bts2_app_stru *bts2_app_data)
     U8 delay_report_enable = 0;
     U8 codec;
     msg = (BTS2S_AV_SET_CFG_IND *)bts2_app_data->recv_msg;
-    USER_TRACE("<< indicate to set stream configuration\r\n");
     con_idx = bt_av_get_idx_from_cid(inst, msg->conn_id);
+    USER_TRACE("<< (d%d)indicate to set stream configuration\r\n", con_idx);
     if (con_idx >= MAX_CONNS)
     {
         return;
@@ -1465,7 +1478,7 @@ static void bt_av_hdl_set_cfg_ind(bts2_app_stru *bts2_app_data)
                 if (p_ret == 0)
                 {
                     inst->local_seid_info[inst->con[con_idx].local_seid_idx].local_seid.in_use = TRUE;
-                    USER_TRACE(">> accept the stream configuration indication\n");
+                    USER_TRACE(">> (d%d)accept the stream configuration indication\n", con_idx);
                     av_set_cfg_rsp_acp(msg->shdl, msg->tlabel);
                     bfree(msg->serv_cap_data);
 
@@ -1494,7 +1507,7 @@ static void bt_av_hdl_set_cfg_ind(bts2_app_stru *bts2_app_data)
         res = AV_BAD_ACP_SEID;
     }
     /*reaching here means cfguration can not be approved, send rej rsp */
-    INFO_TRACE(">> reject the stream configuration indication\n");
+    INFO_TRACE(">> (d%d)reject the stream configuration indication\n", con_idx);
     av_set_cfg_rsp_rej(inst->con[con_idx].stream_hdl,
                        msg->tlabel,
                        res,
@@ -1619,7 +1632,7 @@ static void bt_av_hdl_cfg_ind(bts2_app_stru *bts2_app_data)
 
             if (p_ret == 0)
             {
-                INFO_TRACE(">> accept to reconfigurate the stream\n");
+                INFO_TRACE(">> (d%d)accept to reconfigurate the stream\n", con_idx);
                 av_recfg_rsp_acp(msg->shdl, msg->tlabel);
                 bfree(msg->serv_cap_data);
                 return;
@@ -1637,7 +1650,7 @@ static void bt_av_hdl_cfg_ind(bts2_app_stru *bts2_app_data)
     }
 
     /*reaching here means cfguration can not be approved, send rej rsp */
-    INFO_TRACE(">> reject to reconfigurate the stream\n");
+    INFO_TRACE(">> (d%d)reject to reconfigurate the stream\n", con_idx);
     av_recfg_rsp_rej(msg->shdl,
                      msg->tlabel,
                      res,
@@ -1660,14 +1673,14 @@ static void bt_av_hdl_open_cfm(bts2_app_stru *bts2_app_data)
 
     if (msg->res == AV_ACPT)
     {
-        INFO_TRACE("<< peer device accept to open stream\n");
+        INFO_TRACE("<< (d%d)peer device accept to open stream\n", con_idx);
         // INFO_TRACE(">> request to start the av stream\n");
         /*av_start_req(1, ASSIGN_TLABEL, &inst->con[con_idx].stream_hdl);*/
         inst->con[con_idx].st = avconned_open;
     }
     else
     {
-        INFO_TRACE("<< peer device reject to open stream\n");
+        INFO_TRACE("<< (d%d)peer device reject to open stream\n", con_idx);
     }
 }
 
@@ -1692,16 +1705,16 @@ static void bt_av_hdl_open_ind(bts2_app_stru *bts2_app_data)
 #elif defined(TP_SIG_SMG_BI_18_C)
     av_open_rsp_rej(msg->shdl, msg->tlabel, 0xE1);
 #else
-    INFO_TRACE(">> indicate to open stream\n");
+    INFO_TRACE(">> (d%d)indicate to open stream\n", con_idx);
     if (inst->con[con_idx].stream_hdl == msg->shdl) // AV profile record the local seid
     {
-        INFO_TRACE(">> accept to open the av stream\n");
+        INFO_TRACE(">> (d%d)accept to open the av stream\n", con_idx);
         av_open_rsp_acp(msg->shdl, msg->tlabel);
         inst->con[con_idx].st = avconned_open;
     }
     else
     {
-        INFO_TRACE(">> reject to open the av stream\n");
+        INFO_TRACE(">> (d%d)reject to open the av stream\n", con_idx);
         av_open_rsp_rej(inst->con[con_idx].stream_hdl, msg->tlabel, AV_BAD_ACP_SEID);
     }
 #endif
@@ -1727,7 +1740,7 @@ static void bt_av_hdl_start_cfm(bts2_app_stru *bts2_app_data)
     if (msg->res == AV_ACPT)
     {
         int8_t ret = -1;
-        USER_TRACE(">> peer device accept to start stream \n");
+        USER_TRACE(">> (d%d)peer device accept to start stream \n", con_idx);
 #ifdef CFG_AV_SNK
         if (inst->con[con_idx].cfg == AV_AUDIO_SNK)
             ret = bt_avsnk_hdl_start_cfm(inst, con_idx);
@@ -1748,7 +1761,7 @@ static void bt_av_hdl_start_cfm(bts2_app_stru *bts2_app_data)
 #ifdef CFG_AVRCP
             bt_avrcp_change_play_status(bts2_app_data, play_status);
 #ifdef BSP_BQB_TEST
-            bt_avrcp_track_changed_register_response(bts2_app_data, AVRCP_CR_CHANGED, 0);
+            bt_avrcp_track_changed_register_response(bts2_app_data, AVRCP_CR_CHANGED, 1);
 #endif
 #endif
 #endif // CFG_AV_SRC
@@ -1756,7 +1769,7 @@ static void bt_av_hdl_start_cfm(bts2_app_stru *bts2_app_data)
     }
     else
     {
-        USER_TRACE(">> peer device reject to start stream \n");
+        USER_TRACE(">> (d%d)peer device reject to start stream \n", con_idx);
     }
 #ifdef CFG_AV_SRC
     if (inst->con[con_idx].cfg == AV_AUDIO_SRC)
@@ -1810,7 +1823,7 @@ static void bt_av_hdl_start_ind(bts2_app_stru *bts2_app_data)
     }
     else
     {
-        INFO_TRACE(">> reject to start the stream\n");
+        INFO_TRACE(">> (d%d)reject to start the stream\n", con_idx);
         av_start_rsp_rej(shdl, msg->tlabel, res, (U8)msg->list_len, &msg->first_shdl);
     }
 #endif
@@ -1857,7 +1870,6 @@ static void bt_av_hdl_suspend_cfm(bts2_app_stru *bts2_app_data)
     bts2s_av_inst_data *inst = bt_av_get_inst_data();
     BTS2S_AV_SUSPEND_CFM *msg;
     uint8_t con_idx;
-    INFO_TRACE("<< peer device response to suspend av stream\n");
     msg = (BTS2S_AV_SUSPEND_CFM *)bts2_app_data->recv_msg;
 
     con_idx = bt_av_get_idx_from_shdl(inst, msg->rej_shdl);
@@ -1873,7 +1885,7 @@ static void bt_av_hdl_suspend_cfm(bts2_app_stru *bts2_app_data)
 
     if (msg->res == AV_ACPT)
     {
-        INFO_TRACE("<< peer deviece agree to suspend stream\n");
+        INFO_TRACE("<< (d%d)peer deviece agree to suspend stream\n", con_idx);
         inst->con[con_idx].st = avconned_open;
 #ifdef CFG_AV_SRC
         inst->src_data.stream_frm_time_begin = 0;
@@ -1888,7 +1900,7 @@ static void bt_av_hdl_suspend_cfm(bts2_app_stru *bts2_app_data)
     }
     else
     {
-        INFO_TRACE("<< peer deviece reject to suspend stream\n");
+        INFO_TRACE("<< (d%d)peer deviece reject to suspend stream\n", con_idx);
     }
 
     inst->suspend_pending = FALSE;
@@ -1906,7 +1918,6 @@ static void bt_av_hdl_suspend_ind(bts2_app_stru *bts2_app_data)
     bts2s_av_inst_data *inst = bt_av_get_inst_data();
     BTS2S_AV_SUSPEND_IND *msg;
     U8 con_idx;
-    INFO_TRACE("<< peer device indicate to suspend av stream\n");
     msg = (BTS2S_AV_SUSPEND_IND *)bts2_app_data->recv_msg;
 #ifdef TP_SIG_SMG_BI_25_C
     av_suspend_rsp_rej(msg->first_shdl, msg->tlabel, AV_BAD_ST, msg->list_len, &(msg->first_shdl));
@@ -1914,6 +1925,7 @@ static void bt_av_hdl_suspend_ind(bts2_app_stru *bts2_app_data)
     av_suspend_rsp_rej(msg->first_shdl, msg->tlabel, 0XE1, msg->list_len, &(msg->first_shdl));
 #else
     con_idx = bt_av_get_idx_from_shdl(inst, msg->first_shdl);
+    INFO_TRACE("<< (d%d)peer device indicate to suspend av stream\n", con_idx);
 
     if (con_idx > MAX_CONNS)
     {
@@ -1926,7 +1938,7 @@ static void bt_av_hdl_suspend_ind(bts2_app_stru *bts2_app_data)
 
     if (inst->con[con_idx].stream_hdl == msg->first_shdl)
     {
-        INFO_TRACE(">> accept to suspend the av stream\n");
+        INFO_TRACE(">> (d%d)accept to suspend the av stream\n", con_idx);
 #ifdef CFG_AV_SNK
         if (inst->con[con_idx].cfg == AV_AUDIO_SNK)
             bt_avsnk_hdl_suspend_ind(inst, con_idx);
@@ -1941,7 +1953,7 @@ static void bt_av_hdl_suspend_ind(bts2_app_stru *bts2_app_data)
     }
     else
     {
-        INFO_TRACE(">> reject to suspend the av stream\n");
+        INFO_TRACE(">> (d%d)reject to suspend the av stream\n", con_idx);
         av_suspend_rsp_rej(inst->con[con_idx].stream_hdl, msg->tlabel, AV_BAD_ACP_SEID, msg->list_len, &(msg->first_shdl));
     }
 #endif
@@ -1968,7 +1980,7 @@ static void bt_av_hdl_abort_ind(bts2_app_stru *bts2_app_data)
 
     if (inst->con[con_idx].stream_hdl == msg->shdl)
     {
-        INFO_TRACE(">> accept to abort the av stream\n");
+        INFO_TRACE(">> (d%d)accept to abort the av stream\n", con_idx);
 #ifdef CFG_AV_SNK
         if (inst->con[con_idx].cfg == AV_AUDIO_SNK)
             bt_avsnk_abort_handler(inst, con_idx);
@@ -2012,7 +2024,7 @@ static void bt_av_hdl_close_ind(bts2_app_stru *bts2_app_data)
     }
     if (inst->con[con_idx].stream_hdl == msg->shdl)
     {
-        USER_TRACE(">> accept to release the av stream\n");
+        USER_TRACE(">> (d%d)accept to release the av stream\n", con_idx);
         if (inst->con[con_idx].st == avconned_streaming)
         {
 #ifdef CFG_AV_SNK
@@ -2033,7 +2045,7 @@ static void bt_av_hdl_close_ind(bts2_app_stru *bts2_app_data)
     }
     else
     {
-        USER_TRACE(">> reject to release the av stream\n");
+        USER_TRACE(">> (d%d)reject to release the av stream\n", con_idx);
         av_close_rsp_rej(inst->con[con_idx].stream_hdl, msg->tlabel, AV_BAD_ACP_SEID);
     }
 #endif
@@ -2047,7 +2059,6 @@ static void bt_av_hdl_stream_mtu_size_ind(bts2_app_stru *bts2_app_data)
 
     msg = (BTS2S_AV_STREAM_MTU_SIZE_IND *)bts2_app_data->recv_msg;
     inst->max_frm_size = msg->rmt_mtu_size;
-    INFO_TRACE("<< recive remote av MUT information,max_frm_size = %d\n", inst->max_frm_size);
 
     U16 dft_mtu_size = bts2_get_l2cap_default_mtu_size();
     /*if def_max_MTU < rmt MTU < (2 *def_max_MTU + 2), use def_max_MTU which
@@ -2059,6 +2070,8 @@ static void bt_av_hdl_stream_mtu_size_ind(bts2_app_stru *bts2_app_data)
     }
 
     con_idx = bt_av_get_idx_from_shdl(inst, msg->shdl);
+
+    INFO_TRACE("<< (d%d)recive remote av MUT information,max_frm_size = %d\n", con_idx, inst->max_frm_size);
 
 #ifdef RT_USING_UTEST
     if (inst->con[con_idx].cfg == AV_AUDIO_SRC)
@@ -2125,14 +2138,16 @@ static void bt_av_hdl_conn_cfm(bts2_app_stru *bts2_app_data)
         inst->con[i].in_use = TRUE;
         inst->con[i].role = INITIATOR;
         inst->con[i].conn_id = msg->conn_id;
+        //?Can be optimized???
+        inst->con[i].idx = i;
         inst->con[i].st = avconned;
         inst->con[i].cfg = msg->local_role;
         bd_copy(&inst->con[i].av_rmt_addr, &msg->bd);
-        USER_TRACE("<< av connect success,cfg = %d\n", inst->con[i].cfg);
+        USER_TRACE("<< (d%d)av connect success,cfg = %d\n", i, inst->con[i].cfg);
 
         INFO_TRACE("URC av conn,cfm\n");
 
-        INFO_TRACE(">> discover the remote device's audio end point\n");
+        INFO_TRACE(">> (d%d)discover the remote device's audio end point\n", i);
 
         av_discover_req(inst->con[i].conn_id, ASSIGN_TLABEL);
     }
@@ -2165,10 +2180,11 @@ static void bt_av_hdl_conn_ind(bts2_app_stru *bts2_app_data)
         inst->con[i].in_use = TRUE;
         inst->con[i].role = ACPTOR;
         inst->con[i].conn_id = msg->conn_id;
+        inst->con[i].idx = i;
         inst->con[i].st = avconned;
         bd_copy(&inst->con[i].av_rmt_addr, &msg->bd);
 
-        INFO_TRACE("URC av conn,ind\n");
+        INFO_TRACE("(d%d)URC av conn,ind\n", i);
 
 #ifdef BSP_BQB_TEST
         switch (BQB_TEST_CASE)
@@ -2217,7 +2233,7 @@ static void bt_av_hdl_disc_ind(bts2_app_stru *bts2_app_data)
     }
 
 
-    USER_TRACE("<< av indicate to disconnect to remote device\n");
+    USER_TRACE("<< (d%d)av indicate to disconnect to remote device\n", con_idx);
     if (inst->con[con_idx].in_use == TRUE)
     {
         inst->con[con_idx].in_use = FALSE;
@@ -2453,7 +2469,6 @@ void bt_av_msg_handler(bts2_app_stru *bts2_app_data)
     }
     case BTS2MU_AV_GET_CFG_IND:
     {
-        INFO_TRACE("<< receive av get configuration indication\n");
         bt_av_hdl_get_cfg_ind(bts2_app_data);
         break;
     }
@@ -2543,9 +2558,9 @@ void bt_av_msg_handler(bts2_app_stru *bts2_app_data)
         U8 con_idx;
         bts2s_av_inst_data *inst = bt_av_get_inst_data();
         msg = (BTS2S_AV_CLOSE_CFM *)bts2_app_data->recv_msg;
-        INFO_TRACE("<< receive av close stream confirmation\n");
 
         con_idx = bt_av_get_idx_from_shdl(inst, msg->shdl);
+        INFO_TRACE("<< (d%d)receive av close stream confirmation\n", con_idx);
         if (con_idx > MAX_CONNS)
         {
             return;
@@ -2638,7 +2653,7 @@ void bt_av_disconnect(uint8_t con_idx)
     int local_seid_idx;
     bts2s_av_inst_data *inst = bt_av_get_inst_data();
 
-    USER_TRACE(">> av dis st%d  local_seid_idx %x\n", inst->con[con_idx].st, inst->con[con_idx].local_seid_idx);
+    USER_TRACE(">> (d%d)av dis st%d  local_seid_idx %x\n", con_idx, inst->con[con_idx].st, inst->con[con_idx].local_seid_idx);
 
     if ((inst->con[con_idx].st != avdisced) && (avidle != inst->con[con_idx].st))
     {
@@ -2772,7 +2787,7 @@ void bt_av_release_stream(uint8_t con_idx)
     {
         // inst->con[inst->con_idx].st = avconned;
         USER_TRACE(">> to release the av stream\n");
-        av_close_req(inst->con[inst->con_idx].stream_hdl, ASSIGN_TLABEL);
+        av_close_req(inst->con[con_idx].stream_hdl, ASSIGN_TLABEL);
     }
     else
     {
@@ -2817,72 +2832,28 @@ void bt_av_get_cfg(uint8_t con_idx)
 }
 
 
-
-void bt_av_set_can_play(void)
+void bt_av_set_slience_filter_enable(U8 enable, U8 con_idx)
 {
 #ifdef CFG_AV_SNK
+
     bts2s_av_inst_data *inst = bt_av_get_inst_data();
 
-    inst->snk_data.can_play = 1;
-    inst->snk_data.reveive_start = 1;
+    inst->con[con_idx].snk_data.slience_filter_enable = enable;
 #endif //CFG_AV_SNK
 }
 
-void bt_av_set_filter_prompt_enable(U8 enable)
+
+U8 bt_av_get_slience_filter_enable(U8 con_idx)
 {
 #ifdef CFG_AV_SNK
     bts2s_av_inst_data *inst = bt_av_get_inst_data();
 
-    inst->snk_data.filter_prompt_enable = enable;
-#endif // CFG_AV_SNK
-}
-
-
-U8 bt_av_get_filter_prompt_enable(void)
-{
-#ifdef CFG_AV_SNK
-
-    bts2s_av_inst_data *inst = bt_av_get_inst_data();
-
-    return inst->snk_data.filter_prompt_enable;
+    return inst->con[con_idx].snk_data.slience_filter_enable;
 #else // !CFG_AV_SNK
     return 0;
 #endif // CFG_AV_SNK
 }
 
-
-void bt_av_set_slience_filter_enable(U8 enable)
-{
-#ifdef CFG_AV_SNK
-
-    bts2s_av_inst_data *inst = bt_av_get_inst_data();
-
-    inst->snk_data.slience_filter_enable = enable;
-#endif //CFG_AV_SNK
-}
-
-
-U8 bt_av_get_slience_filter_enable(void)
-{
-#ifdef CFG_AV_SNK
-    bts2s_av_inst_data *inst = bt_av_get_inst_data();
-
-    return inst->snk_data.slience_filter_enable;
-#else // !CFG_AV_SNK
-    return 0;
-#endif // CFG_AV_SNK
-}
-
-U8 bt_av_get_receive_a2dp_start(void)
-{
-#ifdef CFG_AV_SNK
-    bts2s_av_inst_data *inst = bt_av_get_inst_data();
-
-    return inst->snk_data.reveive_start;
-#else // !CFG_AV_SNK
-    return 0;
-#endif //CFG_AV_SNK
-}
 
 #ifndef CFG_AVRCP
     #define AVRCP_PLAY_STATUS_STOP 0x00
@@ -2919,6 +2890,22 @@ void bt_av_hdl_reset_bqb_test(void)
 {
     BQB_TEST_CASE = BQB_TEST_RESET;
     return;
+}
+
+U8 bt_av_get_sink_streaming_number(void)
+{
+    bts2s_av_inst_data *inst = bt_av_get_inst_data();
+    U8 count = 0;
+
+    for (U8 i = 0; i < MAX_CONNS; i++)
+    {
+        if ((inst->con[i].st == avconned_streaming) && (inst->con[i].cfg == AV_AUDIO_SNK))
+        {
+            count++;
+        }
+    }
+
+    return count;
 }
 
 

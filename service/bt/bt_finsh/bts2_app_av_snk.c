@@ -29,7 +29,8 @@
 #endif
 
 uint8_t   bts2s_avsnk_openFlag;//0x00:dont open a2dp profile; 0x01:open a2dp profile;
-uint8_t   frms_per_payload;
+//!Used to record the number of sbc frames for each connection
+uint8_t   frms_per_payload[MAX_CONNS];
 
 extern bts2_app_stru *bts2g_app_p;
 
@@ -47,17 +48,17 @@ extern uint8_t a2dp_relay_get_channel(void);
 //#include "windows.h"
 
 
-#define BEGIN_ACCESS_BUF()              rt_sem_take(bt_av_get_inst_data()->snk_data.buf_sem, RT_WAITING_FOREVER)
-#define END_ACCESS_BUF()                rt_sem_release(bt_av_get_inst_data()->snk_data.buf_sem)
+#define BEGIN_ACCESS_BUF(i)              rt_sem_take(bt_av_get_inst_data()->con[i].snk_data.buf_sem, RT_WAITING_FOREVER)
+#define END_ACCESS_BUF(i)                rt_sem_release(bt_av_get_inst_data()->con[i].snk_data.buf_sem)
 
 
 
 
 
 #ifdef CFG_AV_AAC
-    static NeAACDecHandle hAac;
-    static unsigned long  aac_samplerate;
-    static uint8_t        is_aac_inited;
+static NeAACDecHandle hAac[MAX_NUM_LOCAL_SNK_AAC_SEIDS] = {NULL};
+static unsigned long  aac_samplerate[MAX_NUM_LOCAL_SNK_AAC_SEIDS] = {0};
+static uint8_t        is_aac_inited[MAX_NUM_LOCAL_SNK_AAC_SEIDS] = {0};
 #endif
 
 
@@ -86,15 +87,19 @@ static rt_thread_t g_playback_thread = NULL;
 #define  PLAYBACK_START_EVENT_FLAG         (1 << 1)
 #define  PLAYBACK_STOPPING_EVENT_FLAG      (1 << 2)
 #define  PLAYBACK_STOPPED_EVENT_FLAG       (1 << 3)
+//!For multiple decoders to work together
+#define  PLAYBACK_START_EVENT_FLAG_EXT     (1 << 4)
+#define  PLAYBACK_GETDATA_EVENT_FLAG_EXT   (1 << 5)
+#define  PLAYBACK_STOPPING_EVENT_FLAG_EXT  (1 << 6)
 
 
-static uint8_t list_push_back(play_list_t *list, list_hdr_t *hdr)
+static uint8_t list_push_back(play_list_t *list, list_hdr_t *hdr, U8 conn_idx)
 {
     uint8_t ret;
 
     RT_ASSERT(hdr != NULL);
 
-    BEGIN_ACCESS_BUF();
+    BEGIN_ACCESS_BUF(conn_idx);
 
     if (list->first == NULL)
     {
@@ -109,24 +114,25 @@ static uint8_t list_push_back(play_list_t *list, list_hdr_t *hdr)
     list->cnt++;
     ret = (list->cnt >= list->cnt_th) ? 1 : 0;
 
+    //USER_TRACE("(d%d)list->cnt= %d\n", conn_idx, list->cnt);
+
     //RT_ASSERT(list->cnt <= 100);
     if (list->cnt > SINK_DATA_LIST_MAX_THRESHOLD)
     {
-        //USER_TRACE("list->cnt= %d\n", list->cnt);
         list->full_num++;
         ret = 2;
     }
     list->total_num++;
-    END_ACCESS_BUF();
+    END_ACCESS_BUF(conn_idx);
 
     return ret;
 }
 
-static list_hdr_t *list_pop_front(play_list_t *list)
+static list_hdr_t *list_pop_front(play_list_t *list, U8 con_idx)
 {
     list_hdr_t *hdr;
 
-    BEGIN_ACCESS_BUF();
+    BEGIN_ACCESS_BUF(con_idx);
 
     hdr = list->first;
     if (hdr != NULL)
@@ -144,20 +150,22 @@ static list_hdr_t *list_pop_front(play_list_t *list)
         list->empty_num++;
     }
 
-    END_ACCESS_BUF();
+    //USER_TRACE("(d%d)list->cnt= %d\n", con_idx, list->cnt);
+
+    END_ACCESS_BUF(con_idx);
 
     return hdr;
 }
 
-static void list_all_free(play_list_t *list)
+static void list_all_free(play_list_t *list, U8 con_idx)
 {
     list_hdr_t *hdr;
 
-    USER_TRACE("all free:%x,cnt:%d\n", list->first, list->cnt);
+    USER_TRACE("(d%d)all free:%x,cnt:%d\n", con_idx, list->first, list->cnt);
 
     while (list->first)
     {
-        hdr = list_pop_front(list);
+        hdr = list_pop_front(list, con_idx);
         bfree(hdr);
     }
     list->empty_num = 0;
@@ -169,11 +177,18 @@ static void list_all_free(play_list_t *list)
 
 static int audio_bt_music_client_cb(audio_server_callback_cmt_t cmd, void *userdata, uint32_t unused)
 {
-    (void)userdata;
+    U8 *con_idx = (U8 *)userdata;
     (void)unused;
     if (cmd == as_callback_cmd_cache_empty || cmd == as_callback_cmd_cache_half_empty)
     {
-        rt_event_send(g_playback_evt, PLAYBACK_GETDATA_EVENT_FLAG);
+        if (*con_idx == 0)
+        {
+            rt_event_send(g_playback_evt, PLAYBACK_GETDATA_EVENT_FLAG);
+        }
+        else
+        {
+            rt_event_send(g_playback_evt, PLAYBACK_GETDATA_EVENT_FLAG_EXT);
+        }
     }
 
     return 0;
@@ -198,7 +213,7 @@ static U8 *play_data_decode_data_process(bts2s_av_inst_data *inst, U8 *decode_bu
     return decode_buf;
 }
 
-static U8 *play_data_decode(bts2s_av_inst_data *inst, U16 *out_len)
+static U8 *play_data_decode(bts2s_av_inst_data *inst, U16 *out_len, U8 con_idx)
 {
     U8 *frm_ptr, *data, *media_pkt_ptr;
     U16 bytes_left;
@@ -206,8 +221,8 @@ static U8 *play_data_decode(bts2s_av_inst_data *inst, U16 *out_len)
     U8 *ret = NULL;
     play_data_t *pt_data;
 
-    pt_data = (play_data_t *)list_pop_front(&(inst->snk_data.playlist));
-    inst->snk_data.pt_curdata = pt_data;
+    pt_data = (play_data_t *)list_pop_front(&(inst->con[con_idx].snk_data.playlist), con_idx);
+    inst->con[con_idx].snk_data.pt_curdata = pt_data;
 
     *out_len = 0;
     data = (U8 *)pt_data;
@@ -224,50 +239,50 @@ static U8 *play_data_decode(bts2s_av_inst_data *inst, U16 *out_len)
         return ret;
     }
 
-    if (inst->snk_data.codec == AV_SBC)
+    if (inst->con[con_idx].snk_data.codec == AV_SBC)
     {
         frm_ptr = data + AV_FIXED_MEDIA_PKT_HDR_SIZE + 1;
         media_pkt_ptr = data + AV_FIXED_MEDIA_PKT_HDR_SIZE;
         bytes_left = pt_data->len - AV_FIXED_MEDIA_PKT_HDR_SIZE - 1;
-        bts2_sbc_cfg *cfg = &inst->con[inst->con_idx].act_cfg;
+        bts2_sbc_cfg *cfg = &inst->con[con_idx].act_cfg;
 
-        if (((*media_pkt_ptr) & 0x0f) > frms_per_payload)
+        if (((*media_pkt_ptr) & 0x0f) > frms_per_payload[con_idx])
         {
-            frms_per_payload = (*media_pkt_ptr) & 0x0f;
+            frms_per_payload[con_idx] = (*media_pkt_ptr) & 0x0f;
 
-            if (inst->snk_data.decode_buf)
+            if (inst->con[con_idx].snk_data.decode_buf)
             {
-                bfree(inst->snk_data.decode_buf);
-                inst->snk_data.decode_buf = NULL;
+                bfree(inst->con[con_idx].snk_data.decode_buf);
+                inst->con[con_idx].snk_data.decode_buf = NULL;
             }
 
-            if (inst->snk_data.decode_buf == NULL)
+            if (inst->con[con_idx].snk_data.decode_buf == NULL)
             {
                 U16 decode_buffer_size;
                 U16 pcm_samples_per_sbc_frame;
 
                 pcm_samples_per_sbc_frame = bts2_sbc_calculate_pcm_samples_per_sbc_frame(cfg->blocks, cfg->subbands);
-                decode_buffer_size = pcm_samples_per_sbc_frame * frms_per_payload * 2;
-                USER_TRACE("frms_per_payload = %d,pcm_samples_per_sbc_frame = %d,decode_buffer_size = %d\n",
-                           frms_per_payload, pcm_samples_per_sbc_frame, decode_buffer_size);
-                inst->snk_data.decode_buf = bmalloc(decode_buffer_size);
-                inst->snk_data.decode_buf_len = decode_buffer_size;
+                decode_buffer_size = pcm_samples_per_sbc_frame * frms_per_payload[con_idx] * 2;
+                USER_TRACE("(d%d)frms_per_payload = %d,pcm_samples_per_sbc_frame = %d,decode_buffer_size = %d\n",
+                           con_idx, frms_per_payload[con_idx], pcm_samples_per_sbc_frame, decode_buffer_size);
+                inst->con[con_idx].snk_data.decode_buf = bmalloc(decode_buffer_size);
+                inst->con[con_idx].snk_data.decode_buf_len = decode_buffer_size;
             }
-            BT_OOM_ASSERT(inst->snk_data.decode_buf);
+            BT_OOM_ASSERT(inst->con[con_idx].snk_data.decode_buf);
         }
 
-        bss.dst_len = inst->snk_data.decode_buf_len;
-        bss.pdst = inst->snk_data.decode_buf;
+        bss.dst_len = inst->con[con_idx].snk_data.decode_buf_len;
+        bss.pdst = inst->con[con_idx].snk_data.decode_buf;
         bss.src_len = bytes_left;
         bss.psrc = frm_ptr;
 
-        bts2_sbc_decode(&bss);
+        bts2_sbc_decode_ext(&bss, con_idx);
 
-        ret = inst->snk_data.decode_buf;
+        ret = inst->con[con_idx].snk_data.decode_buf;
         *out_len = bss.dst_len_used;
         RT_ASSERT(bss.src_len_used == bss.src_len);
     }
-    else if (inst->snk_data.codec == AV_MPEG24_AAC)
+    else if (inst->con[con_idx].snk_data.codec == AV_MPEG24_AAC)
     {
 #ifdef CFG_AV_AAC
         U32 t1 = rt_system_get_time();
@@ -292,22 +307,22 @@ static U8 *play_data_decode(bts2s_av_inst_data *inst, U16 *out_len)
 #endif
         // Check if decoder has the needed capabilities
         // Open the library
-        if (!is_aac_inited)
+        if (!is_aac_inited[con_idx])
         {
-            char err = NeAACDecInit(hAac, (unsigned char *)fin, fileread, &aac_samplerate,
+            char err = NeAACDecInit(hAac[con_idx], (unsigned char *)fin, fileread, &aac_samplerate[con_idx],
                                     &channels);
             if (err != 0)
             {
                 RT_ASSERT(0);
             }
-            is_aac_inited = 1;
+            is_aac_inited[con_idx] = 1;
         }
         unsigned long frame_index = 0;
         frameInfo.bytesconsumed = 0;
 
 
         // Only one frame
-        sample_buffer = NeAACDecDecode(hAac, &frameInfo, (unsigned char *)fin,  fileread);
+        sample_buffer = NeAACDecDecode(hAac[con_idx], &frameInfo, (unsigned char *)fin,  fileread);
 
         fileread -= frameInfo.bytesconsumed;
 
@@ -546,138 +561,206 @@ static void decode_playback_thread(void *args)
 
     rt_uint32_t evt;
     play_data_t *pt_data;
-    U8 *decode_data = NULL;
-    U16 decode_len = 0;
-    U8  is_stopped = 1;
-    U8  debug_tx_cnt = 0;
+    U8 *decode_data[MAX_ACTS] = {NULL};
+    U16 decode_len[MAX_ACTS] = {0};
+    U8  is_stopped[MAX_ACTS] = {1};
+    U8  debug_tx_cnt[MAX_ACTS] = {0};
     int  ret_write = 0;
 #if PKG_USING_VBE_DRC
     uint32_t vbe_out_size;
 #endif
     g_playback_evt = rt_event_create("playback_evt", RT_IPC_FLAG_FIFO);
+    U8 con_idx = 0;
 
     while (1)
     {
         evt = 0;
-        rt_err_t err = rt_event_recv(g_playback_evt, PLAYBACK_GETDATA_EVENT_FLAG | PLAYBACK_START_EVENT_FLAG | PLAYBACK_STOPPING_EVENT_FLAG, RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, RT_WAITING_FOREVER, &evt);
+        rt_err_t err = rt_event_recv(g_playback_evt, PLAYBACK_GETDATA_EVENT_FLAG | PLAYBACK_START_EVENT_FLAG | PLAYBACK_STOPPING_EVENT_FLAG | PLAYBACK_START_EVENT_FLAG_EXT | PLAYBACK_GETDATA_EVENT_FLAG_EXT | PLAYBACK_STOPPING_EVENT_FLAG_EXT, RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, RT_WAITING_FOREVER, &evt);
         inst_data = bt_av_get_inst_data();
-        if (evt & PLAYBACK_STOPPING_EVENT_FLAG)
+        if ((evt & PLAYBACK_STOPPING_EVENT_FLAG) || (evt & PLAYBACK_STOPPING_EVENT_FLAG_EXT))
         {
-            is_stopped = 1;
+            if (evt & PLAYBACK_STOPPING_EVENT_FLAG)
+                is_stopped[0] = 1;
+            else
+                is_stopped[1] = 1;
             rt_event_send(g_playback_evt, PLAYBACK_STOPPED_EVENT_FLAG);
-            continue;
+            // continue;
         }
 
-        if (evt & PLAYBACK_START_EVENT_FLAG)
+        if ((evt & PLAYBACK_START_EVENT_FLAG) || (evt & PLAYBACK_START_EVENT_FLAG_EXT))
         {
-            if (inst_data->snk_data.audio_client)
+            if (evt & PLAYBACK_START_EVENT_FLAG)
+                con_idx = 0;
+            else if (evt & PLAYBACK_START_EVENT_FLAG_EXT)
+                con_idx = 1;
+
+            if (inst_data->con[con_idx].snk_data.audio_client)
             {
                 USER_TRACE("bt_music: open again--\r\n");
                 continue;
             }
 
-            decode_data = play_data_decode(inst_data, &decode_len);
-            //interval = decode_len * 1000 / BT_MUSIC_SAMPLERATE / 4; //use interval to rt_event_recv will crash rt_free
-            USER_TRACE("bt_music: open len=%d\r\n", decode_len);
+            decode_data[con_idx] = play_data_decode(inst_data, &decode_len[con_idx], con_idx);
+            USER_TRACE("(d%d)bt_music: open len=%d\r\n", con_idx, decode_len[con_idx]);
 
-            USER_TRACE("decode src_len:%d, dst_len:%d\n", inst_data->snk_data.pt_curdata->len, decode_len);
-            if (decode_len == 0)
+            USER_TRACE("(d%d)decode src_len:%d, dst_len:%d\n", con_idx, inst_data->con[con_idx].snk_data.pt_curdata->len, decode_len[con_idx]);
+            if (decode_len[con_idx] == 0)
             {
-                rt_thread_mdelay(5);
-                rt_event_send(g_playback_evt, PLAYBACK_START_EVENT_FLAG);
-                continue;
+                rt_thread_mdelay(3);
+                if (con_idx == 0)
+                    rt_event_send(g_playback_evt, PLAYBACK_START_EVENT_FLAG);
+                else
+                    rt_event_send(g_playback_evt, PLAYBACK_START_EVENT_FLAG_EXT);
             }
-
-            audio_parameter_t param = {0};
-            if (inst_data->snk_data.codec == AV_SBC)
+            else
             {
-                param.write_samplerate = inst_data->con[inst_data->con_idx].act_cfg.sample_freq;
-            }
+                audio_parameter_t param = {0};
+                if (inst_data->con[con_idx].snk_data.codec == AV_SBC)
+                {
+                    param.write_samplerate = inst_data->con[con_idx].act_cfg.sample_freq;
+                }
 #ifdef CFG_AV_AAC
-            else if (inst_data->snk_data.codec == AV_MPEG24_AAC)
-            {
-                param.write_samplerate = inst_data->con[inst_data->con_idx].act_aac_cfg.sample_freq;
-            }
+                else if (inst_data->con[con_idx].snk_data.codec == AV_MPEG24_AAC)
+                {
+                    param.write_samplerate = inst_data->con[con_idx].act_aac_cfg.sample_freq;
+                }
 #endif
-            else
-            {
-                USER_TRACE("Unsupported codec!!!!!\n");
-                RT_ASSERT(0);
-            }
+                else
+                {
+                    USER_TRACE("Unsupported codec!!!!!\n");
+                    RT_ASSERT(0);
+                }
 #ifdef A2DP_RELAY_SERVICE
-            if (a2dp_relay_stereo_enable())
-            {
-                param.write_channnel_num = 1;
-            }
-            else
+                if (a2dp_relay_stereo_enable())
+                {
+                    param.write_channnel_num = 1;
+                }
+                else
 #endif // A2DP_RELAY_SERVICE
-            {
-                param.write_channnel_num = 2;
-            }
-            param.write_bits_per_sample = 16;
-            param.write_cache_size = 8192;
-            debug_tx_cnt = 0;
-            inst_data->snk_data.audio_client = audio_open(AUDIO_TYPE_BT_MUSIC, AUDIO_TX, &param, audio_bt_music_client_cb, NULL);
-            is_stopped = 0;
+                {
+                    param.write_channnel_num = 2;
+                }
+                param.write_bits_per_sample = 16;
+                param.write_cache_size = 8192;
+                debug_tx_cnt[con_idx] = 0;
+                inst_data->con[con_idx].snk_data.audio_client = audio_open(AUDIO_TYPE_BT_MUSIC, AUDIO_TX, &param, audio_bt_music_client_cb, (void *)&inst_data->con[con_idx].idx);
+                is_stopped[con_idx] = 0;
 
-            if (!resample)
-            {
-                USER_TRACE("resample from %d to 48k", param.write_samplerate);
-                resample = sifli_resample_open(param.write_channnel_num, param.write_samplerate, 48000);
-                RT_ASSERT(resample);
-            }
+                if (!resample)
+                {
+                    USER_TRACE("resample from %d to 48k", param.write_samplerate);
+                    resample = sifli_resample_open(param.write_channnel_num, param.write_samplerate, 48000);
+                    RT_ASSERT(resample);
+                }
 
 #if PKG_USING_VBE_DRC
-            inst_data->snk_data.vbe_out = rt_malloc(A2DP_VBE_OUT_BUFFER_SIZE);
-            RT_ASSERT(inst_data->snk_data.vbe_out);
-            inst_data->snk_data.vbe = vbe_drc_open(44100, 2, 16);
-            vbe_out_size = vbe_drc_process(inst_data->snk_data.vbe, (int16_t *)decode_data, decode_len / 2, (int16_t *)inst_data->snk_data.vbe_out, A2DP_VBE_OUT_BUFFER_SIZE);
+                inst_data->con[con_idx].snk_data.vbe_out = rt_malloc(A2DP_VBE_OUT_BUFFER_SIZE);
+                RT_ASSERT(inst_data->con[con_idx].snk_data.vbe_out);
+                inst_data->con[con_idx].snk_data.vbe = vbe_drc_open(44100, 2, 16);
+                vbe_out_size = vbe_drc_process(inst_data->con[con_idx].snk_data.vbe, (int16_t *)decode_data[con_idx], decode_len[con_idx] / 2, (int16_t *)inst_data->con[con_idx].snk_data.vbe_out, A2DP_VBE_OUT_BUFFER_SIZE);
 #endif
+            }
         }
+
         if (evt & PLAYBACK_GETDATA_EVENT_FLAG)
         {
-            if (debug_tx_cnt == 0)
-            {
-                //USER_TRACE("a2dp get data,total:%d,full:%d,empty:%d, curr %d\r\n", inst_data->snk_data.playlist.total_num,
-                //           inst_data->snk_data.playlist.full_num, inst_data->snk_data.playlist.empty_num, inst_data->snk_data.playlist.cnt);
-            }
-            debug_tx_cnt++;
+            con_idx = 0;
 
-            if (is_stopped == 1 || inst_data->snk_data.play_state == FALSE || inst_data->snk_data.audio_client == NULL)
+            if (debug_tx_cnt[con_idx] % 125 == 0)
             {
-                //USER_TRACE("snk: stop %d %d %x\r\n", is_stopped, inst_data->snk_data.play_state, inst_data->snk_data.audio_client);
-                continue;
+                // USER_TRACE("(d%d)a2dp get data,total:%d,full:%d,empty:%d, curr %d\r\n", con_idx, inst_data->con[con_idx].snk_data.playlist.total_num,
+                //            inst_data->con[con_idx].snk_data.playlist.full_num, inst_data->con[con_idx].snk_data.playlist.empty_num, inst_data->con[con_idx].snk_data.playlist.cnt);
             }
-        }
+            debug_tx_cnt[con_idx]++;
 
+            if (is_stopped[con_idx] == 1 || inst_data->con[con_idx].snk_data.play_state == FALSE || inst_data->con[con_idx].snk_data.audio_client == NULL)
+            {
+                //USER_TRACE("(d%d)snk: stop %d %d %x\r\n", con_idx, is_stopped[con_idx], inst_data->con[con_idx].snk_data.play_state, inst_data->con[con_idx].snk_data.audio_client);
+                // continue;
+            }
+            else
+            {
 #if !defined(CFG_AV_AAC)
-        if (decode_len == 0)
-        {
-            //decode_data = play_data_decode(inst_data, &decode_len);
-            decode_len = 2560;
-            decode_data = inst_data->snk_data.decode_buf;
-            memset(decode_data, 0, decode_len);
-        }
+                if (decode_len[con_idx] == 0)
+                {
+                    decode_len[con_idx] = inst_data->con[con_idx].snk_data.decode_buf_len;
+                    decode_data[con_idx] = inst_data->con[con_idx].snk_data.decode_buf;
+                    memset(decode_data[con_idx], 0, decode_len[con_idx]);
+                }
 #else
-        if (decode_len == 0)
-        {
-            decode_data = play_data_decode(inst_data, &decode_len);
-        }
+                if (decode_len[con_idx] == 0)
+                {
+                    if (inst_data->con[con_idx].snk_data.codec == AV_SBC)
+                    {
+                        decode_len[con_idx] = inst_data->con[con_idx].snk_data.decode_buf_len;
+                        decode_data[con_idx] = inst_data->con[con_idx].snk_data.decode_buf;
+                        memset(decode_data[con_idx], 0, decode_len[con_idx]);
+                    }
+                    else
+                    {
+                        decode_data[con_idx] = play_data_decode(inst_data, &decode_len[con_idx], con_idx);
+                    }
+                }
 #endif
+            }
+        }
 
-        while (decode_len > 0)
+        if (evt & PLAYBACK_GETDATA_EVENT_FLAG_EXT)
+        {
+            con_idx = 1;
+
+            if (debug_tx_cnt[con_idx] % 125 == 0)
+            {
+                // USER_TRACE("(d%d)a2dp get data,total:%d,full:%d,empty:%d, curr %d\r\n", con_idx, inst_data->con[con_idx].snk_data.playlist.total_num,
+                //            inst_data->con[con_idx].snk_data.playlist.full_num, inst_data->con[con_idx].snk_data.playlist.empty_num, inst_data->con[con_idx].snk_data.playlist.cnt);
+            }
+            debug_tx_cnt[con_idx]++;
+
+            if (is_stopped[con_idx] == 1 || inst_data->con[con_idx].snk_data.play_state == FALSE || inst_data->con[con_idx].snk_data.audio_client == NULL)
+            {
+                //USER_TRACE("(d%d)snk: stop %d %d %x\r\n", con_idx, is_stopped[con_idx], inst_data->con[con_idx].snk_data.play_state, inst_data->con[con_idx].snk_data.audio_client);
+                // continue;
+            }
+            else
+            {
+#if !defined(CFG_AV_AAC)
+                if (decode_len[con_idx] == 0)
+                {
+                    decode_len[con_idx] = inst_data->con[con_idx].snk_data.decode_buf_len;
+                    decode_data[con_idx] = inst_data->con[con_idx].snk_data.decode_buf;
+                    memset(decode_data[con_idx], 0, decode_len[con_idx]);
+                }
+#else
+                if (decode_len[con_idx] == 0)
+                {
+                    if (inst_data->con[con_idx].snk_data.codec == AV_SBC)
+                    {
+                        decode_len[con_idx] = inst_data->con[con_idx].snk_data.decode_buf_len;
+                        decode_data[con_idx] = inst_data->con[con_idx].snk_data.decode_buf;
+                        memset(decode_data[con_idx], 0, decode_len[con_idx]);
+                    }
+                    else
+                    {
+                        decode_data[con_idx] = play_data_decode(inst_data, &decode_len[con_idx], con_idx);
+                    }
+                }
+#endif
+            }
+        }
+
+        while ((decode_len[0] > 0) || (decode_len[1] > 0))
         {
 #if PKG_USING_VBE_DRC
-            ret_write = audio_write(inst_data->snk_data.audio_client, inst_data->snk_data.vbe_out, vbe_out_size);
+            ret_write = audio_write(inst_data->con[con_idx].snk_data.audio_client, inst_data->con[con_idx].snk_data.vbe_out, vbe_out_size);
 #else
 
             if (get_server_current_device() == AUDIO_DEVICE_BLE_BAP_SINK)
             {
                 int try_times = 0;
-                uint32_t bytes = sifli_resample_process(resample, (int16_t *)decode_data, decode_len, 0);
+                uint32_t bytes = sifli_resample_process(resample, (int16_t *)decode_data[con_idx], decode_len[con_idx], 0);
                 while (1)
                 {
-                    ret_write = audio_write(inst_data->snk_data.audio_client, (uint8_t *)sifli_resample_get_output(resample), bytes);
+                    ret_write = audio_write(inst_data->con[con_idx].snk_data.audio_client, (uint8_t *)sifli_resample_get_output(resample), bytes);
                     if (ret_write)
                         break;
                     rt_thread_mdelay(10);
@@ -687,27 +770,86 @@ static void decode_playback_thread(void *args)
                 }
             }
             else
-                ret_write = audio_write(inst_data->snk_data.audio_client, decode_data, decode_len);
-#endif
-            if (ret_write < 0)
             {
-                USER_TRACE("playback write ret:%d\n", ret_write);
-                break;
-            }
-            else if (ret_write == 0)
-            {
-                if (get_server_current_device() == AUDIO_DEVICE_BLE_BAP_SINK)
+                con_idx = 0;
+
+                if (((evt & PLAYBACK_GETDATA_EVENT_FLAG) || (evt & PLAYBACK_START_EVENT_FLAG)) && (decode_len[con_idx] > 0))
                 {
-                    USER_TRACE("--a2dp drop data\n");
+                    ret_write = audio_write(inst_data->con[con_idx].snk_data.audio_client, decode_data[con_idx], decode_len[con_idx]);
+
+                    if (ret_write < 0)
+                    {
+                        USER_TRACE("playback write ret:%d\n", ret_write);
+                        break;
+                    }
+                    else if (ret_write == 0)
+                    {
+                        if (get_server_current_device() == AUDIO_DEVICE_BLE_BAP_SINK)
+                        {
+                            USER_TRACE("--a2dp drop data\n");
+                        }
+                        break;
+                    }
                 }
-                break;
+
+                con_idx = 1;
+
+                if (((evt & PLAYBACK_GETDATA_EVENT_FLAG_EXT) || (evt & PLAYBACK_START_EVENT_FLAG_EXT)) && (decode_len[con_idx] > 0))
+                {
+                    ret_write = audio_write(inst_data->con[con_idx].snk_data.audio_client, decode_data[con_idx], decode_len[con_idx]);
+
+                    if (ret_write < 0)
+                    {
+                        USER_TRACE("playback write ret:%d\n", ret_write);
+                        break;
+                    }
+                    else if (ret_write == 0)
+                    {
+                        if (get_server_current_device() == AUDIO_DEVICE_BLE_BAP_SINK)
+                        {
+                            USER_TRACE("--a2dp drop data\n");
+                        }
+                        break;
+                    }
+                }
             }
-            else
-            {
-                decode_data = play_data_decode(inst_data, &decode_len);
-#if PKG_USING_VBE_DRC
-                vbe_out_size = vbe_drc_process(inst_data->snk_data.vbe, (int16_t *)decode_data, decode_len / 2, (int16_t *)inst_data->snk_data.vbe_out, A2DP_VBE_OUT_BUFFER_SIZE);
 #endif
+
+            {
+                con_idx = 0;
+                if (((evt & PLAYBACK_GETDATA_EVENT_FLAG) || (evt & PLAYBACK_START_EVENT_FLAG)) && (inst_data->con[con_idx].snk_data.play_state))
+                {
+                    decode_data[con_idx] = play_data_decode(inst_data, &decode_len[con_idx], con_idx);
+
+#if PKG_USING_VBE_DRC
+                    vbe_out_size = vbe_drc_process(inst_data->con[con_idx].snk_data.vbe, (int16_t *)decode_data[con_idx], decode_len[con_idx] / 2, (int16_t *)inst_data->con[con_idx].snk_data.vbe_out, A2DP_VBE_OUT_BUFFER_SIZE);
+#endif
+                }
+
+                con_idx = 1;
+                if (((evt & PLAYBACK_GETDATA_EVENT_FLAG_EXT) || (evt & PLAYBACK_START_EVENT_FLAG_EXT)) && (inst_data->con[con_idx].snk_data.play_state))
+                {
+                    decode_data[con_idx] = play_data_decode(inst_data, &decode_len[con_idx], con_idx);
+
+#if PKG_USING_VBE_DRC
+                    vbe_out_size = vbe_drc_process(inst_data->con[con_idx].snk_data.vbe, (int16_t *)decode_data[con_idx], decode_len[con_idx] / 2, (int16_t *)inst_data->con[con_idx].snk_data.vbe_out, A2DP_VBE_OUT_BUFFER_SIZE);
+#endif
+                }
+
+                //!If two connections are playing music, you should pay attention to switching decoding in time
+                //?Can be optimized
+                if (bt_av_get_sink_streaming_number() == MAX_ACTS)
+                {
+                    if (!((evt & PLAYBACK_GETDATA_EVENT_FLAG) && (evt & PLAYBACK_GETDATA_EVENT_FLAG_EXT)))
+                    {
+                        break;
+                    }
+                }
+
+                if ((evt & PLAYBACK_STOPPING_EVENT_FLAG) || (evt & PLAYBACK_STOPPING_EVENT_FLAG_EXT))
+                {
+                    break;
+                }
             }
         }
     }
@@ -761,19 +903,22 @@ static int audio_decode_thread_init(void)
 INIT_PRE_APP_EXPORT(audio_decode_thread_init);
 
 
-static void stop_audio_playback(bts2s_av_inst_data *inst)
+static void stop_audio_playback(bts2s_av_inst_data *inst, U8 con_idx)
 {
     rt_uint32_t evt;
 
-    USER_TRACE("stop_audio_playback state:%d\n", inst->snk_data.play_state);
-    if (inst->snk_data.play_state == TRUE)
+    USER_TRACE("(d%d)stop_audio_playback state:%d\n", con_idx, inst->con[con_idx].snk_data.play_state);
+    if (inst->con[con_idx].snk_data.play_state == TRUE)
     {
 #ifdef A2DP_RELAY_SERVICE
         a2dp_relay_stop();
 #endif // A2DP_RELAY_SERVICE
-        rt_event_send(g_playback_evt, PLAYBACK_STOPPING_EVENT_FLAG);
+        if (con_idx == 0)
+            rt_event_send(g_playback_evt, PLAYBACK_STOPPING_EVENT_FLAG);
+        else
+            rt_event_send(g_playback_evt, PLAYBACK_STOPPING_EVENT_FLAG_EXT);
         rt_event_recv(g_playback_evt, PLAYBACK_STOPPED_EVENT_FLAG, RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, RT_WAITING_FOREVER, &evt);
-        inst->snk_data.play_state = FALSE;
+        inst->con[con_idx].snk_data.play_state = FALSE;
 #if defined(AUDIO_USING_MANAGER) && defined(AUDIO_BT_AUDIO)
         sifli_resample_close(resample);
         resample = NULL;
@@ -783,39 +928,42 @@ static void stop_audio_playback(bts2s_av_inst_data *inst)
         audio_mem_free(g_right);
         g_right = NULL;
 #endif
-        audio_close(inst->snk_data.audio_client);
-        inst->snk_data.audio_client = NULL;
+        audio_close(inst->con[con_idx].snk_data.audio_client);
+        inst->con[con_idx].snk_data.audio_client = NULL;
 #endif
 #if PKG_USING_VBE_DRC
-        vbe_drc_close(inst->snk_data.vbe);
-        rt_free(inst->snk_data.vbe_out);
-        inst->snk_data.vbe = NULL;
-        inst->snk_data.vbe_out = NULL;
+        vbe_drc_close(inst->con[con_idx].snk_data.vbe);
+        rt_free(inst->con[con_idx].snk_data.vbe_out);
+        inst->con[con_idx].snk_data.vbe = NULL;
+        inst->con[con_idx].snk_data.vbe_out = NULL;
 #endif
     }
 
-    list_all_free(&(inst->snk_data.playlist));
+    list_all_free(&(inst->con[con_idx].snk_data.playlist), con_idx);
 
-    if (inst->snk_data.decode_buf)
+    if (inst->con[con_idx].snk_data.decode_buf)
     {
         // frm payload could be updated before decode
-        frms_per_payload = 0;
-        bfree(inst->snk_data.decode_buf);
-        inst->snk_data.decode_buf = NULL;
+        frms_per_payload[con_idx] = 0;
+        bfree(inst->con[con_idx].snk_data.decode_buf);
+        inst->con[con_idx].snk_data.decode_buf = NULL;
     }
 
 }
 
-static void stop_audio_playback_temporarily(bts2s_av_inst_data *inst)
+static void stop_audio_playback_temporarily(bts2s_av_inst_data *inst, U8 con_idx)
 {
     rt_uint32_t evt;
 
-    USER_TRACE("stop_audio_playback_temporarily state:%d\n", inst->snk_data.play_state);
-    if (inst->snk_data.play_state == TRUE)
+    USER_TRACE("(d%d)stop_audio_playback_temporarily state:%d\n", con_idx, inst->con[con_idx].snk_data.play_state);
+    if (inst->con[con_idx].snk_data.play_state == TRUE)
     {
-        rt_event_send(g_playback_evt, PLAYBACK_STOPPING_EVENT_FLAG);
+        if (con_idx == 0)
+            rt_event_send(g_playback_evt, PLAYBACK_STOPPING_EVENT_FLAG);
+        else
+            rt_event_send(g_playback_evt, PLAYBACK_STOPPING_EVENT_FLAG_EXT);
         rt_event_recv(g_playback_evt, PLAYBACK_STOPPED_EVENT_FLAG, RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, RT_WAITING_FOREVER, &evt);
-        inst->snk_data.play_state = FALSE;
+        inst->con[con_idx].snk_data.play_state = FALSE;
 #if defined(AUDIO_USING_MANAGER) && defined(AUDIO_BT_AUDIO)
         sifli_resample_close(resample);
         resample = NULL;
@@ -825,19 +973,19 @@ static void stop_audio_playback_temporarily(bts2s_av_inst_data *inst)
         audio_mem_free(g_right);
         g_right = NULL;
 #endif
-        audio_close(inst->snk_data.audio_client);
-        inst->snk_data.audio_client = NULL;
+        audio_close(inst->con[con_idx].snk_data.audio_client);
+        inst->con[con_idx].snk_data.audio_client = NULL;
 #endif
 #if PKG_USING_VBE_DRC
-        vbe_drc_close(inst->snk_data.vbe);
-        rt_free(inst->snk_data.vbe_out);
-        inst->snk_data.vbe = NULL;
-        inst->snk_data.vbe_out = NULL;
+        vbe_drc_close(inst->con[con_idx].snk_data.vbe);
+        rt_free(inst->con[con_idx].snk_data.vbe_out);
+        inst->con[con_idx].snk_data.vbe = NULL;
+        inst->con[con_idx].snk_data.vbe_out = NULL;
 #endif
 
     }
 
-    list_all_free(&(inst->snk_data.playlist));
+    list_all_free(&(inst->con[con_idx].snk_data.playlist), con_idx);
 
 }
 #endif
@@ -1064,15 +1212,12 @@ static void bt_avsnk_init_data(bts2s_avsnk_inst_data *inst, bts2_app_stru *bts2_
     inst->playlist.first = NULL;
     inst->playlist.last = NULL;
     inst->play_state = FALSE;
-    inst->can_play = 1;
-    inst->filter_prompt_enable = 1;
-    inst->reveive_start = 0;
 #ifndef RT_USING_UTEST
     inst->slience_filter_enable = 1;
     inst->slience_count = 0;
 #endif
 #if defined(AUDIO_USING_MANAGER) && defined(AUDIO_BT_AUDIO)
-    audio_client_t audio_client;
+    inst->audio_client = NULL;
 #endif
     inst->decode_buf = NULL;
 }
@@ -1144,12 +1289,13 @@ U8 bt_avsnk_prepare_sbc(bts2s_av_inst_data *inst, U8 con_idx)
         cfg->bit_pool = cfg->max_bitpool;
     }
 
-    res = bts2_sbc_decode_cfg(cfg->chnl_mode,
-                              cfg->alloc_method,
-                              cfg->sample_freq,
-                              cfg->blocks,
-                              cfg->subbands,
-                              cfg->bit_pool);
+    res = bts2_sbc_decode_cfg_ext(cfg->chnl_mode,
+                                  cfg->alloc_method,
+                                  cfg->sample_freq,
+                                  cfg->blocks,
+                                  cfg->subbands,
+                                  cfg->bit_pool,
+                                  con_idx);
     return res;
 }
 
@@ -1164,10 +1310,10 @@ U16 bt_avsnk_calculate_decode_buffer_size(bts2s_av_inst_data *inst, U8 con_idx)
                      cfg->blocks,
                      cfg->subbands,
                      cfg->bit_pool);
-    frms_per_payload = (U16)((AV_MTU_SIZE - 14) / sbc_frame_size + 1);
+    frms_per_payload[con_idx] = (U16)((AV_MTU_SIZE - 14) / sbc_frame_size + 1);
     pcm_samples_per_sbc_frame = bts2_sbc_calculate_pcm_samples_per_sbc_frame(cfg->blocks, cfg->subbands);
-    decode_buffer_size = pcm_samples_per_sbc_frame * frms_per_payload * 2;
-    USER_TRACE("sbc_frame_size = %d,pcm_samples_per_sbc_frame = %d,decode_buffer_size = %d\n",
+    decode_buffer_size = pcm_samples_per_sbc_frame * frms_per_payload[con_idx] * 2;
+    USER_TRACE("(d%d)sbc_frame_size = %d,pcm_samples_per_sbc_frame = %d,decode_buffer_size = %d\n", con_idx,
                sbc_frame_size, pcm_samples_per_sbc_frame, decode_buffer_size);
     return decode_buffer_size;
 }
@@ -1191,16 +1337,17 @@ void bt_avsnk_hdl_disc_handler(bts2s_av_inst_data *inst, uint8_t con_idx)
 {
     U8 codec = inst->local_seid_info[inst->con[con_idx].local_seid_idx].local_seid.codec;
 #if defined(AUDIO_USING_MANAGER) && defined(AUDIO_BT_AUDIO)
-    stop_audio_playback(inst);
+    stop_audio_playback(inst, con_idx);
 #endif
-    bts2_sbc_decode_completed();
+    if (codec == AV_SBC)
+        bts2_sbc_decode_completed_ext(con_idx);
 
 #ifdef CFG_AV_AAC
-    if ((codec == AV_MPEG24_AAC) && is_aac_inited)
+    if ((codec == AV_MPEG24_AAC) && is_aac_inited[con_idx])
     {
-        is_aac_inited = 0;
-        NeAACDecClose(hAac);
-        hAac = NULL;
+        is_aac_inited[con_idx] = 0;
+        NeAACDecClose(hAac[con_idx]);
+        hAac[con_idx] = NULL;
     }
 #endif
 
@@ -1246,17 +1393,16 @@ int8_t bt_avsnk_hdl_start_cfm(bts2s_av_inst_data *inst, uint8_t con_idx)
 void bt_avsnk_close_handler(bts2s_av_inst_data *inst, uint8_t con_idx)
 {
     U8 codec = inst->local_seid_info[inst->con[con_idx].local_seid_idx].local_seid.codec;
-    inst->snk_data.reveive_start = 0;
 #if defined(AUDIO_USING_MANAGER) && defined(AUDIO_BT_AUDIO)
-    stop_audio_playback(inst);
+    stop_audio_playback(inst, con_idx);
 #endif
 
 #ifdef CFG_AV_AAC
-    if ((codec == AV_MPEG24_AAC) && is_aac_inited)
+    if ((codec == AV_MPEG24_AAC) && is_aac_inited[con_idx])
     {
-        is_aac_inited = 0;
-        NeAACDecClose(hAac);
-        hAac = NULL;
+        is_aac_inited[con_idx] = 0;
+        NeAACDecClose(hAac[con_idx]);
+        hAac[con_idx] = NULL;
     }
 #endif
 }
@@ -1264,22 +1410,19 @@ void bt_avsnk_close_handler(bts2s_av_inst_data *inst, uint8_t con_idx)
 void bt_avsnk_abort_handler(bts2s_av_inst_data *inst, uint8_t con_idx)
 {
     U8 codec = inst->local_seid_info[inst->con[con_idx].local_seid_idx].local_seid.codec;
-    inst->snk_data.reveive_start = 0;
 #if defined(AUDIO_USING_MANAGER) && defined(AUDIO_BT_AUDIO)
-    stop_audio_playback(inst);
+    stop_audio_playback(inst, con_idx);
 #endif
 
 #ifdef CFG_AV_AAC
-    if ((codec == AV_MPEG24_AAC) && is_aac_inited)
+    if ((codec == AV_MPEG24_AAC) && is_aac_inited[con_idx])
     {
-        is_aac_inited = 0;
-        NeAACDecClose(hAac);
-        hAac = NULL;
+        is_aac_inited[con_idx] = 0;
+        NeAACDecClose(hAac[con_idx]);
+        hAac[con_idx] = NULL;
     }
 #endif
 }
-
-// extern void bt_hid_reset_num_count_drag_down(void);
 
 /*----------------------------------------------------------------------------*
  *
@@ -1316,20 +1459,21 @@ uint8_t bt_avsnk_hdl_start_ind(bts2s_av_inst_data *inst, BTS2S_AV_START_IND *msg
             {
                 if (codec == AV_SBC)
                 {
-                    if (!bt_avsnk_prepare_sbc(inst, con_idx))
-                    {
-                        break;
-                    }
+                    //?Redundant code????
+                    // if (!bt_avsnk_prepare_sbc(inst, con_idx))
+                    // {
+                    //     break;
+                    // }
                 }
                 else
                 {
 #ifdef CFG_AV_AAC
                     USER_TRACE("aac open\n");
-                    hAac = NeAACDecOpen();
-                    is_aac_inited = 0;
+                    hAac[con_idx] = NeAACDecOpen();
+                    is_aac_inited[con_idx] = 0;
                     // Get the current config
                     NeAACDecConfigurationPtr conf =
-                        NeAACDecGetCurrentConfiguration(hAac);
+                        NeAACDecGetCurrentConfiguration(hAac[con_idx]);
                     conf->defObjectType = LC;
                     conf->outputFormat = FAAD_FMT_16BIT;
                     conf->downMatrix = 1;
@@ -1337,7 +1481,7 @@ uint8_t bt_avsnk_hdl_start_ind(bts2s_av_inst_data *inst, BTS2S_AV_START_IND *msg
                     // If needed change some of the values in conf
                     //
                     // Set the new configuration
-                    NeAACDecSetConfiguration(hAac, conf);
+                    NeAACDecSetConfiguration(hAac[con_idx], conf);
 #endif
                 }
             }
@@ -1356,10 +1500,9 @@ uint8_t bt_avsnk_hdl_start_ind(bts2s_av_inst_data *inst, BTS2S_AV_START_IND *msg
 
     if ((res == AV_ACPT) && (i == msg->list_len))
     {
-        USER_TRACE(">> accept to start the stream\n");
+        USER_TRACE(">> (d%d)accept to start the stream\n", con_idx);
 
-        inst->snk_data.play_rd_idx = inst->snk_data.play_wr_idx = 0;
-        inst->snk_data.codec = codec;
+        inst->con[con_idx].snk_data.codec = codec;
 #ifdef A2DP_RELAY_SERVICE
         // 2 means stereo, 0 means left, 1 means right
         uint8_t target_channel = a2dp_relay_stereo_enable() ? (a2dp_relay_get_channel() == 0 ? 1 : 0) : 2;
@@ -1370,37 +1513,19 @@ uint8_t bt_avsnk_hdl_start_ind(bts2s_av_inst_data *inst, BTS2S_AV_START_IND *msg
                          SINK_DATA_LIST_START_THRESHOLD, SINK_DATA_LIST_MAX_THRESHOLD, target_channel);
 #endif // A2DP_RELAY_SERVICE
 #if defined(AUDIO_USING_MANAGER) && defined(AUDIO_BT_AUDIO)
-        if (inst->snk_data.codec == AV_SBC)
+        if (inst->con[con_idx].snk_data.codec == AV_SBC)
         {
-            if (inst->snk_data.decode_buf == NULL)
+            if (inst->con[con_idx].snk_data.decode_buf == NULL)
             {
                 U16 decode_buffer_size;
                 decode_buffer_size = bt_avsnk_calculate_decode_buffer_size(inst, con_idx);
                 USER_TRACE("decode_buffer_size = %d\n", decode_buffer_size);
-                inst->snk_data.decode_buf = bmalloc(decode_buffer_size);
-                inst->snk_data.decode_buf_len = decode_buffer_size;
+                inst->con[con_idx].snk_data.decode_buf = bmalloc(decode_buffer_size);
+                inst->con[con_idx].snk_data.decode_buf_len = decode_buffer_size;
             }
-            BT_OOM_ASSERT(inst->snk_data.decode_buf);
+            BT_OOM_ASSERT(inst->con[con_idx].snk_data.decode_buf);
         }
-        list_all_free(&(inst->snk_data.playlist));
-#endif
-        inst->snk_data.reveive_start = 1;
-
-#ifdef CFG_AVRCP
-        bts2_app_stru *bts2_app_data = bts2g_app_p;
-        if (bts2_app_data->avrcp_inst.playback_status != 0x01)
-        {
-            inst->snk_data.can_play = 0;
-        }
-        else if (bts2_app_data->avrcp_inst.playback_status == 0x01)
-        {
-            inst->snk_data.can_play = 1;
-            inst->snk_data.reveive_start = 0;
-        }
-        else
-        {
-
-        }
+        list_all_free(&(inst->con[con_idx].snk_data.playlist), con_idx);
 #endif
     }
 
@@ -1426,17 +1551,16 @@ void bt_avsnk_hdl_suspend_ind(bts2s_av_inst_data *inst, uint8_t con_idx)
 
     U8 codec = inst->local_seid_info[inst->con[con_idx].local_seid_idx].local_seid.codec;
     USER_TRACE(">> accept to suspend the av stream\n");
-    inst->snk_data.reveive_start = 0;
 #if defined(AUDIO_USING_MANAGER) && defined(AUDIO_BT_AUDIO)
-    stop_audio_playback(inst);
+    stop_audio_playback(inst, con_idx);
 #endif
 
 #ifdef CFG_AV_AAC
-    if ((codec == AV_MPEG24_AAC) && is_aac_inited)
+    if ((codec == AV_MPEG24_AAC) && is_aac_inited[con_idx])
     {
-        is_aac_inited = 0;
-        NeAACDecClose(hAac);
-        hAac = NULL;
+        is_aac_inited[con_idx] = 0;
+        NeAACDecClose(hAac[con_idx]);
+        hAac[con_idx] = NULL;
     }
 #endif
 }
@@ -1499,7 +1623,8 @@ void bt_avsnk_hdl_streamdata_ind(bts2s_av_inst_data *inst, uint8_t con_idx, BTS2
     codec = inst->local_seid_info[inst->con[con_idx].local_seid_idx].local_seid.codec;
 
 
-    if (bt_av_get_slience_filter_enable() && (codec == AV_SBC))
+    //!Only applicable to SBC codec
+    if (bt_av_get_slience_filter_enable(con_idx) && (codec == AV_SBC))
     {
         if (msg->len <= (AV_FIXED_MEDIA_PKT_HDR_SIZE + 1))
         {
@@ -1519,14 +1644,14 @@ void bt_avsnk_hdl_streamdata_ind(bts2s_av_inst_data *inst, uint8_t con_idx, BTS2
 
         if (0 == memcmp(frm_ptr, frm_ptr + sbc_frame_size, sbc_frame_size))
         {
-            inst->snk_data.slience_count++;
-            // USER_TRACE("sbc mute count = %d\n",inst->snk_data.slience_count);
-            if (inst->snk_data.slience_count > SINK_DATA_LIST_MAX_THRESHOLD + 2)
+            inst->con[con_idx].snk_data.slience_count++;
+            // USER_TRACE("sbc mute count = %d\n",inst->con[con_idx].snk_data.slience_count);
+            if (inst->con[con_idx].snk_data.slience_count > SINK_DATA_LIST_MAX_THRESHOLD + 2)
             {
-                if (inst->snk_data.play_state  == TRUE)
+                if (inst->con[con_idx].snk_data.play_state  == TRUE)
                 {
 #if defined(AUDIO_USING_MANAGER) && defined(AUDIO_BT_AUDIO)
-                    stop_audio_playback(inst);
+                    stop_audio_playback(inst, con_idx);
 #endif
                 }
                 bfree(msg->data);
@@ -1534,10 +1659,10 @@ void bt_avsnk_hdl_streamdata_ind(bts2s_av_inst_data *inst, uint8_t con_idx, BTS2
             }
             else
             {
-                if (inst->snk_data.play_state  == FALSE)
+                if (inst->con[con_idx].snk_data.play_state  == FALSE)
                 {
 #if defined(AUDIO_USING_MANAGER) && defined(AUDIO_BT_AUDIO)
-                    list_all_free(&(inst->snk_data.playlist));
+                    list_all_free(&(inst->con[con_idx].snk_data.playlist), con_idx);
 #endif
                     bfree(msg->data);
                     return;
@@ -1557,7 +1682,7 @@ void bt_avsnk_hdl_streamdata_ind(bts2s_av_inst_data *inst, uint8_t con_idx, BTS2
                                  SINK_DATA_LIST_START_THRESHOLD, SINK_DATA_LIST_MAX_THRESHOLD, 0);
             }
 #endif // A2DP_RELAY_SERVICE
-            inst->snk_data.slience_count = 0;
+            inst->con[con_idx].snk_data.slience_count = 0;
         }
     }
 
@@ -1577,21 +1702,30 @@ void bt_avsnk_hdl_streamdata_ind(bts2s_av_inst_data *inst, uint8_t con_idx, BTS2
         }
 #endif // A2DP_RELAY_SERVICE
         pt_data->len = msg->len;
-        ret = list_push_back(&inst->snk_data.playlist, &(pt_data->hdr));
-        if ((inst->snk_data.play_state == FALSE) && (ret == 1))
+        ret = list_push_back(&inst->con[con_idx].snk_data.playlist, &(pt_data->hdr), con_idx);
+        if ((inst->con[con_idx].snk_data.play_state == FALSE) && (ret == 1))
         {
 #ifdef A2DP_RELAY_SERVICE
             a2dp_relay_trigger_audio_server();
 #endif // A2DP_RELAY_SERVICE
-            inst->snk_data.play_state = TRUE;
+            inst->con[con_idx].snk_data.play_state = TRUE;
             USER_TRACE("av_snk.c open a2dp\r\n");
-            rt_event_send(g_playback_evt, PLAYBACK_START_EVENT_FLAG);
+            if (con_idx == 0)
+                rt_event_send(g_playback_evt, PLAYBACK_START_EVENT_FLAG);
+            else
+                rt_event_send(g_playback_evt, PLAYBACK_START_EVENT_FLAG_EXT);
         }
         else if (ret == 2)
         {
             list_hdr_t *hdr;
-            hdr = list_pop_front(&inst->snk_data.playlist);
+            hdr = list_pop_front(&inst->con[con_idx].snk_data.playlist, con_idx);
             bfree(hdr);
+
+            //?Need to re-trigger?
+            if (con_idx == 0)
+                rt_event_send(g_playback_evt, PLAYBACK_GETDATA_EVENT_FLAG);
+            else
+                rt_event_send(g_playback_evt, PLAYBACK_GETDATA_EVENT_FLAG_EXT);
         }
 #else
         bfree(msg->data);
@@ -1617,11 +1751,13 @@ void bt_avsnk_hdl_streamdata_ind(bts2s_av_inst_data *inst, uint8_t con_idx, BTS2
  *----------------------------------------------------------------------------*/
 void bt_avsnk_init(bts2s_av_inst_data *inst, bts2_app_stru *bts2_app_data)
 {
-    bt_avsnk_init_data(&inst->snk_data, bts2_app_data);
-
-    //inst->play_handle = NULL;
-    inst->snk_data.buf_sem = rt_sem_create("bt_av_sink", 1, RT_IPC_FLAG_FIFO);
-    //inst->audio_len = 0;
+    for (U8 i = 0; i < MAX_ACTS; i++)
+    {
+        bt_avsnk_init_data(&inst->con[i].snk_data, bts2_app_data);
+        //inst->play_handle = NULL;
+        inst->con[i].snk_data.buf_sem = rt_sem_create("bt_av_sink", 1, RT_IPC_FLAG_FIFO);
+        //inst->audio_len = 0;
+    }
 
 #ifdef CFG_OPEN_AVSNK
     bts2s_avsnk_openFlag = 1;
@@ -1668,7 +1804,8 @@ void bt_avsnk_close(bts2s_av_inst_data *inst)
 
 void bt_avsnk_rel(bts2s_av_inst_data *inst)
 {
-    rt_sem_delete(inst->snk_data.buf_sem);
+    for (U8 i = 0; i < MAX_CONNS; i++)
+        rt_sem_delete(inst->con[i].snk_data.buf_sem);
 }
 
 #if 0

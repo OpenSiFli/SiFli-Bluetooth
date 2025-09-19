@@ -653,11 +653,6 @@ U8 bt_interface_get_current_audio_device(void)
 #endif
 }
 
-U8 bt_interface_get_receive_a2dp_start(void)
-{
-    return bt_av_get_receive_a2dp_start();
-}
-
 void bt_interface_release_a2dp(void)
 {
     bt_av_release_stream(0);
@@ -880,14 +875,6 @@ U8 bt_interface_get_avrcp_playback_status(void)
     return bts2_app_data->avrcp_inst.playback_status;
 #else
     return 0;
-#endif
-}
-
-
-void bt_interface_avrcp_set_can_play(void)
-{
-#ifdef CFG_AV
-    bt_av_set_can_play();
 #endif
 }
 

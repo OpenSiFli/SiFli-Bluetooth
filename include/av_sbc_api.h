@@ -105,7 +105,7 @@ U16 bts2_sbc_encode_cfg(BTS2E_SBC_CHNL_MODE chnl_mode,
 /*----------------------------------------------------------------------------*
 *
 * DESCRIPTION:
-*       Configure the settings required before decoding.
+*       Configure sbc decoder settings for the specified connection
 *
 * INPUT:
 *      BTS2E_SBC_CHNL_MODE chnl_mode
@@ -114,6 +114,7 @@ U16 bts2_sbc_encode_cfg(BTS2E_SBC_CHNL_MODE chnl_mode,
 *      U8 nrof_blocks
 *      U8 nrof_subbands
 *      U8 bitpool
+*      U8 con_idx
 *
 * OUTPUT:
 *      If inputs are valid else returns FALSE.
@@ -128,6 +129,14 @@ U8 bts2_sbc_decode_cfg(BTS2E_SBC_CHNL_MODE chnl_mode,
                        U8 nrof_blocks,
                        U8 nrof_subbands,
                        U8 bitpool);
+
+U8 bts2_sbc_decode_cfg_ext(BTS2E_SBC_CHNL_MODE chnl_mode,
+                           BTS2E_SBC_ALLOC_METHOD alloc_method,
+                           U16 sample_freq,
+                           U8 nrof_blocks,
+                           U8 nrof_subbands,
+                           U8 bitpool,
+                           U8 con_idx);
 
 /*----------------------------------------------------------------------------*
 *
@@ -152,12 +161,13 @@ void bts2_sbc_encode(BTS2S_SBC_STREAM *pbss);
 /*----------------------------------------------------------------------------*
 *
 * DESCRIPTION:
-*      SBC decode.
+*      Sbc decoding the specified connection
 *
 *
 *
 * INPUT:
 *      BTS2S_SBC_STREAM *pbss
+*      U8 con_idx
 *
 *
 * OUTPUT:
@@ -168,20 +178,23 @@ void bts2_sbc_encode(BTS2S_SBC_STREAM *pbss);
 *
 *----------------------------------------------------------------------------*/
 void bts2_sbc_decode(BTS2S_SBC_STREAM *pbss);
+void bts2_sbc_decode_ext(BTS2S_SBC_STREAM *pbss, U8 con_idx);
 
 void bts2_sbc_encode_completed(void);
 
 
 void bts2_sbc_decode_completed(void);
+void bts2_sbc_decode_completed_ext(U8 con_idx);
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 /*----------------------------------------------------------------------------*
 *
 * DESCRIPTION:
-*       Configure the settings required before encoding.
+*       Configure msbc encoder settings for the specified connection
 *
 * INPUT:
+*       U8 con_idx
 *
 * OUTPUT:
 *      Frame size in bytes if inputs are valid else returns zero.
@@ -191,13 +204,15 @@ void bts2_sbc_decode_completed(void);
 *
 *----------------------------------------------------------------------------*/
 U16 bts2_msbc_encode_cfg(void);
+U16 bts2_msbc_encode_cfg_ext(U8 con_idx);
 
 /*----------------------------------------------------------------------------*
 *
 * DESCRIPTION:
-*       Configure the settings required before decoding.
+*       Configure msbc decoder settings for the specified connection
 *
 * INPUT:
+*       U8 con_idx
 *
 * OUTPUT:
 *      If inputs are valid else returns FALSE.
@@ -207,16 +222,18 @@ U16 bts2_msbc_encode_cfg(void);
 *
 *----------------------------------------------------------------------------*/
 U8 bts2_msbc_decode_cfg(void);
+U8 bts2_msbc_decode_cfg_ext(U8 con_idx);
 
 /*----------------------------------------------------------------------------*
 *
 * DESCRIPTION:
-*      mSBC encode.
+*      MSBC encoding the specified connection
 *
 *
 *
 * INPUT:
 *      BS_SBC_STREAM *pbss
+*      U8 con_idx
 *
 *
 * OUTPUT:
@@ -227,16 +244,18 @@ U8 bts2_msbc_decode_cfg(void);
 *
 *----------------------------------------------------------------------------*/
 void bts2_msbc_encode(BTS2S_SBC_STREAM *pbss);
+void bts2_msbc_encode_ext(BTS2S_SBC_STREAM *pbss, U8 con_idx);
 
 /*----------------------------------------------------------------------------*
 *
 * DESCRIPTION:
-*      mSBC decode.
+*      MSBC decoding the specified connection
 *
 *
 *
 * INPUT:
 *      BS_SBC_STREAM *pbss
+*      U8 con_idx
 *
 *
 * OUTPUT:
@@ -247,12 +266,15 @@ void bts2_msbc_encode(BTS2S_SBC_STREAM *pbss);
 *
 *----------------------------------------------------------------------------*/
 void bts2_msbc_decode(BTS2S_SBC_STREAM *pbss);
+void bts2_msbc_decode_ext(BTS2S_SBC_STREAM *pbss, U8 con_idx);
 
 
 void bts2_msbc_encode_completed(void);
+void bts2_msbc_encode_completed_ext(U8 con_idx);
 
 
 void bts2_msbc_decode_completed(void);
+void bts2_msbc_decode_completed_ext(U8 con_idx);
 
 
 #ifdef __cplusplus

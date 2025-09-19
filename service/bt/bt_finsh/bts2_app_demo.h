@@ -239,6 +239,7 @@ typedef struct
     U8             ab_volume;//the absolute volue be set.
     U8             tgTlable;
     U8             tgTlable_1;
+    U8             tgTlable_2;
     U8             abs_volume_pending;
     U8             playback_status;
 } bts2_avrcp_inst_data;

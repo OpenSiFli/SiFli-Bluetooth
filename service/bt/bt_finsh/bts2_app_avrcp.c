@@ -1545,7 +1545,7 @@ void bt_avrcp_track_changed_register_response(bts2_app_stru *bts2_app_data, U8 r
         memset(data + 9, 0, 8);
     }
     avrcp_cmd_data_rsp(bts2_app_data->phdl,
-                       ASSIGN_TLABEL,
+                       bts2_app_data->avrcp_inst.tgTlable_2,
                        BT_UUID_AVRCP_CT,
                        response,
                        AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
@@ -1698,6 +1698,7 @@ static void bt_avrcp_hdl_vendor_depend_cmd_ind(bts2_app_stru *bts2_app_data)
                 }
                 case AVRCP_VENDOR_DEPENDENT_EVENT_TRACK_CHANGED:
                 {
+                    bts2_app_data->avrcp_inst.tgTlable_2  = avrcmsg->tlabel;
 #ifdef BSP_BQB_TEST
                     switch (BQB_TEST_CASE)
                     {
@@ -1710,7 +1711,7 @@ static void bt_avrcp_hdl_vendor_depend_cmd_ind(bts2_app_stru *bts2_app_data)
                         break;
                     }
 #else
-                    bt_avrcp_track_changed_register_response(bts2_app_data, AVRCP_CR_INTERIM, 1);
+                    bt_avrcp_track_changed_register_response(bts2_app_data, AVRCP_CR_INTERIM, 0);
 #endif
                     break;
                 }
@@ -1799,6 +1800,11 @@ static void bt_avrcp_hdl_vendor_depend_cmd_ind(bts2_app_stru *bts2_app_data)
             case AVRCP_VENDOR_DEPENDENT_PDU_ID_ABORT_CONTINUING_RESPONSE:
             {
                 bt_avrcp_get_element_attributes_response_abort(bts2_app_data, avrcmsg->tlabel);
+                break;
+            }
+            case AVRCP_VENDOR_DEPENDENT_PDU_ID_INVALD:
+            {
+                bt_avrcp_reject_response(bts2_app_data, avrcmsg->tlabel, AVRCP_VENDOR_DEPENDENT_PDU_ID_INVALD, AVRCP_REJECT_ERROR_INVALID_COMMAND);
                 break;
             }
             }
@@ -1981,12 +1987,6 @@ static void bt_avrcp_hdl_vendor_depend_cmd_cfm(bts2_app_stru *bts2_app_data)
 
                     bts2_app_stru *bts2_app_data = bts2g_app_p;
                     bts2_app_data->avrcp_inst.playback_status = play_status;
-#ifdef CFG_AV_SRC
-                    if (bt_av_get_receive_a2dp_start())
-                    {
-                        bt_av_set_can_play();
-                    }
-#endif
                     INFO_TRACE("<<PLAYBACK_STATUS_CHANGED  play_status%x\n", play_status);
 
                     break;

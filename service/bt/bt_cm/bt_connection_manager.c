@@ -1877,6 +1877,51 @@ void bt_cm(uint8_t argc, char **argv)
                     gap_rd_rmt_ext_featr_req(bts2_task_get_app_task_id(), atoi(argv[2]), env->bt_devices[i].info.bd_addr);
             }
         }
+#ifdef CFG_AV
+        else if (strcmp(argv[1], "av_conn1") == 0)
+        {
+            BTS2S_BD_ADDR bd_addr;
+            bd_addr.nap = strtol(argv[2], NULL, 0);
+            bd_addr.uap = strtol(argv[3], NULL, 0);
+            bd_addr.lap = strtol(argv[4], NULL, 0);
+            LOG_I("conn addr: %04X:%02X:%06lX",
+                  bd_addr.nap,
+                  bd_addr.uap,
+                  bd_addr.lap);
+
+            gap_wr_scan_enb_req(bts2_task_get_app_task_id(), 0, 0);
+            if (atoi(argv[5]))
+                bt_av_conn(&bd_addr, AV_SRC);
+            else
+                bt_av_conn(&bd_addr, AV_SNK);
+        }
+        else if (strcmp(argv[1], "av_disconn1") == 0)
+        {
+            bt_av_disconnect(0);
+        }
+#endif
+#ifdef CFG_AVRCP
+        else if (strcmp(argv[1], "avrcp_conn1") == 0)
+        {
+            BTS2S_BD_ADDR bd_addr;
+            bd_addr.nap = strtol(argv[2], NULL, 0);
+            bd_addr.uap = strtol(argv[3], NULL, 0);
+            bd_addr.lap = strtol(argv[4], NULL, 0);
+            LOG_I("conn addr: %04X:%02X:%06lX",
+                  bd_addr.nap,
+                  bd_addr.uap,
+                  bd_addr.lap);
+            gap_wr_scan_enb_req(bts2_task_get_app_task_id(), 0, 0);
+            if (atoi(argv[5]))
+                avrcp_conn_req(bts2_task_get_app_task_id(), bd_addr, AVRCP_TG, AVRCP_CT);
+            else
+                avrcp_conn_req(bts2_task_get_app_task_id(), bd_addr, AVRCP_CT, AVRCP_TG);
+        }
+        else if (strcmp(argv[1], "avrcp_dis") == 0)
+        {
+            avrcp_disc_req();
+        }
+#endif
     }
 }
 

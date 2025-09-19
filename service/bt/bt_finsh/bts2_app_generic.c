@@ -178,7 +178,11 @@ void bt_io_capability_rsp(BTS2S_BD_ADDR *bd,
     sc_io_capability_rsp(bd, io_capability, mitm, bonding);
 }
 
-
+void bt_add_eir_data(U8 type, U8 length, U8 *data)
+{
+    gap_wr_eir_req(0, data, length);
+    return;
+}
 
 __WEAK uint32_t bt_get_class_of_device(void)
 {
@@ -287,7 +291,7 @@ void bt_init_local_ctrller(bts2_app_stru *bts2_app_data)
         *eir = 1 + strlen((const char *)tmp);
         *(eir + 1) = 9;
         memcpy((void *)(eir + 2), (void *)tmp, strlen((const char *)tmp));
-        gap_wr_eir_req(0, eir, strlen((const char *)tmp) + 2);
+        gap_wr_eir_req(0, eir, 2 + strlen((const char *)tmp));
         bfree(eir);
     }
 }
