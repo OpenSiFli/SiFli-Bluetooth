@@ -255,6 +255,29 @@ void bt_interface_set_linkpolicy(U16 lp_in, U16 lp_out);
  * @param[in] enable Whether the flag of sniff mode is enabled or not
  **/
 void bt_interface_set_sniff_enable(BOOL enable);
+
+/**
+ * @brief            Enable pincode pair mode
+ * @param[in] enable Whether the flag of pincode pair mode is enabled or not
+ **/
+void bt_interface_enable_pincode_pair_mode(BOOL enable);
+
+/**
+ * @brief            Input pincode
+ * @param[in] mac    Device mac address(eg:char mac[6] = {11,22,33,44,55,66})
+ * @param[in] is_accept    Whether accept pincode pair
+ * @param[in] pincode_len    Length of pincode
+ * @param[in] pincode    pincode
+ **/
+U8 bt_interface_input_pincode(unsigned char *mac, U8 is_accept, U8 pincode_len, U8 *pincode);
+
+/**
+ * @brief            Input pincode
+ * @param[in] mac    Device mac address(eg:char mac[6] = {11,22,33,44,55,66})
+ * @param[in] is_accept    Whether accept pincode pair
+ * @param[in] passkey    passkey
+ **/
+void bt_interface_input_passkey(unsigned char *mac, U8 is_accept, U32 passkey);
 /// @}  BT_COMMON
 
 /** @defgroup BT_A2DP_SRV  A2DP profile interfaces

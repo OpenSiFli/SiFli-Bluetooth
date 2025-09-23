@@ -554,6 +554,33 @@ void bt_interface_set_sniff_enable(BOOL enable)
     hcia_set_sniff_mode_enable(enable);
 }
 
+void bt_interface_enable_pincode_pair_mode(BOOL enable)
+{
+    gap_enable_pincode_pair_mode(enable);
+}
+
+U8 bt_interface_input_pincode(unsigned char *mac, U8 is_accept, U8 pincode_len, U8 *pincode)
+{
+    BTS2S_BD_ADDR bd_addr;
+
+    bt_addr_convert_to_bts((bd_addr_t *)mac, &bd_addr);
+    if ((pincode_len <= 0x10) && pincode)
+    {
+        sc_passkey_rsp(is_accept, &bd_addr, pincode_len, pincode, TRUE, TRUE);
+        return 0;
+    }
+    return 1;
+}
+
+void bt_interface_input_passkey(unsigned char *mac, U8 is_accept, U32 passkey)
+{
+    BTS2S_BD_ADDR bd_addr;
+
+    bt_addr_convert_to_bts((bd_addr_t *)mac, &bd_addr);
+
+    gap_user_passkey_request_reply(is_accept, &bd_addr, passkey);
+}
+
 /// @}  BT_COMMON
 
 

@@ -736,7 +736,7 @@ void bt_hdl_sc_msg(bts2_app_stru *bts2_app_data)
                    msg->bd.nap,
                    msg->bd.uap,
                    msg->bd.lap);
-        bt_pincode_indi(bts2_app_data);
+        // bt_pincode_indi(bts2_app_data);
         break;
     }
     case BTS2MU_SC_PAIR_CFM:
