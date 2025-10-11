@@ -10,7 +10,10 @@
 /* Install Bluetooth core (LCPU) image*/
 void lcpu_img_install()
 {
-    memcpy((void *)(HCPU_LCPU_CODE_START_ADDR), g_lcpu_bin, sizeof(g_lcpu_bin));
+    uint8_t rev_id = __HAL_SYSCFG_GET_REVID();
+
+    if (rev_id < HAL_CHIP_REV_ID_A4)
+        memcpy((void *)(HCPU_LCPU_CODE_START_ADDR), g_lcpu_bin, sizeof(g_lcpu_bin));
 }
 
 /* Install Bluetooth core (LCPU) image patch*/
@@ -29,7 +32,7 @@ void lcpu_patch_install_rev_b()
 
     memcpy((void *)LCPU_PATCH_BUF_START_ADDR, (void *)&entry, 12);
     memset((void *)(LCPU_PATCH_CODE_START_ADDR_S), 0, LCPU_PATCH_CODE_SIZE);
-    memcpy((void *)(LCPU_PATCH_CODE_START_ADDR_S), g_lcpu_patch_bin, sizeof(g_lcpu_patch_bin));
+    memcpy((void *)(LCPU_PATCH_CODE_START_ADDR_S), g_lcpu_patch_bin_b, sizeof(g_lcpu_patch_bin_b));
     HAL_PATCH_install();
 }
 
@@ -40,7 +43,7 @@ uint32_t *HAL_PATCH_GetEntryAddr(void)
     uint8_t rev_id = __HAL_SYSCFG_GET_REVID();
 
     if (rev_id >= HAL_CHIP_REV_ID_A4)
-        entry_addr = (uint32_t *)g_lcpu_patch_list;
+        entry_addr = (uint32_t *)g_lcpu_patch_list_b;
     else
         entry_addr = (uint32_t *)LCPU_PATCH_RECORD_ADDR;
     return entry_addr;
