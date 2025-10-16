@@ -46,6 +46,7 @@ LOG_MODULE_REGISTER(settings_sifli, LOG_LEVEL_INF);
 
 
 // Key Name Constants
+#define BT_ALL_KEY "bt/all" // Base path for device keys
 #define BT_KEYS_BASE_KEY "bt/keys" // Base path for device keys
 #define BT_SC_BASE_KEY "bt/sc" // Base path for security configs
 #define BT_NAME_KEY "bt/name" // Device name key
@@ -1058,8 +1059,24 @@ static int nvds_csi_save(struct settings_store *cs, const char *name,
     // Handle clear operation (value is NULL and val_len is 0)
     bool clear_operation = (value == NULL && val_len == 0);
 
+    // Handle bt/all - clear all Bluetooth configurations
+    if (strcmp(name, BT_ALL_KEY) == 0)
+    {
+        if (!clear_operation)
+        {
+            LOG_ERR("Only clear operation supported for %s", name);
+            return -EINVAL;
+        }
+        LOG_DBG("Clearing all Bluetooth configurations...");
+
+        // Clear all Bluetooth settings
+        memset(&nvds_backend.bt_cache, 0, sizeof(nvds_backend.bt_cache));
+        nvds_backend.bundle_dirty = true;
+        LOG_DBG("Cleared all Bluetooth configurations");
+        r = 0;
+    }
 // Handle bt/keys/<addr> entries
-    if (strstr(name, BT_KEYS_BASE_KEY) == name)
+    else if (strstr(name, BT_KEYS_BASE_KEY) == name)
     {
         bt_addr_le_t addr;
         r = parse_bt_addr_from_key(name, BT_KEYS_BASE_KEY, &addr);
