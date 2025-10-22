@@ -410,7 +410,13 @@ void ptc_config(uint8_t index, uint8_t sel_idx, uint8_t tripol, uint16_t delay)
 }
 void rf_ptc_config(uint8_t is_reset)
 {
-#if (!defined(USING_SEC_ENV)) && (!defined(FPGA))
+
+#ifdef FPGA
+    if (rom_config_get_default_is_fpga() == 1)
+        return;
+#endif
+
+#if (!defined(USING_SEC_ENV))
     if (is_reset)
     {
         memset((void *)pt_cfo, 0, 10);
