@@ -185,6 +185,7 @@ typedef struct
     int32_t    rssi_cnt;
     int8_t     rssi_ave;
     uint8_t no_signal_state; // 1: ble rx start; 2: bt rx start 0:stop
+    uint8_t is_loc_run;
     rt_event_t  evt;
     uint16_t   saved_open_flag;
     uint8_t   *pbuf2mb;
@@ -588,6 +589,23 @@ static rt_err_t uart_tx_complete(struct uart_env_tag *env, rt_device_t dev, void
 
 }
 
+RT_WEAK void blebredr_rf_power_set(uint8_t type, int8_t txpwr)
+{
+    return;
+}
+RT_WEAK uint8_t bt_hop_infinite_tx(uint32_t phy, uint32_t data_len, uint32_t type, int8_t pwr)
+{
+    return 0xFF;
+}
+RT_WEAK void bt_hop_infinite_set_stop(uint8_t state)
+{
+    return;
+}
+RT_WEAK uint8_t bt_pkt_mapping(uint8_t pkt_type, uint8_t *phy)
+{
+    return 0xFF;
+}
+RT_WEAK uint8_t tx_chan;
 
 #ifdef USING_IPC_QUEUE
 #include "mem_map.h"
@@ -1078,6 +1096,21 @@ HAL_RAM_RET_CODE_SECT(crystal_cali_reset, uint8_t crystal_cali_reset(void))
 
     return 1;
 }
+typedef struct
+{
+    uint8_t (*func)(uint32_t phy, uint32_t arg1, uint32_t arg2, int8_t pwr);
+    uint16_t len;
+    uint8_t phy;
+    uint8_t pkt_type;
+    int8_t pwr;
+} afh_test_cmd_para_t;
+void wvt_local_hdl_entry(void *param)
+{
+    afh_test_cmd_para_t *afh_t = (afh_test_cmd_para_t *)param;
+    afh_t->func(afh_t->phy, afh_t->len, afh_t->pkt_type, afh_t->pwr);
+    free(param);
+}
+extern uint8_t bt_pkt_mapping(uint8_t pkt_type, uint8_t *phy);
 extern void cw_config(uint8_t is_start, uint8_t pa, uint8_t channel);
 extern void cw_config_bt(uint8_t is_start, uint8_t pa, uint8_t channel);
 static uint8_t loc_cmd_hdl(uint8_t *cmd, uint16_t len)
@@ -1092,68 +1125,135 @@ static uint8_t loc_cmd_hdl(uint8_t *cmd, uint16_t len)
         uint8_t res = 1; // Not support
         do
         {
-            if (cmd[3] == 0x02)
-            {
-                int8_t tx_pwr = cmd[4];
-                extern void blebredr_rf_power_set(uint8_t type, int8_t txpwr);
-                blebredr_rf_power_set(0, tx_pwr);
-                res = 0;
-            }
-            else if (cmd[3] == 0x82)
-            {
-                int8_t tx_pwr = cmd[4];
-                extern void blebredr_rf_power_set(uint8_t type, int8_t txpwr);
-                blebredr_rf_power_set(1, tx_pwr);
-                res = 0;
-            }
-#ifndef  SOC_SF32LB55X
-            else if (cmd[3] == 0x03)
-            {
-                uint8_t pa = cmd[4];
-                uint8_t channel = cmd[5];
-                cw_config(1, pa, channel);
-                res = 0;
-            }
-            else if (cmd[3] == 0x04)
-            {
-                cw_config(0, 0, 0);
-                res = 0;
-            }
-            else if (cmd[3] == 0x09)
-            {
-                uint8_t pa = cmd[4];
-                uint8_t channel = cmd[5];
-                cw_config_bt(1, pa, channel);
-                res = 0;
-            }
-            else if (cmd[3] == 0x0A)
-            {
-                cw_config_bt(0, 0, 0);
-                res = 0;
-            }
+#if defined(SOC_SF32LB52X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB58X)
+#if defined(SOC_SF32LB52X)
+            if ((cmd[3] == 0x0 && len == 8) || (cmd[3] == 0x0 && len == 9))
+#else
+            if (cmd[3] == 0x0 && len == 7)
 #endif
-            else if (cmd[3] == 0x05)
             {
-                ret_len = 8;
+                // AFH test start
+                rt_thread_t tid;
+                afh_test_cmd_para_t *para = malloc(sizeof(afh_test_cmd_para_t));
+                if (para == NULL)
+                {
+                    LOG_E("memory is not enough!!!!");
+                    res = 2;
+                    break;
+                }
+
+                if (env->is_loc_run)
+                {
+                    LOG_W("Duplicate command!!!");
+                    res = 2;
+                    free(para);
+                    break;
+                }
+
+                extern uint8_t bt_hop_infinite_tx(uint32_t phy, uint32_t data_len, uint32_t type, int8_t pwr);
+                {
+                    para->func = bt_hop_infinite_tx;
+                    para->len = (uint16_t)cmd[4] | (uint16_t)cmd[5] << 8;
+                    para->pkt_type = bt_pkt_mapping(cmd[6], &para->phy);
+#ifdef SOC_SF32LB52X
+                    para->pwr = cmd[7];
+                    extern uint8_t tx_chan;
+                    if (len == 8)
+                    {
+                        tx_chan = 0xFF;
+                    }
+                    else
+                    {
+                        tx_chan = cmd[8];
+                    }
+#endif
+
+                    if (para->pkt_type == 0xFF)
+                    {
+                        LOG_E("Wrongly packet_type!!");
+                        res = 2;
+                        free(para);
+                        break;
+                    }
+
+                    tid = rt_thread_create("loc_hdl", wvt_local_hdl_entry, para, 4096, 21, 10);
+                    rt_thread_startup(tid);
+
+                    res = 0;
+                    env->is_loc_run = 1;
+                }
+            }
+            else if (cmd[3] == 0x01)
+            {
+                extern void bt_hop_infinite_set_stop(uint8_t state);
+                bt_hop_infinite_set_stop(1);
+                env->is_loc_run = 0;
                 res = 0;
             }
-            else if (cmd[3] == 0x06)
-            {
-                int32_t freq_off = ((int32_t)cmd[4] | ((int32_t)cmd[5] << 8) \
-                                    | ((int32_t)cmd[6] << 16) | ((int32_t)cmd[7] << 24));
+            else
+#endif
+                if (cmd[3] == 0x02)
+                {
+                    int8_t tx_pwr = cmd[4];
+                    extern void blebredr_rf_power_set(uint8_t type, int8_t txpwr);
+                    blebredr_rf_power_set(0, tx_pwr);
+                    res = 0;
+                }
+                else if (cmd[3] == 0x82)
+                {
+                    int8_t tx_pwr = cmd[4];
+                    extern void blebredr_rf_power_set(uint8_t type, int8_t txpwr);
+                    blebredr_rf_power_set(1, tx_pwr);
+                    res = 0;
+                }
+#ifndef  SOC_SF32LB55X
+                else if (cmd[3] == 0x03)
+                {
+                    uint8_t pa = cmd[4];
+                    uint8_t channel = cmd[5];
+                    cw_config(1, pa, channel);
+                    res = 0;
+                }
+                else if (cmd[3] == 0x04)
+                {
+                    cw_config(0, 0, 0);
+                    res = 0;
+                }
+                else if (cmd[3] == 0x09)
+                {
+                    uint8_t pa = cmd[4];
+                    uint8_t channel = cmd[5];
+                    cw_config_bt(1, pa, channel);
+                    res = 0;
+                }
+                else if (cmd[3] == 0x0A)
+                {
+                    cw_config_bt(0, 0, 0);
+                    res = 0;
+                }
+#endif
+                else if (cmd[3] == 0x05)
+                {
+                    ret_len = 8;
+                    res = 0;
+                }
+                else if (cmd[3] == 0x06)
+                {
+                    int32_t freq_off = ((int32_t)cmd[4] | ((int32_t)cmd[5] << 8) \
+                                        | ((int32_t)cmd[6] << 16) | ((int32_t)cmd[7] << 24));
 
-                res = crystal_cali_set(freq_off);
-            }
-            else if (cmd[3] == 0x07)
-            {
-                res = crystal_cali_reset();
-            }
+                    res = crystal_cali_set(freq_off);
+                }
+                else if (cmd[3] == 0x07)
+                {
+                    res = crystal_cali_reset();
+                }
         }
         while (0);
 
 
         {
-            uint8_t *ptr = malloc(ret_len);
+            uint8_t *ptr = bt_mem_alloc(ret_len);
             ptr[0] = 0x09;
             ptr[1] = 0xFF;
             ptr[2] = 0xEE;
@@ -1263,7 +1363,7 @@ static uint8_t loc_cmd2_hdl(uint8_t *cmd, uint16_t len)
         while (0);
 
         {
-            uint8_t *ptr = malloc(retlen);
+            uint8_t *ptr = bt_mem_alloc(retlen);
             ptr[0] = 0x07;
             ptr[1] = 0xEE;
             ptr[2] = 0xFF;
