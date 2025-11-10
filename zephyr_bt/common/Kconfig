@@ -54,6 +54,7 @@ config BT_BUF_ACL_RX_SIZE
 	default 70 if BT_EATT
 	default 69 if BT_SMP
 	default 37 if BT_MESH_GATT
+	default 1028 if BT_FINSH
 	default 27
 	range 70 65535 if BT_EATT
 	range 69 65535 if BT_SMP
