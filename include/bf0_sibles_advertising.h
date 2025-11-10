@@ -254,6 +254,7 @@ typedef struct
 typedef struct
 {
     uint8_t disc_mode;                                          /**< Discovery mode(@see enum gapm_adv_disc_mode) to set flags field. */
+    /**< implement sibles_advertising_disc_mode_get() to set this parameter. */
     uint8_t flags;                                              /**< flags, only available when disc_mode is set to GAPM_ADV_MODE_CUSTOMIZE*/
     uint8_t *tx_pwr_level;                                      /**< Tx power level field. */
     uint16_t *appearance;                                       /**< Appearance field. */

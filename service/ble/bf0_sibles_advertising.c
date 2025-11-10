@@ -206,6 +206,8 @@ uint8_t sibles_advertising_init(sibles_advertising_context_t *context, sibles_ad
             context->adv_para.type = GAPM_ADV_TYPE_LEGACY;
         }
         context->adv_para.disc_mode = sibles_advertising_disc_mode_get();
+        para->adv_data.disc_mode = context->adv_para.disc_mode;
+
         context->adv_para.max_tx_pwr = para->config.max_tx_pwr;
         context->adv_para.filter_pol = ADV_ALLOW_SCAN_ANY_CON_ANY;
 
