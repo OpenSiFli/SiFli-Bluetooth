@@ -645,6 +645,8 @@ static inline void process_tx(const struct device *dev)
             case BT_BUF_CMD:
                 h4->tx.type = BT_HCI_H4_CMD;
                 break;
+            case BT_BUF_H4:
+                break;
             case BT_BUF_ISO_OUT:
                 if (IS_ENABLED(CONFIG_BT_ISO))
                 {
@@ -658,19 +660,22 @@ static inline void process_tx(const struct device *dev)
             }
 
             LOG_DBG("process_tx type %x", h4->tx.type);
-            bytes = uart_fifo_fill(cfg->uart, &h4->tx.type, 1);
-            if (bytes != 1)
+            if (h4->tx.type != BT_BUF_H4)
             {
-                LOG_WRN("Unable to send H:4 type");
-                h4->tx.type = BT_HCI_H4_NONE;
-                return;
+                bytes = uart_fifo_fill(cfg->uart, &h4->tx.type, 1);
+                if (bytes != 1)
+                {
+                    LOG_WRN("Unable to send H:4 type");
+                    h4->tx.type = BT_HCI_H4_NONE;
+                    return;
+                }
+                log_hci_to_console(h4->tx.buf);
+                bt_buf_set_type(h4->tx.buf, BT_BUF_H4);
             }
         }
 
         LOG_DBG("process_tx data %p, len %d", h4->tx.buf->data, h4->tx.buf->len);
-#if 1
-        log_hci_to_console(h4->tx.buf);
-#endif
+
         // Zephyr BLE stack command complete event will add data to original tx command tx buffer, might break the following step.
         // Add critical to avoid schedule to rx processing.
         rt_enter_critical();
@@ -686,6 +691,7 @@ static inline void process_tx(const struct device *dev)
         }
         if (h4->tx.buf->len)
         {
+            rt_exit_critical();
             return;
         }
         rt_exit_critical();
