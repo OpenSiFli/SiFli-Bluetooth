@@ -199,12 +199,9 @@ enum
     BT_MESH_METADATA_DIRTY,  /* Models metadata is dirty */
 
     /* Feature flags */
-#undef BT_MESH_RELAY
     BT_MESH_RELAY,
     BT_MESH_BEACON,
-#undef BT_MESH_GATT_PROXY
     BT_MESH_GATT_PROXY,
-#undef BT_MESH_FRIEND
     BT_MESH_FRIEND,
     BT_MESH_PRIV_BEACON,
     BT_MESH_PRIV_GATT_PROXY,

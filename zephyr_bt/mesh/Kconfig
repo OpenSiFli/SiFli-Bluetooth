@@ -27,7 +27,7 @@ config BT_MESH_GATT
 config BT_MESH_PROXY_MSG_LEN
 	int
 	default 66 if BT_MESH_PB_GATT_COMMON
-	default 33 if BT_MESH_GATT_PROXY
+	default 33 if BT_MESH_GATT_PROXY2
 	depends on BT_MESH_GATT
 
 config BT_MESH_GATT_CLIENT
@@ -107,7 +107,7 @@ config BT_MESH_RELAY_ADV_SETS
 	int "Maximum of simultaneous relay message support"
 	default 0
 	range 0 BT_EXT_ADV_MAX_ADV_SET
-	depends on BT_MESH_RELAY
+	depends on BT_MESH_RELAY2
 	help
 	  Maximum of simultaneous relay message support. Requires controller support
 	  multiple advertising sets.
@@ -140,7 +140,7 @@ config BT_MESH_ADV_EXT_GATT_SEPARATE
 
 config BT_MESH_ADV_EXT_FRIEND_SEPARATE
 	bool "Use a separate extended advertising set for Friend advertising"
-	depends on BT_MESH_FRIEND
+	depends on BT_MESH_FRIEND2
 	help
 	  Use a separate extended advertising set for Friend advertising,
 	  otherwise a shared advertising set will be used. Using the separate
@@ -389,12 +389,12 @@ config BT_MESH_MSG_CACHE_SIZE
 	  Setting this value to a very large number can impact the processing time
 	  for each received network PDU and increases RAM footprint proportionately.
 
-menuconfig BT_MESH_RELAY
+menuconfig BT_MESH_RELAY2
 	bool "Relay support"
 	help
 	  Support for acting as a Mesh Relay Node.
 
-if BT_MESH_RELAY
+if BT_MESH_RELAY2
 
 config BT_MESH_RELAY_ENABLED
 	bool "Relay feature enabled by default"
@@ -437,7 +437,7 @@ config BT_MESH_RELAY_BUF_COUNT
 	  BT_MESH_RELAY_ADV_SETS allows the increase in the number of buffers
 	  while maintaining the latency.
 
-endif # BT_MESH_RELAY
+endif # BT_MESH_RELAY2
 
 endmenu # Network layer
 
@@ -1317,7 +1317,7 @@ endmenu # Models
 menu "Proxy"
 	visible if BT_CONN
 
-menuconfig BT_MESH_GATT_PROXY
+menuconfig BT_MESH_GATT_PROXY2
 	bool "GATT Proxy Service support"
 	select BT_MESH_GATT_SERVER
 	select BT_MESH_PROXY
@@ -1326,11 +1326,11 @@ menuconfig BT_MESH_GATT_PROXY
 	  i.e. the ability to act as a proxy between a Mesh GATT Client
 	  and a Mesh network.
 
-if BT_MESH_GATT_PROXY
+if BT_MESH_GATT_PROXY2
 
 config BT_MESH_GATT_PROXY_ENABLED
 	bool "GATT Proxy enabled"
-	depends on BT_MESH_GATT_PROXY
+	depends on BT_MESH_GATT_PROXY2
 	default y
 	help
 	  Controls whether the GATT Proxy feature is enabled by default.
@@ -1364,7 +1364,7 @@ config BT_MESH_PROXY_FILTER_SIZE
 	  enough so that proxy client can communicate with several devices through
 	  this proxy server node using the default accept list filter type.
 
-endif # BT_MESH_GATT_PROXY
+endif # BT_MESH_GATT_PROXY2
 
 config BT_MESH_PROXY_CLIENT
 	bool "Proxy client support"
@@ -1663,12 +1663,12 @@ config BT_MESH_LPN_SUB_ALL_NODES_ADDR
 
 endif # BT_MESH_LOW_POWER
 
-menuconfig BT_MESH_FRIEND
+menuconfig BT_MESH_FRIEND2
 	bool "Support for acting as a Friend Node"
 	help
 	  Enable this option to be able to act as a Friend Node.
 
-if BT_MESH_FRIEND
+if BT_MESH_FRIEND2
 
 config BT_MESH_FRIEND_ENABLED
 	bool "Friend feature enabled by default"
@@ -1730,7 +1730,7 @@ config BT_MESH_FRIEND_ADV_LATENCY
 	  pushing the message to the Bluetooth host and the actual advertising
 	  start.
 
-endif # BT_MESH_FRIEND
+endif # BT_MESH_FRIEND2
 
 menu "Capabilities"
 

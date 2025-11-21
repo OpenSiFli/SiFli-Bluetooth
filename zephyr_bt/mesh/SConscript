@@ -17,7 +17,7 @@ if GetDepend('BT_MESH_RPL_STORAGE_MODE_SETTINGS'):
     src += ['rpl.c']
 if GetDepend('BT_MESH_LOW_POWER'):
     src += ['lpn.c']
-if GetDepend('BT_MESH_FRIEND'):
+if GetDepend('BT_MESH_FRIEND2'):
     src += ['friend.c']
 if GetDepend('BT_MESH_PROV'):
     src += ['prov.c']
@@ -37,7 +37,7 @@ if GetDepend('BT_MESH_GATT_CLIENT'):
     src += ['gatt_cli.c']
 if GetDepend('BT_MESH_PROXY_CLIENT'):
     src += ['proxy_cli.c']
-if GetDepend('BT_MESH_GATT_PROXY'):
+if GetDepend('BT_MESH_GATT_PROXY2'):
     src += ['proxy_srv.c']
 if GetDepend('BT_MESH_GATT'):
     src += ['proxy_msg.c']
