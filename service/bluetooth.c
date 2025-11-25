@@ -71,9 +71,9 @@ typedef void (*patch_init_handler)(void);
     static uint32_t g_pa_ctrl_val;
 #endif
 
-#if defined(RT_USING_PM) && ((defined(SOC_SF32LB58X) && defined(LCPU_CONFIG_V2)) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB52X)) \
-    && defined(BF0_LCPU)
-    static struct rt_device g_ble_mac_dev;
+#if defined(RT_USING_PM) && ((defined(SOC_SF32LB58X) && defined(LCPU_CONFIG_V2)) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB52X) \
+    || defined(SOC_SF32LB57X)) && defined(BF0_LCPU)
+static struct rt_device g_ble_mac_dev;
 #endif // defined(RT_USING_PM) && defined(SOC_SF32LB56X)
 
 static void ble_xtal_less_init(void)
@@ -181,7 +181,7 @@ void dm_err_check_clr()
         RT_ASSERT(0 == (iperrtype & 0xd));
     }
 }
-#ifndef SOC_SF32LB52X
+#if !defined(SOC_SF32LB52X) && !defined(SOC_SF32LB57X)
 void ble_isr(void)
 {
     rt_base_t level;
@@ -216,7 +216,7 @@ void dm_isr(void)
 
 #endif
 
-#if defined(BF0_HCPU) && defined(SOC_SF32LB52X)
+#if defined(BF0_HCPU) && (defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X))
 void bluetooth_wakeup_lcpu(void)
 {
     HAL_HPAON_WakeCore(CORE_ID_LCPU);
@@ -232,7 +232,7 @@ void bluetooth_release_lcpu(void)
 __ROM_USED void rt_hw_ble_int_init(void)
 {
 
-#if (defined(SOC_SF32LB58X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB52X)) && (defined(SOC_BF0_LCPU)) && (!defined(BSP_USING_PC_SIMULATOR))
+#if (defined(SOC_SF32LB58X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)) && (defined(SOC_BF0_LCPU)) && (!defined(BSP_USING_PC_SIMULATOR))
     HAL_NVIC_SetPriority(BLE_MAC_IRQn, 0, 0);
     HAL_NVIC_EnableIRQ(BLE_MAC_IRQn);
 
@@ -268,8 +268,8 @@ RT_USED void ble_standby_sleep_after_handler()
 }
 #endif
 
-#if defined(RT_USING_PM) && ((defined(SOC_SF32LB58X) && defined(LCPU_CONFIG_V2)) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB52X)) \
-    && defined(BF0_LCPU)
+#if defined(RT_USING_PM) && ((defined(SOC_SF32LB58X) && defined(LCPU_CONFIG_V2)) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB52X) \
+    || defined(SOC_SF32LB57X))&& defined(BF0_LCPU)
 
 __WEAK int bluetooth_stack_suspend(void)
 {
@@ -302,7 +302,7 @@ static int bluetooth_pm_suspend(const struct rt_device *device, uint8_t mode)
     return ret;
 }
 
-#ifdef SOC_SF32LB52X
+#if defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)
 static uint8_t bluetooth_select_pm_mode(rt_tick_t tick)
 {
     uint8_t mode = PM_SLEEP_MODE_IDLE;
@@ -339,7 +339,7 @@ static void bluetooth_pm_init(void)
     device->tx_complete = RT_NULL;
     rt_pm_device_register(device, &g_ble_mac_pm_ops);
     rt_thread_idle_sethook(bluetooth_idle_hook_func);
-#ifdef SOC_SF32LB52X
+#if defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)
     rt_pm_override_mode_select(bluetooth_select_pm_mode);
 #endif
 
@@ -347,7 +347,7 @@ static void bluetooth_pm_init(void)
 #endif // defined(RT_USING_PM) && defined(SOC_SF32LB56X) && defined(BF0_LCPU)
 
 // Standby handle for PRO
-#if (defined(SOC_SF32LB58X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB52X)) && (defined(SOC_BF0_LCPU)) && (!defined(BSP_USING_PC_SIMULATOR))
+#if (defined(SOC_SF32LB58X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)) && (defined(SOC_BF0_LCPU)) && (!defined(BSP_USING_PC_SIMULATOR))
 
 #ifndef SOC_SF32LB56X
     #define SPI_TEMP_LCPU_ADDRESS 0x204FA000
@@ -374,14 +374,14 @@ static void ad9364_spi_init()
     hwp_pinmux2->PAD_PB18 = 0x51; //cs
     hwp_pinmux2->PAD_PB20 = 0x51; //di
     hwp_pinmux2->PAD_PB21 = 0x51; //do/dio
-#elif defined(SOC_SF32LB52X)
+#elif defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)
     hwp_pinmux1->PAD_PA29 = 0x52; //clk
     hwp_pinmux1->PAD_PA24 = 0x52; //cs
     hwp_pinmux1->PAD_PA25 = 0x52; //di
     hwp_pinmux1->PAD_PA28 = 0x52; //do/dio
 #endif
 
-#ifdef SOC_SF32LB52X
+#if defined(SOC_SF32LB52X)
     hwp_spi1->TOP_CTRL &= ~SPI_TOP_CTRL_DSS_Msk;
     hwp_spi1->TOP_CTRL |= ((24 - 1) << SPI_TOP_CTRL_DSS_Pos);
 
@@ -393,6 +393,23 @@ static void ad9364_spi_init()
     hwp_spi1->CLK_CTRL |= (0x4 << SPI_CLK_CTRL_CLK_DIV_Pos);
 
     hwp_spi1->CLK_CTRL |= 0x01 << SPI_CLK_CTRL_CLK_SSP_EN_Pos;
+#elif defined(SOC_SF32LB57X)
+
+    //24bit data width
+    hwp_spi1->TOP_CTRL &= ~SPI_TOP_CTRL_DSS_Msk;
+    hwp_spi1->TOP_CTRL |= ((24 - 1) << SPI_TOP_CTRL_DSS_Pos);
+
+    //sclk phase to 1, polarity stay 0
+    //sclk is 0 when idle, and lanch data at posedge
+    hwp_spi1->TOP_CTRL |= SPI_TOP_CTRL_SPH;
+
+    //enable enable spi1
+    hwp_spi1->TOP_CTRL |= SPI_TOP_CTRL_SSE;
+    hwp_spi1->TOP_CTRL &= (~SPI_TOP_CTRL_CLK_DIV_Msk);
+    // CLK div 4
+    hwp_spi1->TOP_CTRL |= (0x4 << SPI_TOP_CTRL_CLK_DIV_Pos);
+    hwp_spi1->TOP_CTRL |= 0x1 << SPI_TOP_CTRL_CLK_SSP_EN_Pos;
+
 #else
 
     //24bit data width
@@ -412,7 +429,7 @@ static void ad9364_spi_init()
 
 }
 
-#ifdef SOC_SF32LB52X
+#if defined(SOC_SF32LB52X)
 void ad9364_bt_cfg()
 {
     //initialization
@@ -477,6 +494,67 @@ void ad9364_bt_cfg()
     hwp_ptc1->TAR8 = (uint32_t) & (hwp_dmac1->IFCR);
     hwp_ptc1->TDR8 = DMAC_ISR_GIF5; //clear dmac2_done5
 }
+#elif defined(SOC_SF32LB57X)
+
+typedef struct
+{
+    uint32_t ctrl;
+    uint32_t src_addr;
+    uint32_t dst_addr;
+    uint32_t ndt_sel;
+} gpdma_list;
+
+
+
+static __attribute__((aligned(4))) gpdma_list g_list1;
+static __attribute__((aligned(4))) gpdma_list g_list2;
+
+void ad9364_bt_cfg()
+{
+
+    hwp_spi1->FIFO_CTRL |= SPI_FIFO_CTRL_TSRE;
+    hwp_spi1->INTE |= SPI_INTE_TIE;
+
+    hwp_bt_mac->DMRADIOCNTL4 = spi_addr;
+    //hwp_gpdma1->CSELR1 |= (28 << DMAC_CSELR1_C4S_Pos);
+
+    g_list1.ctrl = GPDMA_CCR4_DIR | GPDMA_CCR4_MEM2MEM | GPDMA_CCR4_MINC | (0x2 << GPDMA_CCR4_MSIZE_Pos) | (0x2 << GPDMA_CCR4_PSIZE_Pos); //SRC
+    g_list1.ctrl |= 0x80000000; //link to next
+    g_list1.src_addr = (uint32_t) & (hwp_bt_mac->DMRADIOCNTL4);
+    g_list1.dst_addr = (uint32_t) & (g_list2.src_addr);
+    g_list1.ndt_sel  = 1;
+
+    g_list2.ctrl = GPDMA_CCR4_DIR | GPDMA_CCR4_MINC | (0x2 << GPDMA_CCR4_MSIZE_Pos) | (0x2 << GPDMA_CCR4_PSIZE_Pos); //SRC
+    g_list2.src_addr = 0;
+    g_list2.dst_addr = SPI1_BASE + 0x14;
+    g_list2.ndt_sel  = 28 << 16 | 4; //28 << 16 : hwp_gpdma1->CSELR1 |= (28 << DMAC_CSELR1_C4S_Pos);
+
+    //ptc controls gpio toggle
+    ((GPIO1_TypeDef *)hwp_gpio1)->DOER0 = 0x3;
+    hwp_ptc2->TCR1 = (PTC_OP_OR << PTC_TCR1_OP_Pos) | 99; //trigger ble_phytxstart
+    hwp_ptc2->TAR1 = (uint32_t) & (((GPIO1_TypeDef *)hwp_gpio1)->DOR0);
+    hwp_ptc2->TDR1 = 0x3; //set PA00,PA01
+    hwp_ptc2->TCR2 = (PTC_OP_AND << PTC_TCR2_OP_Pos) | 100; //trigger ble_txdone
+    hwp_ptc2->TAR2 = (uint32_t) & (((GPIO1_TypeDef *)hwp_gpio1)->DOR0);
+    hwp_ptc2->TDR2 = 0x0; //clear PA00,PA01
+    hwp_ptc2->TCR3 = (PTC_OP_OR << PTC_TCR3_OP_Pos) | 102; //trigger ble_phyrxstart
+    hwp_ptc2->TAR3 = (uint32_t) & (((GPIO1_TypeDef *)hwp_gpio1)->DOR0);
+    hwp_ptc2->TDR3 = 0x1; //set PA00
+    hwp_ptc2->TCR4 = (PTC_OP_AND << PTC_TCR4_OP_Pos) | 103; //trigger ble_rxdone
+    hwp_ptc2->TAR4 = (uint32_t) & (((GPIO1_TypeDef *)hwp_gpio1)->DOR0);
+    hwp_ptc2->TDR4 = 0x0; //clear PB00,PB01,PB06
+
+    //ptc controls channel config
+    hwp_ptc2->TCR5 = (PTC_OP_WRITE << PTC_TCR5_OP_Pos) | 98; //trigger ble_rftxstart
+    hwp_ptc2->TAR5 = (uint32_t) & (hwp_gpdma1->LCR4);
+    hwp_ptc2->TDR5 = (uint32_t)&g_list1 | 0x1; //start dmac1 channel5
+
+    hwp_ptc2->TCR7 = (PTC_OP_WRITE << PTC_TCR7_OP_Pos) | 101; //trigger ble_rfrxstart
+    hwp_ptc2->TAR7 = (uint32_t) & (hwp_gpdma1->LCR4);
+    hwp_ptc2->TDR7 = (uint32_t)&g_list1 | 0x1; //start dmac1 channel5
+
+}
+
 #endif //SOC_SF32LB52X
 
 
@@ -506,12 +584,12 @@ RT_USED void ble_standby_sleep_after_handler()
     if (rom_config_get_default_is_fpga() == 1)
         ad9364_bt_recovery();
 #endif
-#if (defined(SOC_SF32LB56X)||defined(SOC_SF32LB52X)||defined(SOC_SF32LB58X)) && !defined(BSP_USING_PC_SIMULATOR)
+#if (defined(SOC_SF32LB56X)||defined(SOC_SF32LB52X)||defined(SOC_SF32LB58X) || defined(SOC_SF32LB57X)) && !defined(BSP_USING_PC_SIMULATOR)
     HAL_RCC_SetMacFreq();
 #endif
     ble_standby_sleep_after_handler_rom();
     // Reconfig
-#if (defined(SOC_SF32LB58X) || defined(SOC_SF32LB56X)|| defined(SOC_SF32LB52X)) && defined(BF0_LCPU)
+#if (defined(SOC_SF32LB58X) || defined(SOC_SF32LB56X)|| defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)) && defined(BF0_LCPU)
     rf_ptc_config(0);
 #endif
 #if defined(SF_WLAN_COEX) && defined(BF0_LCPU)
@@ -535,7 +613,7 @@ RT_USED void ble_standby_sleep_after_handler()
     #define NVDS_BUFF_SIZE 0
 #endif
 
-#if (defined(SOC_SF32LB52X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB58X))&& defined(BF0_HCPU)
+#if (defined(SOC_SF32LB52X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB58X) || defined(SOC_SF32LB57X))&& defined(BF0_HCPU)
 
 typedef bool (*hostlib_get_trace_en_callback)(void);
 
@@ -597,7 +675,7 @@ __ROM_USED int bluetooth_init(void)
 #endif
 #endif
 
-#if (defined(SOC_SF32LB58X) || defined(SOC_SF32LB56X)|| defined(SOC_SF32LB52X)) && defined(BF0_LCPU)
+#if (defined(SOC_SF32LB58X) || defined(SOC_SF32LB56X)|| defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)) && defined(BF0_LCPU)
     rf_ptc_config(1);
 #endif // SOC_SF32LB58X
 
@@ -615,8 +693,8 @@ __ROM_USED int bluetooth_init(void)
 
     ble_xtal_less_init();
 
-#if defined(RT_USING_PM) && ((defined(SOC_SF32LB58X) && defined(LCPU_CONFIG_V2)) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB52X)) \
-    && defined(BF0_LCPU)
+#if defined(RT_USING_PM) && ((defined(SOC_SF32LB58X) && defined(LCPU_CONFIG_V2)) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB52X) \
+    || defined(SOC_SF32LB57X)) && defined(BF0_LCPU)
 
     bluetooth_pm_init();
 
@@ -629,7 +707,7 @@ __ROM_USED int bluetooth_init(void)
 
     //HAL_sw_breakpoint();
     patch_install();
-#if (defined(SOC_SF32LB52X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB58X)) && defined(BF0_HCPU)
+#if (defined(SOC_SF32LB52X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB58X) || defined(SOC_SF32LB57X)) && defined(BF0_HCPU)
     register_hostlib_trace_en_callback(bthost_get_hci_trace_en);
 #endif
 
@@ -648,13 +726,13 @@ __ROM_USED int bluetooth_init(void)
 #endif
 #else // BSP_BLE_SIBLES
 
-#if (defined(SOC_SF32LB56X)||defined(SOC_SF32LB52X)||defined(SOC_SF32LB58X)) && !defined(BSP_USING_PC_SIMULATOR)
+#if (defined(SOC_SF32LB56X)||defined(SOC_SF32LB52X)||defined(SOC_SF32LB58X) || defined(SOC_SF32LB57X)) && !defined(BSP_USING_PC_SIMULATOR)
     HAL_RCC_SetMacFreq();
 #endif
 
 
     // Increase task priority to avoid init flow mis-order
-#ifndef SOC_SF32LB52X // No need switch priority
+#if !defined(SOC_SF32LB52X) && !defined(SOC_SF32LB57X) // No need switch priority
     uint8_t read_priority = RT_THREAD_PRIORITY_HIGH - 1;
     uint8_t ori_pri = rt_thread_self()->current_priority;
     rt_thread_control(rt_thread_self(), RT_THREAD_CTRL_CHANGE_PRIORITY, &read_priority);
@@ -666,7 +744,7 @@ __ROM_USED int bluetooth_init(void)
     ble_boot(NULL);
 #endif // FPGA_debug
 
-#ifndef SOC_SF32LB52X
+#if !defined(SOC_SF32LB52X) && !defined(SOC_SF32LB57X)
     rt_thread_control(rt_thread_self(), RT_THREAD_CTRL_CHANGE_PRIORITY, &ori_pri);
 #endif
 #endif

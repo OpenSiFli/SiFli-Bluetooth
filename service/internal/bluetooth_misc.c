@@ -323,7 +323,7 @@ void rf_ptc_config(uint8_t is_reset)
 
 #endif // defined(SOC_SF32LB58X) && defined(BF0_LCPU)
 
-#if (defined(SOC_SF32LB52X)) && defined(BF0_LCPU)
+#if (defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)) && defined(BF0_LCPU)
 
 static PTC_HandleTypeDef    PtcHandle[1];
 const static uint8_t g_ptc_task[1] = {1};//{1, 2, 4, 5};

@@ -24,7 +24,7 @@
     #include "bf0_pm.h"
 #endif
 
-#if defined(SOC_SF32LB58X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB52X) ||defined(BSP_USING_PC_SIMULATOR)
+#if defined(SOC_SF32LB58X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X) ||defined(BSP_USING_PC_SIMULATOR)
 
 void ble_memory_config(ble_mem_config_t *config);
 
@@ -68,7 +68,7 @@ do {                                                                        \
 #elif defined(SOC_SF32LB56X)
     #define NVDS_BUFF_START 0x2041FD00
     #define NVDS_BUFF_SIZE 512
-#elif defined(SOC_SF32LB52X) && !defined(DFU_OTA_MANAGER)
+#elif (defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)) && !defined(DFU_OTA_MANAGER)
     #define NVDS_BUFF_START 0x2040FE00
     #define NVDS_BUFF_SIZE 512
 #else
@@ -836,7 +836,7 @@ void bt_nosignal_evt_send(void)
     #define BT_RSSI_ADDR   0x500840C8
     #define BT_PKT_ADDR    0x500904DC
     #define BLE_PKT_ADDR   0x500908D8
-#elif defined(SOC_SF32LB52X)
+#elif defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)
     #define BT_RSSI_ADDR   0x400840D4
     #define BT_PKT_ADDR    0x400904DC
     #define BLE_PKT_ADDR   0x400908D8
@@ -864,7 +864,7 @@ void bt_test_rssi_entry(void *param)
         if (evt & LOCAL2_BT_NO_SIGNAL_ISR)
         {
             int8_t rssi = -128;
-#ifdef SOC_SF32LB52X
+#if defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)
             extern int8_t bt_nosignal_irq(void);
             rssi = bt_nosignal_irq();
 #endif
@@ -1346,7 +1346,7 @@ static uint8_t loc_cmd2_hdl(uint8_t *cmd, uint16_t len)
                 env->rssi_acc = 0;
                 env->rssi_cnt = 0;
                 //rt_event_send(env->evt, LOCAL2_BT_NO_SIGNAL_START);
-#ifdef SOC_SF32LB52X
+#if defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)
                 extern void bt_nosignal_start(uint8_t channel, uint8_t pkt_type, uint8_t pkt_payload, uint16_t pkt_len);
                 bt_nosignal_start(channel, pkt_type, pkt_payload, pkt_len);
                 res = 0;
@@ -1372,7 +1372,7 @@ static uint8_t loc_cmd2_hdl(uint8_t *cmd, uint16_t len)
             if (retlen == 23)
             {
                 ptr[5] = 17;
-#ifdef SOC_SF32LB52X
+#if defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)
                 extern void bt_nosignal_stop(uint8_t *data);
                 bt_nosignal_stop(&ptr[6]);
 #endif
@@ -1518,7 +1518,7 @@ void hci_forward_to_uart_entry(void *param)
         //rt_hexdump("hci_tou", 32, ptr, size);
 
         // Write to mailbox
-#ifdef SOC_SF32LB52X
+#if defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)
         if (lcpu_reset_evt_handle(ptr, size) == 0)
 #endif
         {
@@ -1554,7 +1554,7 @@ void uart_ipc_path_change(void)
     pm_scenario_start(PM_SCENARIO_AUDIO);
 #endif
     rt_thread_delay(500);
-#ifdef SOC_SF32LB52X
+#if defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)
     HAL_RCC_HCPU_ClockSelect(RCC_CLK_MOD_HP_PERI,
                              RCC_CLK_TICK_HXT48);
     HAL_RCC_HCPU_ClockSelect(RCC_CLK_MOD_HP_TICK, RCC_CLK_TICK_HXT48);
@@ -2270,7 +2270,7 @@ __ROM_USED tl_port_t rom_port_get(uint8_t idx)
     #define ROM_ENV_BUF_SIZE 7520
     #define ROM_MSG_BUF_SIZE 12176
 #elif defined(BT_DUAL_CTRL_MEM)
-    #ifndef SOC_SF32LB52X
+    #if !defined(SOC_SF32LB52X) && !defined(SOC_SF32LB57X)
         #define ROM_ENV_BUF_SIZE 5064
         #define ROM_MSG_BUF_SIZE 9104
     #else
@@ -2292,10 +2292,10 @@ __ROM_USED tl_port_t rom_port_get(uint8_t idx)
 #define BLE_RX_NB 6
 #define BT_RX_NB 4
 
-#if (defined(SOC_SF32LB56X) || defined(SOC_SF32LB52X)) && defined(BF0_LCPU)
+#if (defined(SOC_SF32LB56X) || defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)) && defined(BF0_LCPU)
 #if defined(SOC_SF32LB56X)
     #define MAX_EM_BUFFER (28*1024)
-#elif defined(SOC_SF32LB52X)
+#elif defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)
     #define MAX_EM_BUFFER (24*1024)
 #endif
 #ifndef MAX_BT_ACL
@@ -2311,7 +2311,7 @@ __ROM_USED tl_port_t rom_port_get(uint8_t idx)
     #define MAX_BLE_RAL 3
 #endif
 
-#ifndef SOC_SF32LB52X
+#if !defined(SOC_SF32LB52X) && !defined(SOC_SF32LB57X)
     #ifndef ZBT
         #define MAX_BLE_ISO 0
     #else // !ZBT
@@ -2354,7 +2354,7 @@ typedef struct
     uint8_t bt_rx_desc;
 } bluetooth_act_configt_t;
 
-#ifndef SOC_SF32LB52X
+#if !defined(SOC_SF32LB52X) && !defined(SOC_SF32LB57X)
 static const bluetooth_act_configt_t g_bluetooth_act_config =
 {
     .bt_max_acl = MAX_BT_ACL,
@@ -2398,7 +2398,7 @@ extern const rom_em_default_attr_t *rom_config_get_default_attribute_4_em(rom_em
 #define ROM_MEM_CALC_BLE_ACLTXBUF_TOTAL_SIZE(size)           (((g_bluetooth_act_config.ble_max_act+2)*size) * g_bluetooth_act_config.is_ble_on)
 #define ROM_MEM_CALC_BLE_ISO_HOP_SEQ_TOTAL_SIZE(size)        (((g_bluetooth_act_config.ble_max_iso * 2) * size) * g_bluetooth_act_config.is_ble_on)
 #define ROM_MEM_CALC_BLE_ISO_DESC_TOTAL_SIZE(size)           (((g_bluetooth_act_config.ble_max_iso * 4 + g_bluetooth_act_config.ble_max_iso) * size) * g_bluetooth_act_config.is_ble_on)
-#ifndef SOC_SF32LB52X
+#if !defined(SOC_SF32LB52X) && !defined(SOC_SF32LB57X)
     #define ROM_MEM_CALC_BLE_ISO_BUF_TOTAL_SIZE(size)            (((g_bluetooth_act_config.ble_max_iso * 10) * size) * g_bluetooth_act_config.is_ble_on)
 #else
     #define ROM_MEM_CALC_BLE_ISO_BUF_TOTAL_SIZE(size)            (((g_bluetooth_act_config.ble_max_iso * 5) * size) * g_bluetooth_act_config.is_ble_on)
@@ -2513,7 +2513,7 @@ __ROM_USED void em_config(void)
 #define BT_CONTROLLER_ENABLE_MASK ((g_bluetooth_act_config.is_bt_on << 1) & 0x02)
 #endif //SOC_SF32LB56X && BF0_LCPU
 
-#if defined(SOC_SF32LB52X) && defined(BF0_LCPU)
+#if (defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)) && defined(BF0_LCPU)
 extern void rom_config_set_default_link_config(bluetooth_act_configt_t *cfg);
 __ROM_USED void act_config(void)
 {
@@ -2574,7 +2574,7 @@ __ROM_USED void mem_env_config(ble_mem_config_t *config, uint16_t env_buf_size, 
         RT_ASSERT(config->nt_buf);
     }
 
-#if (defined(BF0_LCPU) || ((defined(SOC_SF32LB52X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB58X)) && defined(BF0_HCPU)))
+#if (defined(BF0_LCPU) || ((defined(SOC_SF32LB52X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB58X) || defined(SOC_SF32LB57X)) && defined(BF0_HCPU)))
     if (log_buf_size)
     {
         config->log_buf_size = log_buf_size;
@@ -2598,14 +2598,14 @@ __ROM_USED void mem_env_config(ble_mem_config_t *config, uint16_t env_buf_size, 
 __ROM_USED void mem_config(void)
 {
 #ifndef ROM_CONFIG_V2
-#if (defined(SOC_SF32LB56X) || defined(SOC_SF32LB52X)) && defined(BF0_LCPU)
+#if (defined(SOC_SF32LB56X) || defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)) && defined(BF0_LCPU)
     extern void rom_config_set_controller_enabled(uint8_t enabled_module);
     rom_config_set_controller_enabled(BT_CONTROLLER_ENABLE_MASK | BLE_CONTROLLER_ENABLE_MASK);
 #endif
 
     ble_mem_config_t config = {0};
     mem_env_config(&config, ROM_ENV_BUF_SIZE, ROM_ATT_BUF_SIZE, ROM_MSG_BUF_SIZE, ROM_NT_BUF_SIZE,
-#if ((defined(BF0_LCPU) && !defined(SOC_SF32LB52X)) || ((defined(SOC_SF32LB52X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB58X)) && defined(BF0_HCPU)))
+#if ((defined(BF0_LCPU) && !defined(SOC_SF32LB52X) && !defined(SOC_SF32LB57X)) || ((defined(SOC_SF32LB52X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB58X) || defined(SOC_SF32LB57X)) && defined(BF0_HCPU)))
                    ROM_LOG_SIZE,
 #else
                    0,
@@ -2613,7 +2613,7 @@ __ROM_USED void mem_config(void)
                    HCI_MAX_NB_OF_COMPLETED, (uint8_t *)NVDS_BUFF_START, NVDS_BUFF_SIZE);
 
     ble_memory_config(&config);
-#if (defined(SOC_SF32LB56X) || defined(SOC_SF32LB52X)) && defined(BF0_LCPU)
+#if (defined(SOC_SF32LB56X) || defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)) && defined(BF0_LCPU)
     em_config_customized();
 //em_config();
 
@@ -2624,7 +2624,7 @@ __ROM_USED void mem_config(void)
 
 __ROM_USED void port_config(void)
 {
-#if defined(FPGA)||defined(BSP_USING_PC_SIMULATOR) || defined(SOC_SF32LB58X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB52X)
+#if defined(FPGA)||defined(BSP_USING_PC_SIMULATOR) || defined(SOC_SF32LB58X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)
 
     const struct bt_eif_api *tl;
     extern  void rom_config_set_tl(const struct bt_eif_api * tl, uint8_t idx);
@@ -2633,8 +2633,8 @@ __ROM_USED void port_config(void)
     RT_ASSERT(tl);
     rom_config_set_tl(tl, 0);
 
-#if !defined(BSP_USING_PC_SIMULATOR) && ((!defined(BF0_HCPU) && !defined(SOC_SF32LB52X)) || \
-    (defined(BF0_HCPU) && (defined(SOC_SF32LB52X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB58X))))
+#if !defined(BSP_USING_PC_SIMULATOR) && ((!defined(BF0_HCPU) && !defined(SOC_SF32LB52X) && !defined(SOC_SF32LB57X)) || \
+    (defined(BF0_HCPU) && (defined(SOC_SF32LB52X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB58X) || defined(SOC_SF32LB57X))))
     // config idx 1 as trace function
     tl = tl_port_api[rom_port_get(1)].callback();
     RT_ASSERT(tl);
@@ -2763,7 +2763,7 @@ static void port_config_ex(void)
 
 static uint8_t rom_config_valid_check(void)
 {
-#if (defined(FPGA)||defined(BSP_USING_PC_SIMULATOR) || defined(SOC_SF32LB58X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB52X))
+#if (defined(FPGA)||defined(BSP_USING_PC_SIMULATOR) || defined(SOC_SF32LB58X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X))
     return 1;
 #elif defined(SOC_SF32LB55X)
     uint8_t rev;
@@ -2777,7 +2777,7 @@ static uint8_t rom_config_valid_check(void)
     return 0;
 }
 
-#if ((defined(SOC_SF32LB52X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB58X)) && defined(BF0_HCPU))||defined(BSP_USING_PC_SIMULATOR)
+#if ((defined(SOC_SF32LB52X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB58X) || defined(SOC_SF32LB57X)) && defined(BF0_HCPU))||defined(BSP_USING_PC_SIMULATOR)
 
 typedef bool (*hostlib_get_trace_en_callback)(void);
 
@@ -2799,10 +2799,10 @@ void bluetooth_config(void)
     if (rom_config_valid_check() == 0)
         return;
 
-#if defined(SOC_SF32LB52X) && defined(BF0_LCPU)
+#if (defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)) && defined(BF0_LCPU)
     act_config();
 #endif
-#if ((defined(SOC_SF32LB52X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB58X)) && defined(BF0_HCPU)||defined(BSP_USING_PC_SIMULATOR))
+#if ((defined(SOC_SF32LB52X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB58X) || defined(SOC_SF32LB57X)) && defined(BF0_HCPU)||defined(BSP_USING_PC_SIMULATOR))
     if (g_hostlib_trace_en_callback && g_hostlib_trace_en_callback())
     {
         hostlib_config_set_trc_en();
