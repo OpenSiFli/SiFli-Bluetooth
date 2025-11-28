@@ -443,17 +443,17 @@ static void decode_playback_thread(void *args)
 
         if (evt & PLAYBACK_START_EVENT_FLAG)
         {
-            if (inst_data->snk_data.audio_client)
+            if (inst_data->con[0].snk_data.audio_client)
             {
                 USER_TRACE("bt_music: open again--\r\n");
                 continue;
             }
 
-            decode_data = play_data_decode(inst_data, &decode_len);
+            decode_data = play_data_decode(inst_data, &decode_len, 0);
 
             USER_TRACE("bt_music: open len=%d\r\n", decode_len);
 
-            USER_TRACE("decode src_len:%d, dst_len:%d\n", inst_data->snk_data.pt_curdata->len, decode_len);
+            USER_TRACE("decode src_len:%d, dst_len:%d\n", inst_data->con[0].snk_data.pt_curdata->len, decode_len);
             if (decode_len == 0)
             {
                 rt_thread_mdelay(5);
@@ -462,12 +462,12 @@ static void decode_playback_thread(void *args)
             }
 
             audio_parameter_t param = {0};
-            if (inst_data->snk_data.codec == AV_SBC)
+            if (inst_data->con[0].snk_data.codec == AV_SBC)
             {
                 param.write_samplerate = inst_data->con[inst_data->con_idx].act_cfg.sample_freq;
             }
 #ifdef CFG_AV_AAC
-            else if (inst_data->snk_data.codec == AV_MPEG24_AAC)
+            else if (inst_data->con[0].snk_data.codec == AV_MPEG24_AAC)
             {
                 param.write_samplerate = inst_data->con[inst_data->con_idx].act_aac_cfg.sample_freq;
             }
@@ -483,7 +483,7 @@ static void decode_playback_thread(void *args)
             param.write_cache_size = 320 * g_drop_cnt + SPEAKER_DMA_SIZE;
             param.write_samplerate = 48000;
             debug_tx_cnt = 0;
-            inst_data->snk_data.audio_client = audio_open(AUDIO_TYPE_BT_MUSIC, AUDIO_TX, &param, NULL, NULL);
+            inst_data->con[0].snk_data.audio_client = audio_open(AUDIO_TYPE_BT_MUSIC, AUDIO_TX, &param, NULL, NULL);
             is_stopped = 0;
             if (!resample)
             {
@@ -500,21 +500,21 @@ static void decode_playback_thread(void *args)
             prepare_ble_src_data((int16_t *)decode_data, decode_len);
             for (int i = 0; i < g_drop_cnt; i++)
             {
-                audio_write(inst_data->snk_data.audio_client, (uint8_t *)zero, 160);
+                audio_write(inst_data->con[0].snk_data.audio_client, (uint8_t *)zero, 160);
             }
         }
         if (evt & PLAYBACK_GETDATA_EVENT_FLAG)
         {
             if (debug_tx_cnt == 0)
             {
-                //USER_TRACE("a2dp get data,total:%d,full:%d,empty:%d, curr %d\r\n", inst_data->snk_data.playlist.total_num,
-                //           inst_data->snk_data.playlist.full_num, inst_data->snk_data.playlist.empty_num, inst_data->snk_data.playlist.cnt);
+                //USER_TRACE("a2dp get data,total:%d,full:%d,empty:%d, curr %d\r\n", inst_data->con[0].snk_data.playlist.total_num,
+                //           inst_data->con[0].snk_data.playlist.full_num, inst_data->con[0].snk_data.playlist.empty_num, inst_data->con[0].snk_data.playlist.cnt);
             }
             debug_tx_cnt++;
 
-            if (is_stopped == 1 || inst_data->snk_data.play_state == FALSE || inst_data->snk_data.audio_client == NULL)
+            if (is_stopped == 1 || inst_data->con[0].snk_data.play_state == FALSE || inst_data->con[0].snk_data.audio_client == NULL)
             {
-                //USER_TRACE("snk: stop %d %d %x\r\n", is_stopped, inst_data->snk_data.play_state, inst_data->snk_data.audio_client);
+                //USER_TRACE("snk: stop %d %d %x\r\n", is_stopped, inst_data->con[0].snk_data.play_state, inst_data->con[0].snk_data.audio_client);
                 continue;
             }
         }
@@ -523,17 +523,17 @@ static void decode_playback_thread(void *args)
         {
             memcpy(g_left, &g_left[g_offset], g_remain);
             memcpy(g_right, &g_right[g_offset], g_remain);
-            decode_data = play_data_decode(inst_data, &decode_len);
+            decode_data = play_data_decode(inst_data, &decode_len, 0);
             if (decode_len == 0)
             {
                 decode_len = 2560;
-                decode_data = inst_data->snk_data.decode_buf;
+                decode_data = inst_data->con[0].snk_data.decode_buf;
                 memset(decode_data, 0, decode_len);
             }
             prepare_ble_src_data((int16_t *)decode_data, decode_len);
         }
 
-        ret_write = audio_write(inst_data->snk_data.audio_client, (uint8_t *)&g_left[g_offset], SPEAKER_DMA_SIZE);
+        ret_write = audio_write(inst_data->con[0].snk_data.audio_client, (uint8_t *)&g_left[g_offset], SPEAKER_DMA_SIZE);
         if (ret_write < 0)
         {
             USER_TRACE("playback write ret:%d\n", ret_write);
