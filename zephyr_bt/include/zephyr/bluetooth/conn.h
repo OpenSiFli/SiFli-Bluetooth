@@ -2302,6 +2302,16 @@ struct bt_conn_auth_cb
      */
     void (*pairing_confirm)(struct bt_conn *conn);
 
+    /** @brief Request the user to enter a passkey.
+     *
+     *  This callback will be called for a BR/EDR (Bluetooth Classic)
+     *  key derived from BLE LTK.
+     *
+     *  @param conn Connection where pairing is currently active.
+     *  @param lebr_key BR key derived from LE connection LTK.
+     */
+    void (*le_br_key)(struct bt_conn *conn, uint8_t *lebr_key);
+
 #if defined(CONFIG_BT_CLASSIC)
     /** @brief Request the user to enter a passkey.
      *

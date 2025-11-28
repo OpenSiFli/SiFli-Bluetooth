@@ -821,11 +821,46 @@ static void smp_sign_info_sent(struct bt_conn *conn, void *user_data, int err)
 }
 #endif /* CONFIG_BT_SIGNING */
 
+
+/* Generate BR key from BLE key
+ * return 0: Success,  >0 has error, but continue, < 0 has error, abort.
+*/
+int ble_key_2_bt_key(bool use_h7, uint8_t *le_key, uint8_t *lebr_key)
+{
+    /* constants as specified in Core Spec Vol.3 Part H 2.4.2.4 */
+    static const uint8_t lebr[4] = { 0x72, 0x62, 0x65, 0x6c };
+    uint8_t ilk[16];
+    int r = 0;
+
+    if (use_h7)
+    {
+        /* constants as specified in Core Spec Vol.3 Part H 2.4.2.4 */
+        static const uint8_t salt[16] = { 0x31, 0x70, 0x6d, 0x74,
+                                          0x00, 0x00, 0x00, 0x00,
+                                          0x00, 0x00, 0x00, 0x00,
+                                          0x00, 0x00, 0x00, 0x00
+                                        };
+        r = bt_crypto_h7(salt, le_key, ilk);
+    }
+    else
+    {
+        /* constants as specified in Core Spec Vol.3 Part H 2.4.2.4 */
+        static const uint8_t tmp1[4] = { 0x31, 0x70, 0x6d, 0x74 };
+        r = bt_crypto_h6(le_key, tmp1, ilk);
+    }
+    if (r == 0)
+    {
+        r = bt_crypto_h6(ilk, lebr, lebr_key);
+        if (r < 0)
+            r = -r;
+    }
+    return r;
+}
+
 #if defined(CONFIG_BT_CLASSIC)
 static void sc_derive_link_key(struct bt_smp *smp)
 {
     /* constants as specified in Core Spec Vol.3 Part H 2.4.2.4 */
-    static const uint8_t lebr[4] = { 0x72, 0x62, 0x65, 0x6c };
     struct bt_conn *conn = smp->chan.chan.conn;
     struct bt_keys_link_key *link_key;
     uint8_t ilk[16];
@@ -844,36 +879,13 @@ static void sc_derive_link_key(struct bt_smp *smp)
         return;
     }
 
-    if (atomic_test_bit(smp->flags, SMP_FLAG_CT2))
-    {
-        /* constants as specified in Core Spec Vol.3 Part H 2.4.2.4 */
-        static const uint8_t salt[16] = { 0x31, 0x70, 0x6d, 0x74,
-                                          0x00, 0x00, 0x00, 0x00,
-                                          0x00, 0x00, 0x00, 0x00,
-                                          0x00, 0x00, 0x00, 0x00
-                                        };
+    int r = ble_key_2_bt_key(atomic_test_bit(smp->flags, SMP_FLAG_CT2), conn->le.keys->ltk.val, link_key->val);
 
-        if (bt_crypto_h7(salt, conn->le.keys->ltk.val, ilk))
-        {
-            bt_keys_link_key_clear(link_key);
-            return;
-        }
-    }
-    else
-    {
-        /* constants as specified in Core Spec Vol.3 Part H 2.4.2.4 */
-        static const uint8_t tmp1[4] = { 0x31, 0x70, 0x6d, 0x74 };
-
-        if (bt_crypto_h6(conn->le.keys->ltk.val, tmp1, ilk))
-        {
-            bt_keys_link_key_clear(link_key);
-            return;
-        }
-    }
-
-    if (bt_crypto_h6(ilk, lebr, link_key->val))
+    if (r)
     {
         bt_keys_link_key_clear(link_key);
+        if (r < 0)
+            return;
     }
 
     link_key->flags |= BT_LINK_KEY_SC;
@@ -1939,6 +1951,15 @@ static void smp_pairing_complete(struct bt_smp *smp, uint8_t status)
                  IS_ENABLED(CONFIG_BT_STORE_DEBUG_KEYS)))
         {
             sc_derive_link_key(smp);
+        }
+#else
+        uint8_t lebr_key[16];
+        const struct bt_conn_auth_cb *smp_auth_cb = latch_auth_cb(smp);
+
+        if (ble_key_2_bt_key(atomic_test_bit(smp->flags, SMP_FLAG_CT2), conn->le.keys->ltk.val, lebr_key) == 0)
+        {
+            if (smp_auth_cb->le_br_key)
+                smp_auth_cb->le_br_key(conn, lebr_key);
         }
 #endif /* CONFIG_BT_CLASSIC */
         bool bond_flag = atomic_test_bit(smp->flags, SMP_FLAG_BOND);
