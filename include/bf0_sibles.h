@@ -83,6 +83,10 @@ enum bf0_sifli_event_t
     SIBLES_DIS_SET_VAL_RSP,
     SIBLES_ATT_SET_VISIBILITY_IND,
     SIBLES_ATT_ERROR_EVENT_IND,
+
+    SIBLES_SVC_REG_RSP,
+    SIBLES_MTU_EXCHANGE_ERROR_IND,
+    SIBLES_READ_REMOTE_VALUE_ERROR_IND,
 };
 
 typedef enum
@@ -467,6 +471,19 @@ typedef struct
     /// Event Value
     uint8_t *value;
 } sibles_event_ind_t;
+
+typedef struct
+{
+    uint8_t status;
+    uint8_t start_handle;
+} sibles_svc_register_rsp_t;
+
+typedef struct
+{
+    uint8_t conn_idx;
+    uint8_t status;
+} sibles_error_cmp_event_ind_t;
+
 
 /**
  * @brief The strcture of set cbk parameter.

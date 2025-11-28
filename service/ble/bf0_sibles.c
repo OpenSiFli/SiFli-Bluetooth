@@ -953,6 +953,29 @@ void sifli_mbox_process(sibles_msg_para_t *header, uint8_t *data_ptr, uint16_t p
     {
         struct gattc_cmp_evt *evt = (struct gattc_cmp_evt *)data_ptr;
         LOG_I("GATTC_CMP_EVT %d, %d", evt->operation, evt->status);
+
+        if (evt->status != ATT_ERR_NO_ERROR)
+        {
+            sibles_error_cmp_event_ind_t ind;
+            ind.conn_idx = conn_idx;
+            ind.status = evt->status;
+
+            switch (evt->operation)
+            {
+            case GATTC_MTU_EXCH:
+            {
+                ble_event_publish(SIBLES_MTU_EXCHANGE_ERROR_IND, &ind, sizeof(sibles_error_cmp_event_ind_t));
+                break;
+            }
+            case GATTC_READ:
+            {
+                ble_event_publish(SIBLES_READ_REMOTE_VALUE_ERROR_IND, &ind, sizeof(sibles_error_cmp_event_ind_t));
+                break;
+            }
+            default:
+                break;
+            }
+        }
         break;
     }
     case GATTC_EVENT_REQ_IND:
