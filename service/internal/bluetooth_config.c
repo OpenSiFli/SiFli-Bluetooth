@@ -1549,8 +1549,10 @@ void uart_ipc_path_change(void)
     rt_pm_hw_device_start();
 
     HAL_HPAON_WakeCore(CORE_ID_LCPU);
+#ifdef AUDIO_USING_MANAGER
     extern rt_err_t pm_scenario_start(pm_scenario_name_t scenario);
     pm_scenario_start(PM_SCENARIO_AUDIO);
+#endif
     rt_thread_delay(500);
 #ifdef SOC_SF32LB52X
     HAL_RCC_HCPU_ClockSelect(RCC_CLK_MOD_HP_PERI,

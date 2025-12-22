@@ -378,7 +378,7 @@ Provides cached data to the framework when requested (required for direct loadin
 @param len Length of data to read (requested by framework)
 @return len on success, -EINVAL on invalid parameters
 */
-static int settings_read_callback(void *arg, void *buf, size_t len)
+static ssize_t settings_read_callback(void *arg, void *buf, size_t len)
 {
 // Unpack callback data (cached value + length)
     struct
@@ -464,6 +464,7 @@ static int invoke_load_callback(const struct settings_load_arg *arg,
         {
             LOG_DBG("set-value OK. key: %s, %p", key, ch->h_set);
         }
+        return rc;
     }
 }
 
