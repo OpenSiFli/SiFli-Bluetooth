@@ -704,7 +704,7 @@ void sifli_ble_enable(void);
 
 void sibles_send_svc_changed_ind(uint8_t conn_idx, uint16_t start_handle, uint16_t end_handle);
 
-#if defined(SOC_SF32LB58X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB52X) || defined (BSP_USING_PC_SIMULATOR)
+#if defined(SOC_SF32LB58X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X) || defined (BSP_USING_PC_SIMULATOR)
     void ble_gap_wlan_coex_enable(void);
 
     void sibles_set_trc_cfg(sibles_trc_cfg_t cfg_mode, uint32_t mask_ext);

@@ -1378,6 +1378,7 @@ void sifli_hci_log_enable(bool is_on)
 bool sifli_hci_log_get_enable(void)
 {
     uint32_t config = sifli_trc_get_config();
+    LOG_I("hci en %d", config);
     return config != 0x20 ? true : false;
 }
 
@@ -1434,7 +1435,7 @@ static void nvds(uint8_t argc, char **argv)
     char *value = NULL;
 
     /// Ensure cancel LP request in the following commands
-#if defined(BF0_HCPU) && defined(SOC_SF32LB52X)
+#if defined(BF0_HCPU) && (defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X))
     HAL_HPAON_WakeCore(CORE_ID_LCPU);
 #endif
     if (argc > 1)
@@ -1581,7 +1582,7 @@ static void nvds(uint8_t argc, char **argv)
 
     }
 
-#if defined(BF0_HCPU) && defined(SOC_SF32LB52X)
+#if defined(BF0_HCPU) && (defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X))
     HAL_HPAON_CANCEL_LP_ACTIVE_REQUEST();
 #endif
 

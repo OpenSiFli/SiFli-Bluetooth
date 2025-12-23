@@ -301,6 +301,15 @@ void ble_nvds_config_prepare()
 #elif defined(SOC_SF32LB52X)
     #define NVDS_BUFF_START 0x2040FE00
     #define NVDS_BUFF_SIZE 512
+#elif defined(SOC_SF32LB57X)
+    #ifdef NVDS_BUF_START_ADDR
+        #define NVDS_BUFF_START NVDS_BUF_START_ADDR
+        #define NVDS_BUFF_SIZE NVDS_BUF_SIZE
+    #else
+        #define NVDS_BUFF_START 0x2040FE00
+        #define NVDS_BUFF_SIZE 512
+    #endif
+
 #else
     #define NVDS_BUFF_START 0
     #define NVDS_BUFF_SIZE 0
@@ -317,7 +326,7 @@ typedef struct
 
 void bt_stack_nvds_init(void)
 {
-#ifdef SOC_SF32LB52X
+#if defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)
     HAL_HPAON_WakeCore(CORE_ID_LCPU);
 #endif
     uint8_t *ptr = bt_mem_alloc(NVDS_BUFF_SIZE);
@@ -345,7 +354,7 @@ void bt_stack_nvds_init(void)
 
     bt_mem_free(ptr);
 
-#ifdef SOC_SF32LB52X
+#if defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)
     HAL_HPAON_CANCEL_LP_ACTIVE_REQUEST();
 #endif
 
@@ -354,7 +363,7 @@ void bt_stack_nvds_init(void)
 
 void bt_stack_nvds_update(void)
 {
-#ifdef SOC_SF32LB52X
+#if defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)
     HAL_HPAON_WakeCore(CORE_ID_LCPU);
 #endif
 
@@ -363,7 +372,7 @@ void bt_stack_nvds_update(void)
     {
         sifli_nvds_write(SIFLI_NVDS_TYPE_STACK, ptr1->used_mem, (uint8_t *)(ptr1 + 1));
     }
-#ifdef SOC_SF32LB52X
+#if defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)
     HAL_HPAON_CANCEL_LP_ACTIVE_REQUEST();
 #endif
 
@@ -727,7 +736,7 @@ __WEAK char *bt_lib_get_ver(void)
 }
 #endif
 
-#ifdef SOC_SF32LB52X
+#if defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)
 
 void bt_sleep_control(uint8_t is_enable)
 {

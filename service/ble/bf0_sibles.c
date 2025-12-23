@@ -1767,7 +1767,7 @@ void sibles_set_random_addr(uint8_t conn_idx, uint8_t *value)
     sifli_msg_send((void const *)req);
 }
 
-#if defined(SOC_SF32LB58X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB52X) || defined(BSP_USING_PC_SIMULATOR)
+#if defined(SOC_SF32LB58X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X) || defined(BSP_USING_PC_SIMULATOR)
 void ble_gap_wlan_coex_enable(void)
 {
     uint8_t *cmd = sifli_msg_alloc(SIBLES_WLAN_COEX_ENABLE_REQ,

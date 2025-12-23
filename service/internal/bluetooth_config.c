@@ -69,8 +69,13 @@ do {                                                                        \
     #define NVDS_BUFF_START 0x2041FD00
     #define NVDS_BUFF_SIZE 512
 #elif (defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)) && !defined(DFU_OTA_MANAGER)
-    #define NVDS_BUFF_START 0x2040FE00
-    #define NVDS_BUFF_SIZE 512
+    #ifdef NVDS_BUF_START_ADDR
+        #define NVDS_BUFF_START NVDS_BUF_START_ADDR
+        #define NVDS_BUFF_SIZE NVDS_BUF_SIZE
+    #else
+        #define NVDS_BUFF_START 0x2040FE00
+        #define NVDS_BUFF_SIZE 512
+    #endif
 #else
     #define NVDS_BUFF_START 0
     #define NVDS_BUFF_SIZE 0
@@ -1000,6 +1005,7 @@ HAL_RAM_RET_CODE_SECT(crystal_cali_set, uint8_t crystal_cali_set(int32_t freq_of
                 int clk_src = HAL_RCC_HCPU_GetClockSrc(RCC_CLK_MOD_SYS);
                 uint32_t dll1_freq = HAL_RCC_HCPU_GetDLL1Freq();
                 uint32_t dll2_freq = HAL_RCC_HCPU_GetDLL2Freq();
+#if !defined(SOC_SF32LB57X)
                 uint32_t rc48_flag = READ_BIT(hwp_pmuc->HRC_CR, PMUC_HRC_CR_EN);
 
                 if (!rc48_flag)
@@ -1007,7 +1013,7 @@ HAL_RAM_RET_CODE_SECT(crystal_cali_set, uint8_t crystal_cali_set(int32_t freq_of
                     SET_BIT(hwp_pmuc->HRC_CR, PMUC_HRC_CR_EN);
                     HAL_Delay_us(60);
                 }
-
+#endif // !1defined(SOC_SF32LB57X)
                 HAL_RCC_HCPU_ClockSelect(RCC_CLK_MOD_SYS, RCC_SYSCLK_HRC48);
                 HAL_PMU_SET_HXT_CBANK(cal_value);
                 HAL_Delay_us(40);
@@ -1020,11 +1026,12 @@ HAL_RAM_RET_CODE_SECT(crystal_cali_set, uint8_t crystal_cali_set(int32_t freq_of
                 HAL_RCC_HCPU_ClockSelect(RCC_CLK_MOD_SYS, clk_src);
                 HAL_Delay_us(0);
 
+#if !defined(SOC_SF32LB57X)
                 if (!rc48_flag)
                 {
                     CLEAR_BIT(hwp_pmuc->HRC_CR, PMUC_HRC_CR_EN);
                 }
-
+#endif // !defined(SOC_SF32LB57X)
                 rt_hw_interrupt_enable(level);
 
                 return 0;
@@ -1063,6 +1070,7 @@ HAL_RAM_RET_CODE_SECT(crystal_cali_reset, uint8_t crystal_cali_reset(void))
             int clk_src = HAL_RCC_HCPU_GetClockSrc(RCC_CLK_MOD_SYS);
             uint32_t dll1_freq = HAL_RCC_HCPU_GetDLL1Freq();
             uint32_t dll2_freq = HAL_RCC_HCPU_GetDLL2Freq();
+#if !defined(SOC_SF32LB57X)
             uint32_t rc48_flag = READ_BIT(hwp_pmuc->HRC_CR, PMUC_HRC_CR_EN);
 
             if (!rc48_flag)
@@ -1070,7 +1078,7 @@ HAL_RAM_RET_CODE_SECT(crystal_cali_reset, uint8_t crystal_cali_reset(void))
                 SET_BIT(hwp_pmuc->HRC_CR, PMUC_HRC_CR_EN);
                 HAL_Delay_us(60);
             }
-
+#endif //#if !defined(SOC_SF32LB57X)
             HAL_RCC_HCPU_ClockSelect(RCC_CLK_MOD_SYS, RCC_SYSCLK_HRC48);
             HAL_PMU_SET_HXT_CBANK(cal_value);
             HAL_Delay_us(40);
@@ -1083,10 +1091,12 @@ HAL_RAM_RET_CODE_SECT(crystal_cali_reset, uint8_t crystal_cali_reset(void))
             HAL_RCC_HCPU_ClockSelect(RCC_CLK_MOD_SYS, clk_src);
             HAL_Delay_us(0);
 
+#if !defined(SOC_SF32LB57X)
             if (!rc48_flag)
             {
                 CLEAR_BIT(hwp_pmuc->HRC_CR, PMUC_HRC_CR_EN);
             }
+#endif // #if !defined(SOC_SF32LB57X)
 
             rt_hw_interrupt_enable(level);
 
@@ -1554,7 +1564,7 @@ void uart_ipc_path_change(void)
     pm_scenario_start(PM_SCENARIO_AUDIO);
 #endif
     rt_thread_delay(500);
-#if defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)
+#if defined(SOC_SF32LB52X)
     HAL_RCC_HCPU_ClockSelect(RCC_CLK_MOD_HP_PERI,
                              RCC_CLK_TICK_HXT48);
     HAL_RCC_HCPU_ClockSelect(RCC_CLK_MOD_HP_TICK, RCC_CLK_TICK_HXT48);

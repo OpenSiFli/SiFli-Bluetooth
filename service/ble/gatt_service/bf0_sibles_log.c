@@ -1032,7 +1032,7 @@ static void ble_log_packet_handler(ble_log_protocol_t *msg, uint16_t length)
         uint8_t op = msg->data[0];
         LOG_I("HCI ONOFF %d", op);
         // TODO: process command, 0 is off, 1 is on
-#if defined(BF0_HCPU) && defined(SOC_SF32LB52X)
+#if defined(BF0_HCPU) && (defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X))
         HAL_HPAON_WakeCore(CORE_ID_LCPU);
 #endif
         if (op >= 1)
@@ -1055,7 +1055,7 @@ static void ble_log_packet_handler(ble_log_protocol_t *msg, uint16_t length)
         sifli_hci_log_enable(op);
 #endif
 
-#if defined(BF0_HCPU) && defined(SOC_SF32LB52X)
+#if defined(BF0_HCPU) && (defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X))
         HAL_HPAON_CANCEL_LP_ACTIVE_REQUEST();
 #endif
 

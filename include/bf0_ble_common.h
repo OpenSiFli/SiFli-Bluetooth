@@ -507,7 +507,7 @@ int bt_convert_from_string_to_uuid_array(char *hexstr, uint8_t *uuid, uint8_t uu
 #endif
 char *bt_lib_get_ver(void);
 
-#ifdef SOC_SF32LB52X
+#if defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)
     void bt_sleep_control(uint8_t is_enable);
 #endif
 
