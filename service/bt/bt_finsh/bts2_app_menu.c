@@ -397,6 +397,21 @@ static void bt_hdl_menu_gen(bts2_app_stru *bts2_app_data)
         bts2_app_data->menu_id = menu_gen_a;
         bt_disply_menu(bts2_app_data);
         break;
+    case 'b':
+    {
+        BTS2S_BD_ADDR bd;
+        int reuslt = 0;
+        uint32_t mac[6];
+        reuslt = sscanf((const char *)bts2_app_data->input_str + 1, "%02X%02X%02X%02X%02X%02X", \
+                        &mac[0], &mac[1], \
+                        &mac[2], &mac[3], \
+                        &mac[4], &mac[5]);
+        bd.lap = (mac[3] << 16) | (mac[4] << 8) | mac[5];
+        bd.uap = (U8)mac[2];
+        bd.nap = (U16)((mac[0] << 8) | mac[1]);
+        bt_send_switch_role(&bd, 0);
+    }
+    break;
 
     case 's':
         bt_disply_menu(bts2_app_data);

@@ -214,6 +214,25 @@ void bt_interface_rd_local_rssi(unsigned char *mac);
 U8 bt_interface_get_current_scan_mode(void);
 
 /**
+ * @brief                     set bluetooth phy
+ * @param[in] map             This parameter contains 80 1-bit fields.
+ *                            The nth such field (in the range 0 to 78) contains the value for channel n:
+ *                            0: channel n is bad
+ *                            1: channel n is unknown
+ *
+ *                            The most significant bit (bit 79) is reserved for future use
+ *
+ *                            At least Nmin channels shall be marked as unknown. (See [Vol 2] Part B,
+ *                            Section 2.3.1). If the device supports Synchronizable mode, then the syn-
+ *                            chronization train channels (see [Vol 2] Part B, Section 2.6.4.8) shall be
+ *                            excluded when checking this requirement.
+ *
+ * @return                    uint8_t
+ *
+ **/
+uint8_t bt_interface_wr_afh_chnl_cls_req(uint8_t *map);
+
+/**
  * @brief                     set bluetooth's scan mode
  * @param[in] inquiry_scan    enable/disable inquiry scan
  * @param[in] page_scan       enable/disable page scan

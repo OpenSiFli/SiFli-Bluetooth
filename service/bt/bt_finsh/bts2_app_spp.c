@@ -633,28 +633,6 @@ void bt_spp_linest_req(bts2_app_stru *bts2_app_data, U8 device_id, U8 srv_chl)
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_spp_switch_role(bts2_app_stru *bts2_app_data)
-{
-    /* HCI_MASTER = 0 HCI_SLAVE = 1 */
-    gap_switch_role_req(bts2_app_data->pair_bd, 1);
-}
-
-
-/*----------------------------------------------------------------------------*
- *
- * DESCRIPTION:
- *
- *
- * INPUT:
- *      bts2_app_stru *bts2_app_data:
- *
- * OUTPUT:
- *      void.
- *
- * NOTE:
- *      none.
- *
- *----------------------------------------------------------------------------*/
 /*Apply to temporarily use,because set the muxID to be fixed number 0*/
 void bt_spp_portneg_req(bts2_app_stru *bts2_app_data, U8 device_id, U8 srv_chl)
 {

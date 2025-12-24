@@ -177,6 +177,8 @@ uint8_t bt_open_bt_request(void);
 uint8_t bt_close_bt_request(void);
 void bt_sc_io_capability_rsp(BTS2S_BD_ADDR *bd);
 
+void bt_wr_afh_chnl_cls_req(uint8_t *map);
+
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
@@ -453,6 +455,23 @@ void bt_sifli_interface_start_inquiry(void);
 
 void bt_etner_sniff_mode(BTS2S_BD_ADDR *bd, uint16_t interval, uint16_t attmpt);
 void bt_exit_sniff_mode(BTS2S_BD_ADDR *bd);
+
+/*----------------------------------------------------------------------------*
+ *
+ * DESCRIPTION:
+ *
+ *
+ * INPUT:
+ *
+ *
+ * OUTPUT:
+ *      void.
+ *
+ * NOTE:
+ *      none.
+ *
+ *----------------------------------------------------------------------------*/
+void bt_send_switch_role(BTS2S_BD_ADDR *bd, uint8_t role);
 
 
 

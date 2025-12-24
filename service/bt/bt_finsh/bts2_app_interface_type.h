@@ -104,6 +104,7 @@ typedef enum
     BT_NOTIFY_COMMON_RD_INQUIRY_MODE_RSP,
     /// read remote extend feature event
     BT_NOTIFY_COMMON_RD_EXT_FEATURE_RSP,
+    BT_NOTIFY_COMMON_WR_AFH_CFM_IND,
 } bt_notify_common_event_id_t;
 
 ///  these type are BT_NOTIFY_HFP_HF event id

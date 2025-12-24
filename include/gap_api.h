@@ -20,7 +20,7 @@ extern "C" {
 
 #define GAP_RECV_MSG_BASE       0x0000
 #define GAP_SEND_MSG_BASE       BTS2MU_START
-#define BTS2MU_GAP_MSG_EXT      0x8100
+#define BTS2MU_GAP_MSG_EXT      0x8200
 enum
 {
     BTS2MU_GAP_SET_LOCAL_NAME_CFM = BTS2MU_START, // 0x8000
@@ -49,24 +49,26 @@ enum
     BTS2MU_GAP_WR_INQUIRY_RESP_CFM,
     BTS2MU_GAP_WR_INQUIRY_MODE_CFM,
     BTS2MU_GAP_RD_INQUIRY_MODE_CFM,
-    GAP_MSG_NUM, // 0x8015
+    GAP_MSG_NUM, // 0x8019
 
     BTS2MU_GAP_DISCOV_RES_IND = GAP_MSG_NUM,
-    BTS2MU_GAP_DISCOV_CFM, // 0x8015
+    BTS2MU_GAP_DISCOV_CFM, // 0x801A
     BTS2MU_GAP_ESC_DISCOV_CFM,
     BTS2MU_GAP_RD_RMT_NAME_CFM,
     BTS2MU_GAP_WR_PAGE_TO_CFM,
-    GAP_DISCOV_MSG_MAX_NUM,
-    BTS2MU_GAP_KEYMISSING_IND, // 0x801A
+    GAP_DISCOV_MSG_MAX_NUM,   // 0x801E
+    BTS2MU_GAP_KEYMISSING_IND,
     BTS2MU_GAP_ENCRYPTION_IND,
     BTS2MU_GAP_ACL_OPEN_IND,
     BTS2MU_GAP_SDC_SERVICE_RECORD_HANDLE,
     BTS2MU_GAP_SDC_SRCH_CFM,  // ofsset 30
     BTS2MU_GAP_SDC_CLOSE_IND,
 
-    BTS2MU_GAP_MODE_CHANGED_IND, // 0x8020
-    GAP_API_MSG_MAX_NUM, // 0x8021
+    BTS2MU_GAP_MODE_CHANGED_IND,
+    GAP_API_MSG_MAX_NUM, // 0x8025
     BTS2MU_GAP_SCO_CONNECT_REQ_IND = BTS2MU_GAP_MSG_EXT + 1,
+    BTS2MU_GAP_WR_AFH_CHNL_CLS_CFM = BTS2MU_GAP_MSG_EXT + 2,
+    BTS2MU_GAP_ROLE_SWITCH_CFM = BTS2MU_GAP_MSG_EXT + 3,
 };
 
 /* HCI pin code len */
@@ -266,6 +268,14 @@ typedef struct
     U8              role;
 } BTS2S_GAP_ROLE_DISCOV_CFM;
 
+typedef struct
+{
+    U16             type;
+    BTS2S_BD_ADDR   bd;
+    U8              role;
+    U8              res;
+} BTS2S_GAP_ROLE_SWITCH_CFM;
+
 
 typedef struct
 {
@@ -420,6 +430,12 @@ typedef struct
     BTS2S_BD_ADDR               bd;
     U8                          code_id;
 } BTS2S_GAP_SCO_REMOTE_CONN_REQ;
+
+typedef struct
+{
+    U16                     type;
+    U8                      res;
+} BTS2S_GAP_SET_AFH_CHNL_CLS_CFM;
 
 /*----------------------------------------------------------------------------*
  *
@@ -687,6 +703,25 @@ void gap_rd_rssi_req(U16 tid, BTS2S_BD_ADDR bd);
  *
  *----------------------------------------------------------------------------*/
 void gap_wr_dev_cls_req(U16 tid, U24 dev_cls);
+
+/*----------------------------------------------------------------------------*
+ *
+ * DESCRIPTION:
+ *      This function is used to set AFH Host Channel Classification.
+ *
+ * INPUT:
+ *      tid: Task identification.
+ *      map: the requested feature page.
+ *
+ * OUTPUT:
+ *      void.
+ *
+ * NOTE:
+ *      Message BTS2MU_GAP_SET_AFH_CHNL_CLS_CFM with structure
+ *      BTS2S_GAP_SET_AFH_CHNL_CLS_CFM will be received.
+ *
+ *----------------------------------------------------------------------------*/
+void gap_set_afh_chnl_cls_req(U16 tid, U8 *map);
 
 /*----------------------------------------------------------------------------*
  *

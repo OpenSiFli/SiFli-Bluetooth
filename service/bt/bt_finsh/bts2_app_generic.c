@@ -379,6 +379,15 @@ void bt_wr_dev_cls(bts2_app_stru *bts2_app_data)
     }
 }
 
+void bt_wr_afh_chnl_cls_req(uint8_t *map)
+{
+    // uint8_t bt_map[10] = {0};
+    // bt_map[0] = 0xff;
+    // bt_map[1] = 0xff;
+    // bt_map[2] = 0xff;
+    gap_set_afh_chnl_cls_req(bts2_task_get_app_task_id(), map);
+}
+
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
@@ -655,6 +664,27 @@ void bt_etner_sniff_mode(BTS2S_BD_ADDR *bd, uint16_t interval, uint16_t attmpt)
 void bt_exit_sniff_mode(BTS2S_BD_ADDR *bd)
 {
     hcia_exit_sniff_mode(bd, NULL);
+}
+
+/*----------------------------------------------------------------------------*
+ *
+ * DESCRIPTION:
+ *
+ *
+ * INPUT:
+ *      bts2_app_stru *bts2_app_data:
+ *
+ * OUTPUT:
+ *      void.
+ *
+ * NOTE:
+ *      none.
+ *
+ *----------------------------------------------------------------------------*/
+void bt_send_switch_role(BTS2S_BD_ADDR *bd, uint8_t role)
+{
+    /* HCI_MASTER = 0 HCI_SLAVE = 1 */
+    gap_switch_role_req(*bd, role);
 }
 
 /*----------------------------------------------------------------------------*
@@ -1500,6 +1530,18 @@ void bt_hdl_gap_msg(bts2_app_stru *bts2_app_data)
         bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_ENCRYPTION, addr, 6);
         break;
     }
+    case BTS2MU_GAP_ROLE_SWITCH_CFM:
+    {
+        BTS2S_GAP_ROLE_SWITCH_CFM *msg;
+        msg = (BTS2S_GAP_ROLE_SWITCH_CFM *)bts2_app_data->recv_msg;
+        USER_TRACE("BTS2MU_GAP_ROLE_SWITCH_CFM bd: %04X:%02X:%06lX, role:%d,res:%d\n",
+                   msg->bd.nap,
+                   msg->bd.uap,
+                   msg->bd.lap,
+                   msg->role,
+                   msg->res);
+        break;
+    }
     case BTS2MU_GAP_KEYMISSING_IND:
     {
         BTS2S_GAP_KEYMISSING_IND *msg;
@@ -2024,6 +2066,14 @@ void bt_hdl_gap_msg(bts2_app_stru *bts2_app_data)
         {
             gap_sync_conn_res(&msg->bd, msg->code_id, 1);
         }
+        break;
+    }
+    case BTS2MU_GAP_WR_AFH_CHNL_CLS_CFM:
+    {
+        BTS2S_GAP_SET_AFH_CHNL_CLS_CFM *msg;
+        msg = (BTS2S_GAP_SET_AFH_CHNL_CLS_CFM *)bts2_app_data->recv_msg;
+        bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_WR_AFH_CFM_IND, &msg->res, 1);
+        USER_TRACE("BTS2MU_GAP_WR_AFH_CHNL_CLS_CFM res:%d\n", msg->res);
         break;
     }
 

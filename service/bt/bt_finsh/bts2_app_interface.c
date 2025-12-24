@@ -468,6 +468,12 @@ U8 bt_interface_get_current_scan_mode(void)
     return bts2_app_data->scan_mode;
 }
 
+uint8_t bt_interface_wr_afh_chnl_cls_req(uint8_t *map)
+{
+    bt_wr_afh_chnl_cls_req(map);
+    return 0;
+}
+
 U8 bt_interface_set_scan_mode(BOOL inquiry_scan, BOOL page_scan)
 {
     U8 target_scan_mode = 0;

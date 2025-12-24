@@ -506,23 +506,6 @@ void bt_spp_test_req(bts2_app_stru *bts2_app_data, U8 device_id, U8 srv_chl);
 void bt_spp_linest_req(bts2_app_stru *bts2_app_data, U8 device_id, U8 srv_chl);
 
 
-/*----------------------------------------------------------------------------*
- *
- * DESCRIPTION:
- *
- *
- * INPUT:
- *
- *
- * OUTPUT:
- *      void.
- *
- * NOTE:
- *      none.
- *
- *----------------------------------------------------------------------------*/
-void bt_spp_switch_role(bts2_app_stru *bts2_app_data);
-
 
 /*----------------------------------------------------------------------------*
  *
@@ -619,7 +602,6 @@ void bt_spp_sending_data_to_peer(bts2_app_stru *bts2_app_data, U8 device_id, U8 
 #define bt_spp_srv_rfc_conn_rej_hdl()
 #define bt_spp_test_req(bts2_app_data)
 #define bt_spp_linest_req(bts2_app_data)
-#define bt_spp_switch_role(bts2_app_data)
 #define bt_spp_portneg_req(bts2_app_data)
 #define bt_spp_disc_req(bts2_app_data)
 #define bt_spp_sending_random_data(bts2_app_data)
