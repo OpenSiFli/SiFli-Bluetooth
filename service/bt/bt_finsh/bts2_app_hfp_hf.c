@@ -1411,7 +1411,7 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
 
             bt_notify_all_call_status call_info;
             call_info.call_status = inst_data->cind_status.callStatus;
-            call_info.callsetup_status = inst_data->cind_status.callHeldStatus;
+            call_info.callsetup_status = inst_data->cind_status.callSetupStatus;
             call_info.callheld_status = inst_data->cind_status.callHeldStatus;
             call_info.roam = inst_data->cind_status.roam;
             call_info.service = inst_data->cind_status.service;
@@ -1822,7 +1822,7 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
 
         bt_notify_all_call_status call_info;
         call_info.call_status = msg->cind_status.callStatus;
-        call_info.callsetup_status = msg->cind_status.callHeldStatus;
+        call_info.callsetup_status = msg->cind_status.callSetupStatus;
         call_info.callheld_status = msg->cind_status.callHeldStatus;
         call_info.roam = msg->cind_status.roam;
         call_info.service = msg->cind_status.service;
