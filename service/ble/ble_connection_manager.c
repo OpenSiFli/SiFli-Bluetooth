@@ -1921,7 +1921,7 @@ int ble_connection_manager_handler(uint16_t event_id, uint8_t *data, uint16_t le
                 LOG_I("Boned device connected");
                 g_conn_manager[manager_index].bond_index = i;
                 g_conn_manager[manager_index].bond_state = BOND_STATE_BONDED;
-                ind->config_info.auth = g_bond_info.auth[manager_index];
+                ind->config_info.auth = g_bond_info.auth[i];
                 ind->config_info.ltk_present = g_bond_info.ltk_present[i];
                 break;
             }
