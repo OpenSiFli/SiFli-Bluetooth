@@ -1887,7 +1887,12 @@ void bt_cm(uint8_t argc, char **argv)
         }
     }
 }
-
+#ifdef BSP_BQB_TEST
+uint8_t bt_is_in_BQB_mode(void)
+{
+    return 1;
+}
+#endif
 #ifdef RT_USING_FINSH
     MSH_CMD_EXPORT(bt_cm, BT connection manager command);
 #endif // RT_USING_FINSH

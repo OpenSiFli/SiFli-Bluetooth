@@ -24,8 +24,8 @@
 
 #define RF_FORCE 0
 
-static PTC_HandleTypeDef    PtcHandle[6];
-const static uint8_t g_ptc_task[6] = {1, 2, 4, 5, 6, 7};
+static PTC_HandleTypeDef    PtcHandle[7];
+const static uint8_t g_ptc_task[7] = {1, 2, 4, 5, 6, 7, 0};
 
 #ifdef PTC_DYN_CTRL
     #ifdef SOC_SF32LB58X
@@ -37,7 +37,7 @@ const static uint8_t g_ptc_task[6] = {1, 2, 4, 5, 6, 7};
 #endif
 #define PTC_CONFIG_NUMBER 5
 
-
+void ptc_save_phase(void);
 
 uint32_t *g_ptc_config;
 
@@ -152,6 +152,11 @@ void PTC2_IRQHandler(void)
         HAL_PTC_IRQHandler(&PtcHandle[5]);
     }
 #endif
+    if ((isr_flag & (1 << g_ptc_task[6])) != 0)
+    {
+        HAL_PTC_IRQHandler(&PtcHandle[6]);
+        ptc_save_phase();
+    }
 
     rt_interrupt_leave();
 
@@ -191,6 +196,55 @@ static uint16_t  ptc_delay_cal(uint16_t ns)
     }
 
     return (sysclk_m * ns / 1000);
+
+}
+
+typedef struct
+{
+    uint32_t cfo_phase[2];
+    uint32_t  cnt;
+} cfo_phase_t;
+
+cfo_phase_t *pt_cfo = (cfo_phase_t *)0x500827E0;
+
+void ptc_save_phase(void)
+{
+    uint16_t phase_tmp = hwp_bt_phy->RX_STATUS1 & BT_PHY_RX_STATUS1_CFO_PHASE;
+
+
+    if (phase_tmp >= 0x800)
+    {
+        phase_tmp = (~phase_tmp) & BT_PHY_RX_STATUS1_CFO_PHASE;
+    }
+
+    if (phase_tmp == 0)
+    {
+        return;
+    }
+
+
+    pt_cfo->cfo_phase[0] = phase_tmp;
+
+}
+void ptc_config_co(uint8_t index, uint8_t sel_idx, uint8_t tripol, uint16_t delay)
+{
+    PtcHandle[index].Instance = hwp_ptc2;
+    PtcHandle[index].Init.Channel = g_ptc_task[index];                                 // Use PTC Channel 0
+    PtcHandle[index].Init.Address = (uint32_t) & (pt_cfo->cfo_phase[0]);
+    PtcHandle[index].Init.data = 0;     // data to handle with value in Address.
+    PtcHandle[index].Init.Operation = PTC_OP_OR;                       // Or and write back
+    PtcHandle[index].Init.Sel = sel_idx;
+    PtcHandle[index].Init.Tripol = tripol;
+    PtcHandle[index].Init.Delay = delay;
+    HAL_NVIC_SetPriority(PTC2_IRQn, 0, 0);
+    //NVIC_EnableIRQ(PTC2_IRQn);
+
+    if (HAL_PTC_Init(& PtcHandle[index]) != HAL_OK)                     // Initialize PTC
+    {
+        /* Initialization Error */
+        RT_ASSERT(RT_FALSE);
+    }
+    HAL_PTC_Enable(&PtcHandle[index], 1);                              // Enable PTC
 
 }
 
@@ -262,6 +316,7 @@ void rf_ptc_config(uint8_t is_reset)
     pta_ptc_config(4, PTC_LCPU_BT_PRIORITY, 0, 0);
     pta_ptc_config(5, PTC_LCPU_BT_PRIORITY, 1, 0);
 #endif
+    ptc_config_co(6, PTC_LCPU_BT_PKTDET, 0, 0);
 
 #endif // BLUETOOTH_PTC_CONFIG
 }
