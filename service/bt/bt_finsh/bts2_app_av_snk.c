@@ -360,9 +360,12 @@ static U8 *play_data_decode(bts2s_av_inst_data *inst, U16 *out_len, U8 con_idx)
     return ret;
 }
 
+RT_WEAK bool audio_server_is_ble_src_enable(void)
+{
+    return false;
+}
 #if BT_BAP_BROADCAST_SOURCE
-extern struct rt_ringbuffer *ble_bap_src_enabled_ring;
-#define SPEAKER_DMA_SIZE    960
+extern void ble_src_send(uint8_t *data, uint32_t len);
 static const uint8_t zero[160] = {0};
 void prepare_ble_src_data(int16_t *data, uint32_t len)
 {
@@ -408,9 +411,19 @@ int src_drop(int argc, char **argv)
 MSH_CMD_EXPORT_ALIAS(src_drop, src_drop, src_drop);
 #endif
 
-void notify_dma_done_to_a2dp()
+static int audio_bt_10ms_dma_cb(audio_server_callback_cmt_t cmd, void *userdata, uint32_t unused)
 {
-    rt_event_send(g_playback_evt, PLAYBACK_GETDATA_EVENT_FLAG);
+    U8 *con_idx = (U8 *)userdata;
+    (void)unused;
+    if (cmd == as_callback_cmd_10ms_dma)
+    {
+        if (*con_idx == 0)
+        {
+            rt_event_send(g_playback_evt, PLAYBACK_GETDATA_EVENT_FLAG);
+        }
+    }
+
+    return 0;
 }
 static void decode_playback_thread(void *args)
 {
@@ -480,10 +493,10 @@ static void decode_playback_thread(void *args)
             uint32_t origin_samplerate = param.write_samplerate;
             param.write_bits_per_sample = 16;
             param.write_channnel_num = 1;
-            param.write_cache_size = 320 * g_drop_cnt + SPEAKER_DMA_SIZE;
+            param.write_cache_size = 320 * g_drop_cnt + SPEAKER_10MS_DMA_SIZE;
             param.write_samplerate = 48000;
             debug_tx_cnt = 0;
-            inst_data->con[0].snk_data.audio_client = audio_open(AUDIO_TYPE_BT_MUSIC, AUDIO_TX, &param, NULL, NULL);
+            inst_data->con[0].snk_data.audio_client = audio_open(AUDIO_TYPE_BT_MUSIC, AUDIO_TX, &param, audio_bt_10ms_dma_cb, (void *)&inst_data->con[0].idx);
             is_stopped = 0;
             if (!resample)
             {
@@ -519,7 +532,7 @@ static void decode_playback_thread(void *args)
             }
         }
 
-        if (g_remain < SPEAKER_DMA_SIZE)
+        if (g_remain < SPEAKER_10MS_DMA_SIZE)
         {
             memcpy(g_left, &g_left[g_offset], g_remain);
             memcpy(g_right, &g_right[g_offset], g_remain);
@@ -533,7 +546,7 @@ static void decode_playback_thread(void *args)
             prepare_ble_src_data((int16_t *)decode_data, decode_len);
         }
 
-        ret_write = audio_write(inst_data->con[0].snk_data.audio_client, (uint8_t *)&g_left[g_offset], SPEAKER_DMA_SIZE);
+        ret_write = audio_write(inst_data->con[0].snk_data.audio_client, (uint8_t *)&g_left[g_offset], SPEAKER_10MS_DMA_SIZE);
         if (ret_write < 0)
         {
             USER_TRACE("playback write ret:%d\n", ret_write);
@@ -544,13 +557,9 @@ static void decode_playback_thread(void *args)
         }
         else
         {
-            if (rt_ringbuffer_space_len(ble_bap_src_enabled_ring) < SPEAKER_DMA_SIZE)
-            {
-                LOG_I("ble src cache full");
-            }
-            rt_ringbuffer_put(ble_bap_src_enabled_ring, (uint8_t *)&g_right[g_offset], SPEAKER_DMA_SIZE);
-            g_offset += (SPEAKER_DMA_SIZE / 2);
-            g_remain -= SPEAKER_DMA_SIZE;
+            ble_src_send((uint8_t *)&g_right[g_offset], SPEAKER_10MS_DMA_SIZE);
+            g_offset += (SPEAKER_10MS_DMA_SIZE / 2);
+            g_remain -= SPEAKER_10MS_DMA_SIZE;
         }
     }
 }
@@ -754,7 +763,7 @@ static void decode_playback_thread(void *args)
             ret_write = audio_write(inst_data->con[con_idx].snk_data.audio_client, inst_data->con[con_idx].snk_data.vbe_out, vbe_out_size);
 #else
 
-            if (get_server_current_device() == AUDIO_DEVICE_BLE_BAP_SINK)
+            if (audio_server_is_ble_src_enable())
             {
                 int try_times = 0;
                 uint32_t bytes = sifli_resample_process(resample, (int16_t *)decode_data[con_idx], decode_len[con_idx], 0);
@@ -784,7 +793,7 @@ static void decode_playback_thread(void *args)
                     }
                     else if (ret_write == 0)
                     {
-                        if (get_server_current_device() == AUDIO_DEVICE_BLE_BAP_SINK)
+                        if (audio_server_is_ble_src_enable())
                         {
                             USER_TRACE("--a2dp drop data\n");
                         }
@@ -805,7 +814,7 @@ static void decode_playback_thread(void *args)
                     }
                     else if (ret_write == 0)
                     {
-                        if (get_server_current_device() == AUDIO_DEVICE_BLE_BAP_SINK)
+                        if (audio_server_is_ble_src_enable())
                         {
                             USER_TRACE("--a2dp drop data\n");
                         }
