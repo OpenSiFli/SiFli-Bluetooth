@@ -1824,6 +1824,7 @@ void bt_cm(uint8_t argc, char **argv)
             }
         }
 // #ifdef BSP_BQB_TEST
+#ifdef CFG_AV
         else if (strcmp(argv[1], "av_conn") == 0)
         {
             BTS2S_BD_ADDR bd_addr;
@@ -1840,6 +1841,12 @@ void bt_cm(uint8_t argc, char **argv)
         {
             bt_av_disconnect(0);
         }
+        else if (strcmp(argv[1], "release_a2dp") == 0)
+        {
+            bt_av_release_stream(0);
+        }
+#endif
+#ifdef CFG_AVRCP
         else if (strcmp(argv[1], "avrcp_conn") == 0)
         {
             BTS2S_BD_ADDR bd_addr;
@@ -1855,14 +1862,11 @@ void bt_cm(uint8_t argc, char **argv)
             else
                 avrcp_conn_req(bts2_task_get_app_task_id(), &bd_addr, AVRCP_CT, AVRCP_TG);
         }
-        else if (strcmp(argv[1], "release_a2dp") == 0)
-        {
-            bt_av_release_stream(0);
-        }
         else if (strcmp(argv[1], "avrcp_dis") == 0)
         {
             avrcp_disc_req();
         }
+#endif
 // #endif
 #ifdef CFG_SPP_LOOPBACK
         else if (strcmp(argv[1], "spp_loopback") == 0)
