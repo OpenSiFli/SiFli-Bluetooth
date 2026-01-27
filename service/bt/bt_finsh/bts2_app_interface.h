@@ -70,7 +70,7 @@ void bt_interface_rd_inquiry_mode(void);
  * @param[in]page_num  The page number of the features required
  *
  **/
-void bt_interface_rd_extend_feature(bt_notify_device_mac_t *mac, uint8_t page_num);
+void bt_interface_rd_extend_feature(unsigned char *mac, uint8_t page_num);
 
 /**
  * @brief           Read local device EIR data
@@ -105,7 +105,7 @@ bt_err_t bt_interface_profile_connect_request(unsigned char *mac, uint8_t profil
  *
  * @return           bt_err_t
  **/
-bt_err_t bt_interface_conn_ext(bt_notify_device_mac_t *mac, bt_profile_t ext_profile);
+bt_err_t bt_interface_conn_ext(unsigned char *mac, bt_profile_t ext_profile);
 
 /**
  * @brief            Initiate connect with the specified device and profile(ag source)
@@ -114,7 +114,7 @@ bt_err_t bt_interface_conn_ext(bt_notify_device_mac_t *mac, bt_profile_t ext_pro
  *
  * @return           bt_err_t
  **/
-bt_err_t bt_interface_conn_to_source_ext(bt_notify_device_mac_t *mac, bt_profile_t ext_profile);
+bt_err_t bt_interface_conn_to_source_ext(unsigned char *mac, bt_profile_t ext_profile);
 
 /**
  * @brief                   Disconnect with the specified profile
@@ -123,7 +123,7 @@ bt_err_t bt_interface_conn_to_source_ext(bt_notify_device_mac_t *mac, bt_profile
  *
  * @return           bt_err_t
  **/
-bt_err_t bt_interface_disc_ext(bt_notify_device_mac_t *mac, bt_profile_t ext_profile);
+bt_err_t bt_interface_disc_ext(unsigned char *mac, bt_profile_t ext_profile);
 
 /**
  * @brief                   Cancel with the specified device
@@ -131,7 +131,7 @@ bt_err_t bt_interface_disc_ext(bt_notify_device_mac_t *mac, bt_profile_t ext_pro
  *
  * @return                  int8_t
  **/
-int8_t bt_interface_cancel_connect_req(bt_notify_device_mac_t *mac);
+int8_t bt_interface_cancel_connect_req(unsigned char *mac);
 
 /**
  * @brief                   Disconnect with the specified device
@@ -139,7 +139,7 @@ int8_t bt_interface_cancel_connect_req(bt_notify_device_mac_t *mac);
  *
  * @return                  int8_t
  **/
-int8_t bt_interface_disconnect_req(bt_notify_device_mac_t *mac);
+int8_t bt_interface_disconnect_req(unsigned char *mac);
 
 /**
  * @brief                   To report IO capabilities of the peer
@@ -155,7 +155,7 @@ int8_t bt_interface_disconnect_req(bt_notify_device_mac_t *mac);
  * @param[in] bonding       Default: true
  * @return                  int8_t
  **/
-int8_t bt_interface_io_req_res(bt_notify_device_mac_t *mac, BTS2E_SC_IO_CAPABILITY io_capability, uint8_t mitm, uint8_t bonding);
+int8_t bt_interface_io_req_res(unsigned char *mac, BTS2E_SC_IO_CAPABILITY io_capability, uint8_t mitm, uint8_t bonding);
 
 /**
  * @brief                   To accepts or rejects the numerical value
@@ -164,7 +164,7 @@ int8_t bt_interface_io_req_res(bt_notify_device_mac_t *mac, BTS2E_SC_IO_CAPABILI
  * @param[in] confirm       1, if accepts.
  * @return                  int8_t
  **/
-int8_t bt_interface_user_confirm_res(bt_notify_device_mac_t *mac, uint8_t confirm);
+int8_t bt_interface_user_confirm_res(unsigned char *mac, uint8_t confirm);
 
 /**
  * @brief            Change local name
@@ -190,21 +190,21 @@ void bt_interface_rd_local_bd_addr(void);
  * @brief            exit sniff mode
  *
  **/
-void bt_interface_exit_sniff_mode(bt_notify_device_mac_t *mac);
+void bt_interface_exit_sniff_mode(unsigned char *mac);
 
 /**
  * @brief            write link policy setting mode
  * @param[in] mac    Remote device address
  * @param[in] link_policy_mode   want to enable link policy mode
  **/
-void bt_interface_wr_link_policy_setting(bt_notify_device_mac_t *mac, uint16_t link_policy_mode);
+void bt_interface_wr_link_policy_setting(unsigned char *mac, uint16_t link_policy_mode);
 
 /**
  * @brief            Read rssi with the specified device
  * @param[in] mac   Remote device address
  *
  **/
-void bt_interface_rd_local_rssi(bt_notify_device_mac_t *mac);
+void bt_interface_rd_local_rssi(unsigned char *mac);
 
 /**
  * @brief            Read bluetooth's current scan mode
@@ -254,7 +254,7 @@ uint8_t bt_addr_convert(BTS2S_BD_ADDR *src_addr, uint8_t *addr);
  * @param[in] mac    Device mac address(eg:char mac[6] = {11,22,33,44,55,66})
  * @return           BTS2S_BD_ADDR
  **/
-BTS2S_BD_ADDR *bt_interface_this_connect_addr(bt_notify_device_mac_t *mac);
+BTS2S_BD_ADDR *bt_interface_this_connect_addr(unsigned char *mac);
 
 /**
  * @brief            Set the local role when acl connection is received
@@ -998,7 +998,7 @@ bt_err_t bt_interface_ag_audio_switch(bt_hfp_audio_switch_t *audio);
  *
  * @return                       bt_err_t
  **/
-bt_err_t bt_interface_hfp_hf_start_connecting(bt_notify_device_mac_t *mac);
+bt_err_t bt_interface_hfp_hf_start_connecting(unsigned char *mac);
 
 /**
  * @brief                        Get subscriber information request

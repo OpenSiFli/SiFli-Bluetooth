@@ -36,12 +36,12 @@ extern bts2_app_stru *bts2g_app_p;
   * @{
   */
 
-static uint8_t bt_check_mac_addresses_validity(bt_notify_device_mac_t *mac)
+static uint8_t bt_check_mac_addresses_validity(unsigned char *mac)
 {
     uint8_t i;
     for (i = 0; i < 6; i++)
     {
-        if (mac->addr[i] != 0)
+        if (mac[i] != 0)
         {
             return true;
         }
@@ -182,7 +182,7 @@ __WEAK bt_err_t bt_interface_profile_connect_request(unsigned char *mac, uint8_t
     return err;
 }
 
-bt_err_t bt_interface_conn_ext(bt_notify_device_mac_t *mac, bt_profile_t ext_profile)
+bt_err_t bt_interface_conn_ext(unsigned char *mac, bt_profile_t ext_profile)
 {
     bt_err_t res = BT_EOK;
     uint8_t role = 0;
@@ -226,11 +226,11 @@ bt_err_t bt_interface_conn_ext(bt_notify_device_mac_t *mac, bt_profile_t ext_pro
         break;
     }
 
-    res = bt_interface_profile_connect_request((unsigned char *)mac, profile_type, role);
+    res = bt_interface_profile_connect_request(mac, profile_type, role);
     return res;
 }
 
-bt_err_t bt_interface_conn_to_source_ext(bt_notify_device_mac_t *mac, bt_profile_t ext_profile)
+bt_err_t bt_interface_conn_to_source_ext(unsigned char *mac, bt_profile_t ext_profile)
 {
     bt_err_t res = BT_EOK;
     uint8_t role = 0;
@@ -260,11 +260,11 @@ bt_err_t bt_interface_conn_to_source_ext(bt_notify_device_mac_t *mac, bt_profile
         return BT_ERROR_INPARAM;;
     }
 
-    res = bt_interface_profile_connect_request((unsigned char *)mac, profile_type, role);
+    res = bt_interface_profile_connect_request(mac, profile_type, role);
     return res;
 }
 
-bt_err_t bt_interface_disc_ext(bt_notify_device_mac_t *mac, bt_profile_t ext_profile)
+bt_err_t bt_interface_disc_ext(unsigned char *mac, bt_profile_t ext_profile)
 {
     BTS2S_BD_ADDR     bd_addr;
 
@@ -381,7 +381,7 @@ void bt_interface_rd_inquiry_mode(void)
     gap_rd_inquiry_mode_req();
 }
 
-void bt_interface_rd_extend_feature(bt_notify_device_mac_t *mac, uint8_t page_num)
+void bt_interface_rd_extend_feature(unsigned char *mac, uint8_t page_num)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
     BTS2S_BD_ADDR bd_addr;
@@ -390,7 +390,7 @@ void bt_interface_rd_extend_feature(bt_notify_device_mac_t *mac, uint8_t page_nu
     gap_rd_rmt_ext_featr_req(bts2_app_data->phdl, page_num, bd_addr);
 }
 
-int8_t bt_interface_cancel_connect_req(bt_notify_device_mac_t *mac)
+int8_t bt_interface_cancel_connect_req(unsigned char *mac)
 {
     BTS2S_BD_ADDR bd_addr;
     bt_addr_convert_to_bts((bd_addr_t *)mac, &bd_addr);
@@ -398,14 +398,14 @@ int8_t bt_interface_cancel_connect_req(bt_notify_device_mac_t *mac)
     return bt_cancel_connect_req(&bd_addr);
 }
 
-int8_t bt_interface_disconnect_req(bt_notify_device_mac_t *mac)
+int8_t bt_interface_disconnect_req(unsigned char *mac)
 {
     BTS2S_BD_ADDR bd_addr;
     bt_addr_convert_to_bts((bd_addr_t *)mac, &bd_addr);
     return bt_disconnect_req(&bd_addr);
 }
 
-int8_t bt_interface_io_req_res(bt_notify_device_mac_t *mac, BTS2E_SC_IO_CAPABILITY io_capability, uint8_t mitm, uint8_t bonding)
+int8_t bt_interface_io_req_res(unsigned char *mac, BTS2E_SC_IO_CAPABILITY io_capability, uint8_t mitm, uint8_t bonding)
 {
     BTS2S_BD_ADDR bd_addr;
     bt_addr_convert_to_bts((bd_addr_t *)mac, &bd_addr);
@@ -413,7 +413,7 @@ int8_t bt_interface_io_req_res(bt_notify_device_mac_t *mac, BTS2E_SC_IO_CAPABILI
     return 0;
 }
 
-int8_t bt_interface_user_confirm_res(bt_notify_device_mac_t *mac, uint8_t confirm)
+int8_t bt_interface_user_confirm_res(unsigned char *mac, uint8_t confirm)
 {
     BTS2S_BD_ADDR bd_addr;
     bt_addr_convert_to_bts((bd_addr_t *)mac, &bd_addr);
@@ -435,29 +435,29 @@ void bt_interface_rd_local_bd_addr(void)
     gap_rd_local_bd_req(bts2_app_data->phdl);
 }
 
-void bt_interface_exit_sniff_mode(bt_notify_device_mac_t *mac)
+void bt_interface_exit_sniff_mode(unsigned char *mac)
 {
     BTS2S_BD_ADDR bd_addr;
     bt_addr_convert_to_bts((bd_addr_t *)mac, &bd_addr);
     bt_exit_sniff_mode(&bd_addr);
 }
 
-void bt_interface_wr_link_policy_setting(bt_notify_device_mac_t *mac, uint16_t link_policy_mode)
+void bt_interface_wr_link_policy_setting(unsigned char *mac, uint16_t link_policy_mode)
 {
     BTS2S_BD_ADDR bd_addr;
     bt_addr_convert_to_bts((bd_addr_t *)mac, &bd_addr);
     bt_wr_link_policy(&bd_addr, link_policy_mode);
 }
 
-void bt_interface_rd_local_rssi(bt_notify_device_mac_t *mac)
+void bt_interface_rd_local_rssi(unsigned char *mac)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
 
     BTS2S_BD_ADDR bd = {0};
 
-    bd.nap = (mac->addr[5] << 8) | mac->addr[4];
-    bd.uap = mac->addr[3];
-    bd.lap = (mac->addr[2] << 16) | (mac->addr[1] << 8) | mac->addr[0];
+    bd.nap = (mac[5] << 8) | mac[4];
+    bd.uap = mac[3];
+    bd.lap = (mac[2] << 16) | (mac[1] << 8) | mac[0];
 
     gap_rd_rssi_req(bts2_app_data->phdl, bd);
 }
@@ -513,7 +513,7 @@ uint8_t bt_addr_convert(BTS2S_BD_ADDR *src_addr, uint8_t *addr)
     return 1;
 }
 
-BTS2S_BD_ADDR *bt_interface_this_connect_addr(bt_notify_device_mac_t *mac)
+BTS2S_BD_ADDR *bt_interface_this_connect_addr(unsigned char *mac)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
     BTS2S_BD_ADDR temp = {0xffffff, 0xff, 0xffff};
@@ -1581,7 +1581,7 @@ bt_err_t bt_interface_ag_audio_switch(bt_hfp_audio_switch_t *audio)
     BTS2S_BD_ADDR *bd_addr;
 
     // general_addr_convert_to_bt_addr((bd_addr_t *)&audio->peer_addr, &bd_addr);
-    bd_addr = bt_interface_this_connect_addr((bt_notify_device_mac_t *)&audio->peer_addr);
+    bd_addr = bt_interface_this_connect_addr((unsigned char *)audio->peer_addr.addr);
     if (bd_addr == NULL)
     {
         USER_TRACE(">> ag audio switch address invalid\n");
@@ -1604,7 +1604,7 @@ bt_err_t bt_interface_ag_audio_switch(bt_hfp_audio_switch_t *audio)
   */
 
 #ifdef CFG_HFP_HF
-bt_err_t bt_interface_hfp_hf_start_connecting(bt_notify_device_mac_t *mac)
+bt_err_t bt_interface_hfp_hf_start_connecting(unsigned char *mac)
 {
     BTS2S_BD_ADDR     bd_addr;
 
