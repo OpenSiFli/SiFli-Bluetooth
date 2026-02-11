@@ -115,11 +115,11 @@ int k_mutex_init(struct rt_mutex *mutex)
 {
     static int idx = 0;
     int r = RT_EOK;
-    char name[8];
+    char name[RT_NAME_MAX];
 
     if (mutex->parent.parent.type == 0)
     {
-        rt_sprintf(name, "k_mux%d", idx++);
+        rt_snprintf(name, RT_NAME_MAX, "k_mux%d", idx++);
         r = rt_mutex_init(mutex, name, RT_IPC_FLAG_FIFO);
     }
     else
@@ -144,9 +144,9 @@ int k_mutex_lock(struct k_mutex *mutex, k_timeout_t timeout)
 int k_sem_init(struct k_sem *sem, unsigned int initial_count, unsigned int limit)
 {
     static int idx = 0;
-    char name[8];
+    char name[RT_NAME_MAX];
 
-    rt_sprintf(name, "k_sem%d", idx++);
+    rt_snprintf(name, RT_NAME_MAX, "k_sem%d", idx++);
     rt_sem_init(sem, name, initial_count, RT_IPC_FLAG_FIFO);
     return 0;
 }
