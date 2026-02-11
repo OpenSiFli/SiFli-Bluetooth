@@ -378,7 +378,7 @@ Provides cached data to the framework when requested (required for direct loadin
 @param len Length of data to read (requested by framework)
 @return len on success, -EINVAL on invalid parameters
 */
-static long settings_read_callback(void *arg, void *buf, unsigned int len)
+static ssize_t settings_read_callback(void *arg, void *buf, unsigned int len)
 {
 // Unpack callback data (cached value + length)
     struct
