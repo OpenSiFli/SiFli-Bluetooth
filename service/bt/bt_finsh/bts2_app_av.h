@@ -223,6 +223,7 @@ typedef struct
 
     rt_sem_t buf_sem;
     U8  play_state;
+    U8  a2dp_trigger;
     U8  codec;
     play_list_t playlist;
     U8  *decode_buf;

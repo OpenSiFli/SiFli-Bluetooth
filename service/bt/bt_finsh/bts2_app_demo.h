@@ -16,6 +16,7 @@
 #include "bts2_type.h"
 #include "bts2_bt.h"
 #include "gap_api.h"
+#include "os_adaptor.h"
 
 
 #include "hfp_type_api.h"

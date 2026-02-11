@@ -8,7 +8,7 @@
 #include "bts2_app_inc.h"
 
 #ifdef PKG_USING_AAC_DECODER_LIBFAAD
-    #define BTS_TASK_SIZE (50*1024)
+    #define BTS_TASK_SIZE (5*1024)
 #else
     #define BTS_TASK_SIZE 0xC00  // (3072)
 #endif
