@@ -19,7 +19,7 @@ struct arch_esf
 #define device  rt_device
 
 bool device_is_ready(const struct device *dev);
-#define K_PRIO_COOP(x)  (RT_THREAD_PRIORITY_HIGH+x)
+#define K_PRIO_COOP(x)  (RT_THREAD_PRIORITY_HIGH+x-8)
 
 
 #ifndef POPCOUNT

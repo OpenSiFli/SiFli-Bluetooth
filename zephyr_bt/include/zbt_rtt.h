@@ -2528,12 +2528,31 @@
 //BT_RX_PRIO
 #ifdef BT_RX_PRIO
     #define CONFIG_BT_RX_PRIO BT_RX_PRIO
+
+    #ifndef BT_TX_PRIO
+        #define BT_TX_PRIO BT_RX_PRIO
+    #endif
+
+    #ifdef BT_TX_PRIO
+        #define CONFIG_BT_TX_PRIO BT_TX_PRIO
+    #endif
+
 #endif
 
 //BT_RX_STACK_SIZE
 #ifdef BT_RX_STACK_SIZE
     #define CONFIG_BT_RX_STACK_SIZE BT_RX_STACK_SIZE
+
+    // reuse rx define
+    #ifndef BT_TX_STACK_SIZE
+        #define BT_TX_STACK_SIZE BT_RX_STACK_SIZE
+    #endif
+
+    #ifdef BT_TX_STACK_SIZE
+        #define CONFIG_BT_TX_STACK_SIZE BT_TX_STACK_SIZE
+    #endif
 #endif
+
 
 //BT_SCAN_AND_INITIATE_IN_PARALLEL
 #ifdef BT_SCAN_AND_INITIATE_IN_PARALLEL

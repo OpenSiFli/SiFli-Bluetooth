@@ -98,7 +98,9 @@ static void rx_work_handler(struct k_work *work);
 static K_WORK_DEFINE(rx_work, rx_work_handler);
 #if defined(CONFIG_BT_RECV_WORKQ_BT)
     static struct k_work_q bt_workq;
+    static struct k_work_q bt_txworkq;
     static K_KERNEL_STACK_DEFINE(rx_thread_stack, CONFIG_BT_RX_STACK_SIZE);
+    static K_KERNEL_STACK_DEFINE(tx_thread_stack, CONFIG_BT_TX_STACK_SIZE);
 #endif /* CONFIG_BT_RECV_WORKQ_BT */
 
 static void init_work(struct k_work *work);
@@ -4827,7 +4829,17 @@ int bt_enable(bt_ready_cb_t cb)
     _rwip_init_handler = rwip_init_dummy_handler;
     bluetooth_init();
     ble_power_on();
+
+#if defined(BSP_USING_DATA_SVC) && !defined(DATA_SVC_MBOX_THREAD_DISABLED)
+    extern rt_err_t sifli_sem_take_ex(int32_t timeout);
+    rt_err_t err = sifli_sem_take_ex(5000);
+    if (err != RT_EOK)
+        LOG_W("take sema failed %d", err);
+    else
+        rt_thread_mdelay(1000);
+#else
     rt_thread_delay(1000);
+#endif
 
 #if DT_HAS_CHOSEN(zephyr_bt_hci)
     if (!device_is_ready(bt_dev.hci))
@@ -4888,10 +4900,16 @@ int bt_enable(bt_ready_cb_t cb)
 #if defined(CONFIG_BT_RECV_WORKQ_BT)
     /* RX thread */
     k_work_queue_init(&bt_workq);
+    k_work_queue_init(&bt_txworkq);
+
     k_work_queue_start(&bt_workq, (uint32_t *)rx_thread_stack,
                        CONFIG_BT_RX_STACK_SIZE,
                        K_PRIO_COOP(CONFIG_BT_RX_PRIO), NULL);
     k_thread_name_set(bt_workq.work_thread, "BT RX WQ");
+    k_work_queue_start(&bt_txworkq, (uint32_t *)tx_thread_stack,
+                       CONFIG_BT_TX_STACK_SIZE,
+                       K_PRIO_COOP(CONFIG_BT_TX_PRIO), NULL);
+    k_thread_name_set(bt_txworkq.work_thread, "BT TX WQ");
 #endif
 
 #if DT_HAS_CHOSEN(zephyr_bt_hci)
@@ -5332,6 +5350,11 @@ static K_WORK_DEFINE(tx_work, tx_processor);
 void bt_tx_irq_raise(void)
 {
     LOG_DBG("kick TX");
+// Make tx_work and rx_work in the same thread and reuse the macro of CONFIG_BT_RECV_WORKQ_XXX
+#if defined(CONFIG_BT_RECV_WORKQ_SYS)
     k_work_submit(&tx_work);
+#elif defined(CONFIG_BT_RECV_WORKQ_BT)
+    k_work_submit_to_queue(&bt_txworkq, &tx_work);
+#endif /* CONFIG_BT_RECV_WORKQ_SYS */
 }
 
