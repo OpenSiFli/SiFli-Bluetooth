@@ -2,6 +2,7 @@
 
 /*
  * Copyright (c) 2015-2016 Intel Corporation
+ * Copyright (c) 2019-2025 SiFli Technologies(Nanjing) Co., Ltd
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -551,7 +552,13 @@ static inline void read_header(const struct device *dev)
 }
 
 
+#if defined(ZBT_ASYNC_HCI_LOG)
+    extern int8_t hci_log_async_write(uint8_t *data, uint16_t len);
+    extern void hci_log_async_init(void);
+#endif // ZBT_ASYNC_HCI_LOG
+
 static uint8_t is_hci_enable;
+
 void log_hci_enable(uint8_t enable)
 {
     is_hci_enable = enable;
@@ -600,15 +607,33 @@ static void log_hci_to_console(struct net_buf *buf)
     *trace++ = bt_buf_type2h4(bt_buf_get_type(buf));
     seq++;
     memcpy(trace, buf->data, buf->len);
-    LOG_BIN_MIX(temp, buf->len + 12);
+
+    uint16_t total_len = buf->len + 12;
+
+#if defined(ZBT_ASYNC_HCI_LOG)
+    // 异步打印实现
+    int ret = hci_log_async_write(temp, total_len);
+    if (ret == -1)
+#endif // ZBT_ASYNC_HCI_LOG
+    {
+        // 如果环形缓冲区未初始化，使用同步打印
+        LOG_BIN_MIX(temp, total_len);
+    }
 }
 
 extern bool sifli_hci_log_get_enable();
+
 void hci_log_init(void)
 {
     if (sifli_hci_log_get_enable() != 0)
+    {
+#if defined(ZBT_ASYNC_HCI_LOG)
+        hci_log_async_init();
+#endif
         log_hci_enable(1);
+    }
 }
+
 
 static inline void process_tx(const struct device *dev)
 {

@@ -41,4 +41,17 @@ config BT_HCI_SET_PUBLIC_ADDR
 
 	  From the application side, the public address is set using the first call to
 	  bt_id_create(), before calling bt_enable().      
-      
+
+config ZBT_ASYNC_HCI_LOG
+	bool "aysnc output hci log"
+	default y if ZBT
+	default n if !ZBT
+	help
+		Enable async hci log output
+
+config HCI_LOG_RING_BUFFER_SIZE
+	int "buf size of async hci log"
+	depends on ZBT_ASYNC_HCI_LOG
+	default 4096
+	help
+		Ring buffer of ZBT_ASYNC_HCI_LOG

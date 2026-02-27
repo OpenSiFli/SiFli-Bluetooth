@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <rtdef.h>
 #include <stdarg.h>
+#include "ulog.h"
 
 k_timepoint_t sys_timepoint_calc(k_timeout_t timeout)
 {
@@ -609,6 +610,174 @@ void sys_reboot(int type)
     HAL_PMU_Reboot();
 }
 
+#if defined(ZBT_ASYNC_HCI_LOG)
+
+#ifndef HCI_LOG_RING_BUFFER_SIZE
+    #define HCI_LOG_RING_BUFFER_SIZE 4096
+#endif // HCI_LOG_RING_BUFFER_SIZE
+
+#define HCI_LOG_THREAD_STACK_SIZE 1536
+
+// HCI日志结构
+typedef struct
+{
+    struct rt_ringbuffer ringbuf;
+    uint8_t buffer[HCI_LOG_RING_BUFFER_SIZE];
+    rt_sem_t sem;
+} hci_log_t;
+
+static hci_log_t hci_log;
+static rt_thread_t hci_log_thread;
+
+static void hci_log_init_ringbuffer(hci_log_t *log)
+{
+    // 初始化环形缓冲区
+    rt_ringbuffer_init(&log->ringbuf, log->buffer, HCI_LOG_RING_BUFFER_SIZE);
+
+    // 创建互斥锁和信号量
+    log->sem = rt_sem_create("hci_log_sem", 0, RT_IPC_FLAG_FIFO);
+}
+
+static void hci_log_deinit_ringbuffer(hci_log_t *log)
+{
+    if (log->sem)
+    {
+        rt_sem_delete(log->sem);
+        log->sem = NULL;
+    }
+}
+
+static bool hci_log_write(hci_log_t *log, const uint8_t *data, uint16_t len)
+{
+    // 计算需要的总空间（数据长度 + 2字节长度信息）
+    uint16_t total_needed = len + 2;
+
+    // 检查是否有足够空间
+    uint16_t space_length = rt_ringbuffer_space_len(&log->ringbuf);
+    if (space_length < total_needed)
+    {
+        return false;
+    }
+
+    // 写入长度信息
+    uint8_t len_low = len & 0xff;
+    uint8_t len_high = len >> 8;
+    rt_ringbuffer_putchar(&log->ringbuf, len_low);
+    rt_ringbuffer_putchar(&log->ringbuf, len_high);
+
+    // 写入数据
+    rt_ringbuffer_put(&log->ringbuf, data, len);
+
+    return true;
+}
+
+static uint16_t hci_log_read(hci_log_t *log, uint8_t *data, uint16_t max_len)
+{
+    // 检查是否有足够的数据（至少需要2字节长度信息）
+    uint16_t data_length = rt_ringbuffer_data_len(&log->ringbuf);
+    if (data_length < 2)
+    {
+        return 0;
+    }
+
+    // 读取长度信息
+    uint8_t len_low, len_high;
+    if (rt_ringbuffer_getchar(&log->ringbuf, &len_low) == 0 ||
+            rt_ringbuffer_getchar(&log->ringbuf, &len_high) == 0)
+    {
+        return 0;
+    }
+
+    uint16_t payload_len = (len_high << 8) | len_low;
+
+    // 检查数据长度是否有效
+    if (payload_len > max_len || payload_len > rt_ringbuffer_data_len(&log->ringbuf))
+    {
+        return 0;
+    }
+
+    // 读取数据
+    uint16_t read_len = rt_ringbuffer_get(&log->ringbuf, data, payload_len);
+
+    return read_len;
+}
+
+
+static void hci_log_thread_entry(void *parameter)
+{
+    uint8_t temp[1024];
+
+    while (1)
+    {
+        // 等待有数据
+        rt_sem_take(hci_log.sem, RT_WAITING_FOREVER);
+
+        // 读取并打印所有可用数据
+        while (1)
+        {
+            uint16_t len = hci_log_read(&hci_log, temp, sizeof(temp));
+            if (len == 0)
+                break;
+
+            LOG_BIN_MIX(temp, len);
+        }
+    }
+}
+
+int8_t hci_log_async_write(uint8_t *data, uint16_t len)
+{
+    uint8_t ret = -1;
+    // 异步打印实现
+    if (hci_log.sem)
+    {
+        // 尝试写入数据，确保完整写入
+        bool success = hci_log_write(&hci_log, data, len);
+
+        if (success)
+        {
+            // 通知日志线程有新数据
+            ret = 0;
+            rt_sem_release(hci_log.sem);
+        }
+        else
+            ret = 1;
+        // 如果缓冲区满，数据会被自动丢弃
+    }
+    else
+    {
+        // 如果环形缓冲区未初始化，使用同步打印
+    }
+
+    return ret;
+}
+
+/**
+ * @brief 初始化 HCI 日志系统
+ *
+ * 该函数用于初始化 HCI 日志系统，包括创建环形缓冲区、启动日志线程等操作。
+ * 只有在 sifli_hci_log_get_enable() 返回非零值时才会执行初始化操作。
+ *
+ * @return void
+ */
+void hci_log_async_init(void)
+{
+    // 初始化日志结构
+    hci_log_init_ringbuffer(&hci_log);
+
+    // 创建并启动日志线程
+    hci_log_thread = rt_thread_create("zhci_log",
+                                      hci_log_thread_entry,
+                                      NULL,
+                                      HCI_LOG_THREAD_STACK_SIZE,
+                                      RT_THREAD_PRIORITY_IDLE - 1,
+                                      RT_THREAD_TICK_DEFAULT);
+    if (hci_log_thread)
+    {
+        rt_thread_startup(hci_log_thread);
+    }
+}
+
+#endif // ZBT_ASYNC_HCI_LOG
 
 /**
  * @brief Fill the destination buffer with random data values that should
