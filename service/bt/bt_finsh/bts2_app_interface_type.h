@@ -562,6 +562,8 @@ typedef struct
 ///  HFP HF at cmd send result
 typedef struct
 {
+    ///  profile channel
+    uint16_t profile_channel;
     ///  at cmd identify
     uint8_t  at_cmd_id;
     ///  result
@@ -571,6 +573,8 @@ typedef struct
 ///  HFP HF indicator status
 typedef struct
 {
+    ///  profile channel
+    uint16_t profile_channel;
     ///  indicator type
     uint8_t type;
     ///  indicator value
@@ -580,6 +584,8 @@ typedef struct
 ///  HFP HF call information
 typedef struct
 {
+    ///  profile channel
+    uint16_t profile_channel;
     /// call status
     uint8_t  call_status;
     /// callsetup status
@@ -595,6 +601,8 @@ typedef struct
 ///  HFP HF remote call detail information
 typedef struct
 {
+    ///  profile channel
+    uint16_t profile_channel;
     /// phone number type
     uint16_t phone_number_type;
     /// Current call index, counting from 1

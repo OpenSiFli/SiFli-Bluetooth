@@ -18,7 +18,6 @@ extern "C" {
 void bt_hfp_hf_init(bts2_app_stru *bts2_app_data);
 bt_err_t bt_hfp_hf_start_enb(bts2_app_stru *bts2_app_data);
 bt_err_t bt_hfp_hf_start_disb(bts2_app_stru *bts2_app_data);
-void bt_hfp_hf_clean_flag();
 U8 bt_hfp_hf_get_ring_type(void);
 bt_err_t bt_hfp_hf_connect_request(BTS2S_BD_ADDR *bd);
 bt_err_t bt_hfp_hf_start_disc(BTS2S_BD_ADDR *bd);
@@ -46,15 +45,41 @@ bt_err_t bt_hfp_hf_at_nrec_send(void);
 bt_err_t bt_hfp_hf_update_batt_send(U8 batt_val);
 bt_err_t hfp_hf_get_at_cind_status();
 
-void bt_hfp_hf_rfc_conn_accept_hdl(void);
-void bt_hfp_hf_rfc_conn_rej_hdl(void);
+
+void bt_hfp_hf_rfc_conn_accept_hdl(BTS2S_BD_ADDR *bd, U8 srv_chnl);
+void bt_hfp_hf_rfc_conn_rej_hdl(BTS2S_BD_ADDR *bd, U8 srv_chnl);
 U8 bt_hfp_hf_get_ciev_info(BTS2S_HF_CIEV_IND *msg);
 void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data);
+
+// for multi connect
+U8 bt_hfp_hf_get_ring_type_ext(uint8_t mux_id);
+bt_err_t bt_hfp_hf_audio_transfer_request(U8 mux_id, U8 type);
+bt_err_t bt_hfp_hf_voice_recog_request(U8 mux_id, U8 active);
+bt_err_t bt_hfp_hf_dial_by_mem_request(U8 mux_id, U16 memory);
+bt_err_t bt_hfp_hf_last_num_dial_request(U8 mux_id, U16 memory);
+bt_err_t bt_hfp_hf_make_call_by_number_request(U8 mux_id, U8 *payload, U8 payload_len);
+bt_err_t bt_hfp_hf_answer_call_request(U8 mux_id);
+bt_err_t bt_hfp_hf_hangup_call_request(U8 mux_id);
+bt_err_t bt_hfp_hf_update_spk_vol_ext(U8 mux_id, U8 vol);
+bt_err_t bt_hfp_hf_update_mic_vol_ext(U8 mux_id, U8 vol);
+bt_err_t bt_hfp_hf_at_btrh_query_request(U8 mux_id);
+bt_err_t bt_hfp_hf_at_btrh_cmd_request(U8 mux_id, U8 mode);
+bt_err_t bt_hfp_hf_at_binp_request(U8 mux_id);
+bt_err_t bt_hfp_hf_at_clip_request(U8 mux_id, U8 enable);
+bt_err_t bt_hfp_hf_at_cmee_request(U8 mux_id, BOOL val);
+bt_err_t bt_hfp_hf_at_cnum_request(U8 mux_id);
+bt_err_t bt_hfp_hf_at_ccwa_request(U8 mux_id, BOOL val);
+bt_err_t bt_hfp_hf_at_chld_request(U8 mux_id, U8 *payload, U8 payload_len);
+bt_err_t bt_hfp_hf_at_clcc_request(U8 mux_id);
+bt_err_t bt_hfp_hf_at_cops_cmd_request(U8 mux_id);
+bt_err_t bt_hfp_hf_at_dtmf_request(U8 mux_id, char key);
+bt_err_t bt_hfp_hf_at_nrec_request(U8 mux_id);
+bt_err_t bt_hfp_hf_update_batt_request(U8 mux_id, U8 batt_val);
+bt_err_t hfp_hf_get_at_cind_status_ext(U8 mux_id);
 
 #else
 #define bt_hfp_hf_start_enb(bts2_app_data)  (-BT_ERROR_INPARAM)
 #define bt_hfp_hf_start_disb(bts2_app_data) (-BT_ERROR_INPARAM)
-#define bt_hfp_hf_clean_flag()
 #define bt_hfp_hf_get_ring_type()           0
 #define bt_hfp_hf_connect_request(bd)      (-BT_ERROR_INPARAM)
 #define bt_hfp_hf_start_disc(bd)            (-BT_ERROR_INPARAM)

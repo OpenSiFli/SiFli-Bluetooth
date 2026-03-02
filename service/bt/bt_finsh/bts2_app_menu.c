@@ -2004,12 +2004,12 @@ static void bt_hdl_menu_hfp_hf(bts2_app_stru *bts2_app_data)
     }
     case '3':
     {
-        bt_hfp_hf_rfc_conn_accept_hdl();
+        // bt_hfp_hf_rfc_conn_accept_hdl();
         break;
     }
     case '4':
     {
-        bt_hfp_hf_rfc_conn_rej_hdl();
+        // bt_hfp_hf_rfc_conn_rej_hdl();
         //smsInit(bts2_app_data);
         break;
     }

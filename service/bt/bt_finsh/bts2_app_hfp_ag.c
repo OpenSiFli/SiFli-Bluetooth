@@ -25,7 +25,85 @@
 #ifndef BT_USING_AG
     U8 g_flag_auto_answer_call = 1;
 #endif
+/*******************************************device info func start**********************************************/
+static void bt_hfp_ag_app_init_device_info(bts2_hfp_ag_inst_data *ag_data)
+{
+    if (ag_data->devices_info)
+    {
+        for (int i = 0; i < CFG_MAX_HFP_CONN_NUM; i++)
+        {
+            bmemset(&ag_data->devices_info[i], 0x00, sizeof(bts2_hfp_ag_device_info));
+            ag_data->devices_info[i].call_state = HFP_CALL_IDLE;
+            ag_data->devices_info[i].is_use = 1;
+            ag_data->devices_info[i].mux_id = 0xff;
+            ag_data->devices_info[i].pre_profile_state = HFP_DEVICE_DISCONNECTED;
+            ag_data->devices_info[i].profile_state = HFP_DEVICE_DISCONNECTED;
+            ag_data->devices_info[i].srv_chnl = 0xff;
+        }
+    }
+}
 
+static bts2_hfp_ag_device_info * bt_hfp_ag_app_get_device_by_mux_id(bts2_hfp_ag_inst_data *ag_data, U8 mux_id)
+{
+    if (ag_data->devices_info)
+    {
+        for (int i = 0; i < CFG_MAX_HFP_CONN_NUM; i++)
+        {
+            if(ag_data->devices_info[i].mux_id == mux_id)
+            {
+                return &ag_data->devices_info[i];
+            }
+        }
+    }
+    return NULL;
+}
+
+static bts2_hfp_ag_device_info * bt_hfp_ag_app_alloc_device(bts2_hfp_ag_inst_data *ag_data)
+{
+    if (ag_data->devices_info)
+    {
+        for (int i = 0; i < CFG_MAX_HFP_CONN_NUM; i++)
+        {
+            if(ag_data->devices_info[i].is_use)
+            {
+                ag_data->devices_info[i].is_use = 0;
+                return &ag_data->devices_info[i];
+            }
+        }
+    }
+    return NULL;
+}
+
+static void bt_hfp_ag_app_dealloc_device(bts2_hfp_ag_device_info * device)
+{
+    if (device)
+    {
+        bmemset(device, 0x00, sizeof(bts2_hfp_ag_device_info));
+        device->call_state = HFP_CALL_IDLE;
+        device->is_use = 1;
+        device->mux_id = 0xff;
+        device->pre_profile_state = HFP_DEVICE_DISCONNECTED;
+        device->profile_state = HFP_DEVICE_DISCONNECTED;
+        device->srv_chnl = 0xff;
+    }
+}
+
+static bts2_hfp_ag_device_info * bt_hfp_ag_app_get_busy_device(bts2_hfp_ag_inst_data *ag_data)
+{
+    if (ag_data->devices_info)
+    {
+        for (int i = 0; i < CFG_MAX_HFP_CONN_NUM; i++)
+        {
+            if(ag_data->devices_info[i].is_use == 0)
+            {
+                return &ag_data->devices_info[i];
+            }
+        }
+    }
+    return NULL;
+}
+
+/*******************************************device info func end************************************************/
 /*******************************************add for ag func test start**********************************/
 static hfp_phone_call_info_t g_remote_calls_info ;
 hfp_cind_status_t g_cind_states;
@@ -138,7 +216,7 @@ hfp_phone_call_info_t *bt_hfp_ag_app_get_remote_call_info()
 }
 /*******************************************add for ag func test end**********************************/
 
-/*******************************************static func**********************************/
+/*******************************************static func**********************************************/
 static void bt_hfp_ag_app_profile_service_update(bts2_hfp_ag_inst_data *ag_data, bts2_ag_st new_state)
 {
     ag_data->old_st = ag_data->st;
@@ -210,12 +288,25 @@ static void bt_hfp_ag_app_device_state_changed(bts2_app_stru *bts2_app_data, BTS
     case HFP_AG_APP_OPENING:
     case HFP_AG_APP_OPEN:
     {
-        p_data->pre_profile_state = p_data->profile_state;
-        p_data->profile_state = con_msg->device_state;
-
-        if (p_data->profile_state == p_data->pre_profile_state)
+        bts2_hfp_ag_device_info * device_info = bt_hfp_ag_app_get_device_by_mux_id(p_data, con_msg->mux_id);
+        if(device_info == NULL)
         {
-            return;
+            device_info = bt_hfp_ag_app_alloc_device(p_data);
+            if (device_info)
+            {
+                device_info->mux_id = con_msg->mux_id;
+                device_info->ag_bd = con_msg->bd;
+            }
+        }
+
+        if (device_info)
+        {
+            device_info->pre_profile_state = device_info->profile_state;
+            device_info->profile_state = con_msg->device_state;
+            if (device_info->profile_state == device_info->pre_profile_state)
+            {
+                return;
+            }
         }
 
         if (con_msg->device_state == HFP_DEVICE_CONNECTED)
@@ -247,6 +338,12 @@ static void bt_hfp_ag_app_device_state_changed(bts2_app_stru *bts2_app_data, BTS
             profile_state.res = con_msg->res;
             profile_state.profile_channel = con_msg->mux_id;
             bt_profile_update_connection_state(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_PROFILE_DISCONNECTED,&profile_state);
+
+            if(device_info)
+            {
+                bt_hfp_ag_app_dealloc_device(device_info);
+            }
+
 #ifdef AUDIO_USING_MANAGER
             BTS2S_HF_AUDIO_INFO msg;
             hfp_ag_audio_opt(&msg, 0);
@@ -259,6 +356,18 @@ static void bt_hfp_ag_app_device_state_changed(bts2_app_stru *bts2_app_data, BTS
     {
         if (con_msg->device_state == HFP_DEVICE_DISCONNECTED)
         {
+            bts2_hfp_ag_device_info * device_info = bt_hfp_ag_app_get_device_by_mux_id(p_data, con_msg->mux_id);
+            if (device_info)
+            {
+                bt_hfp_ag_app_dealloc_device(device_info);
+                device_info = NULL;
+            }
+
+            device_info = bt_hfp_ag_app_get_busy_device(p_data);
+            if (device_info && (device_info->profile_state != HFP_DEVICE_DISCONNECTED))
+            {
+                bt_hfp_ag_disconnect_request(&device_info->ag_bd);
+            }
             hfp_ag_deregister();
         }
         break;
@@ -508,7 +617,6 @@ static void bt_hfp_ag_app_at_cmd_hdl(BTS2S_AG_AT_CMD_INFO *at_cmd)
         break;
     }
     }
-
 }
 
 /*******************************************func API **********************************/
@@ -536,7 +644,6 @@ void bt_hfp_ag_msg_hdl(bts2_app_stru *bts2_app_data)
     {
         BTS2S_AG_CONN_RES *con_msg;
         con_msg = (BTS2S_AG_CONN_RES *)bts2_app_data->recv_msg;
-
 
         bt_hfp_ag_app_device_state_changed(bts2_app_data, con_msg);
         //USER_TRACE("BTS2MU_AG_CONN_STATE state: %d res: %d type %d", con_msg->device_state, con_msg->res, con_msg->type);
@@ -660,10 +767,11 @@ void bt_hfp_ag_app_init(bts2_app_stru *bts2_app_data)
 {
     if (bts2_app_data)
     {
-        bts2_app_data->hfp_ag_inst.srv_chnl = 0xff;
-        bts2_app_data->hfp_ag_inst.profile_state = HFP_DEVICE_DISCONNECTED;
-        bts2_app_data->hfp_ag_inst.pre_profile_state = HFP_DEVICE_DISCONNECTED;
-        bts2_app_data->hfp_ag_inst.call_state = HFP_CALL_IDLE;
+        // bts2_app_data->hfp_ag_inst.srv_chnl = 0xff;
+        // bts2_app_data->hfp_ag_inst.profile_state = HFP_DEVICE_DISCONNECTED;
+        // bts2_app_data->hfp_ag_inst.pre_profile_state = HFP_DEVICE_DISCONNECTED;
+        // bts2_app_data->hfp_ag_inst.call_state = HFP_CALL_IDLE;
+        bt_hfp_ag_app_init_device_info(&bts2_app_data->hfp_ag_inst);
         bt_hfp_ag_app_profile_service_update(&bts2_app_data->hfp_ag_inst, HFP_AG_APP_INIT);
         bmemset(&g_remote_calls_info, 0x00, sizeof(hfp_phone_call_info_t));
 #ifdef AUDIO_USING_MANAGER
@@ -680,12 +788,12 @@ void bt_hfp_start_profile_service(bts2_app_stru *bts2_app_data)
     {
     case HFP_AG_APP_INIT:
     {
-        U32 features = (U32)(HFP_AG_FEAT_ECNR | \
+        U32 features = (U32)(HFP_AG_FEAT_ECNR   | \
                              HFP_AG_FEAT_INBAND | \
                              HFP_AG_FEAT_REJECT | \
-                             HFP_AG_FEAT_ECS | \
+                             HFP_AG_FEAT_ECS    | \
                              HFP_AG_FEAT_EXTERR | \
-                             HFP_AG_FEAT_CODEC | \
+                             HFP_AG_FEAT_CODEC  | \
                              HFP_AG_FEAT_ESCO);
         hfp_ag_register(features);
         bt_hfp_ag_app_profile_service_update(ptr, HFP_AG_APP_OPENING);
@@ -727,9 +835,10 @@ void bt_hfp_stop_profile_service(bts2_app_stru *bts2_app_data)
     }
     case HFP_AG_APP_OPEN:
     {
-        if (ptr->profile_state != HFP_DEVICE_DISCONNECTED)
+        bts2_hfp_ag_device_info * device_info = bt_hfp_ag_app_get_busy_device(ptr);
+        if (device_info && (device_info->profile_state != HFP_DEVICE_DISCONNECTED))
         {
-            bt_hfp_ag_disconnect_request(NULL);
+            bt_hfp_ag_disconnect_request(&device_info->ag_bd);
         }
         else
         {

@@ -75,7 +75,7 @@ extern "C" {
 
 
 #define CFG_PIN_CODE               "0000"
-
+#define CFG_MAX_HFP_CONN_NUM                2
 
 typedef enum
 {
@@ -143,6 +143,7 @@ typedef enum
 #endif
 
 #ifdef CFG_HFP_AG
+
 typedef enum
 {
     HFP_AG_APP_INIT,       /* Initializing state */
@@ -153,25 +154,36 @@ typedef enum
 
 typedef struct
 {
-    bts2_ag_st st;
-    bts2_ag_st old_st;
+    BTS2S_BD_ADDR      ag_bd;
     hfp_device_state_t profile_state;
     hfp_device_state_t pre_profile_state;
     hfp_call_state_t call_state;
     U8 srv_chnl;
+    U8 mux_id;
+    U8 is_use;
+} bts2_hfp_ag_device_info;
+
+typedef struct
+{
+    bts2_ag_st st;
+    bts2_ag_st old_st;
+    bts2_hfp_ag_device_info devices_info[CFG_MAX_HFP_CONN_NUM];
 } bts2_hfp_ag_inst_data;
 #endif
 
 #ifdef CFG_HFP_HF
 typedef struct
 {
-    bts2_hfp_st st;
+    hfp_device_state_t profile_state;
+    hfp_device_state_t pre_profile_state;
     /*
       profile_type 0 indicate hf connect
       profile_type 1 indicate hs connect
      */
     U8 profile_type;
     U8 srv_chnl;
+    U8 mux_id;
+    U8 is_use;
     U8 esco_flag;
     BOOL voice_flag;
 
@@ -179,6 +191,12 @@ typedef struct
     U16 sco_hdl;
     BTS2S_BD_ADDR         hfp_bd;
     bts2_hfp_hf_cind cind_status;
+} bts2_hfp_hf_device_info;
+
+typedef struct
+{
+    bts2_hfp_st st;
+    bts2_hfp_hf_device_info devices_info[CFG_MAX_HFP_CONN_NUM];
 } bts2_hfp_hf_inst_data;
 #endif
 
@@ -322,7 +340,6 @@ typedef struct
 #ifdef CFG_HFP_HF
     bts2_hfp_hf_inst_data *hfp_hf_ptr;
     bts2_hfp_hf_inst_data hfp_hf_inst;
-    U8                    esco_flag;
 #endif
 #ifdef CFG_HFP_AG
     bts2_hfp_ag_inst_data  hfp_ag_inst;
