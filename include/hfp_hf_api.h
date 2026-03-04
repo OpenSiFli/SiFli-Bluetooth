@@ -94,8 +94,20 @@ enum
     HFP_HF_AT_BIEV,
     HFP_HF_AT_BATT_UPDATE,
     HFP_HS_AT_CKPD,
-    HFP_AT_EXTERN_AT_CMD
+    HFP_AT_EXTERN_AT_CMD,
+    HFP_HF_AT_BIND_LIST,
+    HFP_HF_AT_BIND_STATUS,
 };
+
+/*! @brief  Assigned numbers for HF indicators as per
+  https://www.bluetooth.org/en-us/specification/assigned-numbers/hands-free-profile
+*/
+typedef enum
+{
+    HFP_HF_IND_MASK_NONE  = 0x00,
+    HFP_HF_IND_ENHANCED_SAFETY_MASK = 0x01,
+    HFP_HF_IND_BATTERY_LEVEL_MASK   = 0x02
+} BTS2S_HF_INDICATOR_MASK;
 
 typedef struct
 {
@@ -416,6 +428,23 @@ typedef struct
     U16  supp_feature;
 } BTS2S_HF_BRSF_IND;
 
+/*!
+    @brief Structure containing separate values for each supported indicator
+*/
+typedef struct
+{
+    unsigned service: 2;
+    unsigned signal_strength: 2;
+    unsigned roaming_status: 2;
+    unsigned battery_charge: 2;
+    unsigned unused: 8;
+} BTS2S_HF_OPTIONAL_INDICATORS;
+
+typedef struct
+{
+    uint8_t assigned_id;
+    uint8_t value;
+} BTS2S_HF_INDICATOR_STATUS;
 
 /*----------------------------------------------------------------------------*
  *
@@ -435,7 +464,7 @@ typedef struct
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
 void hfp_hf_register(U32 supp_featr);
-
+void hfp_hf_register_ext(U32 supp_featr, U16 hf_indicator_mask);
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
@@ -965,9 +994,9 @@ void hfp_hs_send_at_ckpd_api(uint8_t mux_id,  U8 profile_type);
  *      Message BTS2MU_HF_AT_CMD_CFM with structure HFP_AT_EXTERN_AT_CMD will
  *      be received as a confirmation.
  *----------------------------------------------------------------------------*/
-void hfp_hf_at_data_req(uint8_t mux_id,  U8 profile_type, U8 *payload, U16 payload_len);
+void hfp_hf_at_data_req(uint8_t mux_id, U8 profile_type, U8 *payload, U16 payload_len);
 
-void hfp_hf_send_at_bia_api(uint8_t mux_id,  U8 profile_type);//reserve
+void hfp_hf_send_at_bia_api(uint8_t mux_id, U8 profile_type, BTS2S_HF_OPTIONAL_INDICATORS *optional_indicators); //reserve
 void hfp_hf_set_wbs(uint8_t mux_id,  U8 profile_type, U8 wbs_flag);
 
 

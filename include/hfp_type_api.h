@@ -91,12 +91,12 @@ extern "C" {
 #define HFP_ERR_NOT_FOR_VOIP        34      /* Not supported on this call type(VoIP) */
 #define HFP_ERR_SIP_RESP_CODE       35      /* SIP 3 digit response code */
 
-
-
 #define HFP_AG_SDP_FEAT_SPEC                                \
         (HFP_AG_FEAT_3WAY | HFP_AG_FEAT_ECNR | HFP_AG_FEAT_VREC | \
             HFP_AG_FEAT_INBAND | HFP_AG_FEAT_VTAG)
 
+/* Max number of peer and local HF indicators */
+#define HFP_AG_LOCAL_HF_IND_MAX_NUM   4
 /****************************************enum define***************************************/
 typedef enum
 {
@@ -181,9 +181,17 @@ typedef enum
     PHONE_NUMBER_TYPE_UNKNOWN = 0x81,
     PHONE_NUMBER_TYPE_INTERNATIONAL = 0x91,
 } phone_number_type_t;
-
 /* for clcc_res var end */
 
+typedef enum
+{
+    /*! No HF indicator. */
+    hfp_indicator_mask_none           = 0x00,
+    /*! Enhanced safety indicator. */
+    hfp_enhanced_safety_mask          = 1 << 0,
+    /*! Battery level indicator. */
+    hfp_battery_level_mask            = 1 << 1,
+} hfp_hf_indicators_mask;
 /****************************************struct define***************************************/
 typedef struct
 {
@@ -195,6 +203,13 @@ typedef struct
     U16 type;
     U32 supp_featr;
 } BTS2S_HFP_ENB_REQ;
+
+typedef struct
+{
+    U16 type;
+    U32 supp_featr;
+    U16 hfp_indicators_mask;
+} BTS2S_HFP_ENB_REQ_EXT;
 
 typedef struct
 {
@@ -280,6 +295,31 @@ typedef struct
     U8 batt_val;
 } hfp_batt_vaule_t;
 
+#define HFP_HF_IND_ENHANCED_SAFETY 1
+#define HFP_HF_IND_BATTERY_LEVEL   2
+
+
+struct hf_ind_enhanced_safety
+{
+    U8 local_support: 1;
+    U8 remote_support: 1;
+    U8 enabled: 1;
+    U8 value: 5; /* 0 or 1 */
+};
+
+struct hf_ind_battery_level
+{
+    U8 local_support: 1;
+    U8 remote_support: 1;
+    U8 enabled: 6;
+    U8 value; /* 0 ~ 100 */
+};
+
+typedef struct
+{
+    struct hf_ind_enhanced_safety enhanced_safety;
+    struct hf_ind_battery_level battery_level;
+} hf_indicator_t;
 #ifdef __cplusplus
 }
 #endif

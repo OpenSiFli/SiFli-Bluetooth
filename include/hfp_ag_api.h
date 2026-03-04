@@ -188,7 +188,7 @@ typedef struct
  *
  ******************************************************************************/
 void hfp_ag_register(U32 local_features);
-
+void hfp_ag_register_ext(U32 local_features, U16 hf_indicator_mask);
 /*******************************************************************************
  *
  * Function         hfp_ag_deregister
