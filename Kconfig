@@ -298,7 +298,7 @@ menu "Bluetooth"
         
         config BT_CON_NUM_CUSTOMIZE
             bool "Manually config bt connection number"
-            default n     
+            default y     
  
         config CFG_MAX_BT_ACL_NUM
             int "config max bt acl number"

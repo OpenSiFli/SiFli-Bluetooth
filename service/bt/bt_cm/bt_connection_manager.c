@@ -376,10 +376,11 @@ static bt_cm_dev_acl_info_t *bt_cm_get_conn_by_hdl(bt_cm_device_manager_t *env, 
 }
 
 
-static uint8_t bt_cm_get_conn_num(bt_cm_device_manager_t *env)
+uint8_t bt_cm_get_conn_num(void)
 {
     uint8_t i;
     uint8_t n = 0;
+    bt_cm_device_manager_t *env = bt_cm_get_env();
     for (i = 0; i < BT_CM_DEVICE_MAX_CONN; i++)
     {
         if (env->bt_devices[i].state != BT_CM_ACL_STATE_DISCONNECTED)
@@ -820,7 +821,7 @@ void bt_close_bt_request_complete_check(bt_cm_device_manager_t *env, bt_cm_dev_a
 
     // double check:Avoid scan and page
     gap_wr_scan_enb_req(bts2_task_get_app_task_id(), 0, 0);
-    if (0 == bt_cm_get_conn_num(env))
+    if (0 == bt_cm_get_conn_num())
     {
 
         if (BT_CM_OPENED != env->close_process)
@@ -893,7 +894,7 @@ static void bt_cm_app_init_ready_hdl(void *msg)
     }
     else
 #endif // BT_AUTO_CONNECT_LAST_DEVICE
-        if ((BT_CM_OPENED == env->close_process) && (bt_cm_get_conn_num(env) < BT_CM_DEVICE_MAX_CONN))
+        if ((BT_CM_OPENED == env->close_process) && (bt_cm_get_conn_num() < BT_CM_DEVICE_MAX_CONN))
         {
             gap_wr_scan_enb_req(bts2_task_get_app_task_id(), TRUE, TRUE);
         }
@@ -1025,9 +1026,13 @@ static void bt_cm_hci_acl_connect_complete_event_hdl(BTS2S_DM_EN_ACL_OPENED_IND 
         bt_cm_conn_dealloc(env, conn);
     }
 
-    if ((bt_cm_get_conn_num(env) + 1) > BT_CM_DEVICE_MAX_CONN)
+    if ((bt_cm_get_conn_num() + 1) > BT_CM_DEVICE_MAX_CONN)
     {
         gap_wr_scan_enb_req(bts2_task_get_app_task_id(), 0, 0);
+    }
+    else if (bt_cm_get_conn_num() > BT_CM_DEVICE_MAX_CONN)
+    {
+        gap_disconnect_req(&ind->bd);
     }
     else
     {

@@ -13,11 +13,9 @@
 #include "bts2_app_demo.h"
 #include "drivers/bt_device.h"
 
-#ifdef CFG_MAX_BT_ACL_NUM
-    #define BT_CM_DEVICE_MAX_CONN CFG_MAX_BT_ACL_NUM
-#else
-    #define BT_CM_DEVICE_MAX_CONN 1
-#endif
+
+#define BT_CM_DEVICE_MAX_CONN CFG_MAX_BT_ACL_NUM
+
 #ifdef CFG_MAX_BT_BOND_NUM
     #define BT_CM_MAX_BOND CFG_MAX_BT_BOND_NUM
 #else
@@ -162,6 +160,7 @@ void bt_cm_add_bonded_dev(bt_cm_dev_info_t *dev, uint8_t force);
 void bt_cm_delete_bonded_devs(void);
 void bt_cm_delete_bonded_devs_and_linkkey(uint8_t *addr);
 bt_cm_dev_info_t *bt_cm_get_bonded_dev_by_addr(uint8_t *addr);
+uint8_t bt_cm_get_conn_num(void);
 
 bt_cm_dev_acl_info_t *bt_cm_conn_alloc(bt_cm_device_manager_t *env, BTS2S_BD_ADDR *bd_addr, uint8_t link_type);
 bt_cm_dev_acl_info_t *bt_cm_get_conn_by_addr(bt_cm_device_manager_t *env, BTS2S_BD_ADDR *bd_addr);
