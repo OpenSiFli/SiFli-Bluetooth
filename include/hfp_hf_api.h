@@ -999,7 +999,7 @@ void hfp_hf_at_data_req(uint8_t mux_id, U8 profile_type, U8 *payload, U16 payloa
 void hfp_hf_send_at_bia_api(uint8_t mux_id, U8 profile_type, BTS2S_HF_OPTIONAL_INDICATORS *optional_indicators); //reserve
 void hfp_hf_set_wbs(uint8_t mux_id,  U8 profile_type, U8 wbs_flag);
 
-
+void hfp_hf_send_at_biev_api(uint8_t mux_id, uint8_t profile_type, uint8_t assigned_id, uint8_t value);
 #ifdef __cplusplus
 }
 #endif
