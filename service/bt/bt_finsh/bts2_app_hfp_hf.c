@@ -16,7 +16,6 @@
 #define LOG_TAG         "btapp_hf"
 #include "log.h"
 
-
 #if defined(AUDIO_USING_MANAGER) && !defined(BT_USING_HF)
     #include "hfp_audio_api.h"
 #endif
@@ -57,13 +56,13 @@ static void bt_hfp_hf_app_init_device_info(bts2_hfp_hf_inst_data *hf_data)
     }
 }
 
-static bts2_hfp_hf_device_info * bt_hfp_hf_app_get_device_by_mux_id(bts2_hfp_hf_inst_data *hf_data, U8 mux_id)
+static bts2_hfp_hf_device_info *bt_hfp_hf_app_get_device_by_mux_id(bts2_hfp_hf_inst_data *hf_data, U8 mux_id)
 {
     if (hf_data->devices_info)
     {
         for (int i = 0; i < CFG_MAX_HFP_CONN_NUM; i++)
         {
-            if(hf_data->devices_info[i].mux_id == mux_id)
+            if (hf_data->devices_info[i].mux_id == mux_id)
             {
                 return &hf_data->devices_info[i];
             }
@@ -72,7 +71,7 @@ static bts2_hfp_hf_device_info * bt_hfp_hf_app_get_device_by_mux_id(bts2_hfp_hf_
     return NULL;
 }
 
-static bts2_hfp_hf_device_info * bt_hfp_hf_app_get_device_by_bd_addr(bts2_hfp_hf_inst_data *hf_data, BTS2S_BD_ADDR *bd)
+static bts2_hfp_hf_device_info *bt_hfp_hf_app_get_device_by_bd_addr(bts2_hfp_hf_inst_data *hf_data, BTS2S_BD_ADDR *bd)
 {
     if (hf_data->devices_info)
     {
@@ -87,13 +86,13 @@ static bts2_hfp_hf_device_info * bt_hfp_hf_app_get_device_by_bd_addr(bts2_hfp_hf
     return NULL;
 }
 
-static bts2_hfp_hf_device_info * bt_hfp_hf_app_alloc_device(bts2_hfp_hf_inst_data *hf_data)
+static bts2_hfp_hf_device_info *bt_hfp_hf_app_alloc_device(bts2_hfp_hf_inst_data *hf_data)
 {
     if (hf_data->devices_info)
     {
         for (int i = 0; i < CFG_MAX_HFP_CONN_NUM; i++)
         {
-            if(hf_data->devices_info[i].is_use)
+            if (hf_data->devices_info[i].is_use)
             {
                 hf_data->devices_info[i].is_use = 0;
                 return &hf_data->devices_info[i];
@@ -103,7 +102,7 @@ static bts2_hfp_hf_device_info * bt_hfp_hf_app_alloc_device(bts2_hfp_hf_inst_dat
     return NULL;
 }
 
-static void bt_hfp_hf_app_dealloc_device(bts2_hfp_hf_device_info * device)
+static void bt_hfp_hf_app_dealloc_device(bts2_hfp_hf_device_info *device)
 {
     if (device)
     {
@@ -121,13 +120,13 @@ static void bt_hfp_hf_app_dealloc_device(bts2_hfp_hf_device_info * device)
     }
 }
 
-static bts2_hfp_hf_device_info * bt_hfp_hf_app_get_busy_device(bts2_hfp_hf_inst_data *hf_data)
+static bts2_hfp_hf_device_info *bt_hfp_hf_app_get_busy_device(bts2_hfp_hf_inst_data *hf_data)
 {
     if (hf_data->devices_info)
     {
         for (int i = 0; i < CFG_MAX_HFP_CONN_NUM; i++)
         {
-            if(hf_data->devices_info[i].is_use == 0)
+            if (hf_data->devices_info[i].is_use == 0)
             {
                 return &hf_data->devices_info[i];
             }
@@ -167,14 +166,14 @@ static void bt_hfp_hf_app_service_state_update(bts2_hfp_st new_state)
 U8 bt_hfp_hf_get_ring_type(void)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
     return bt_hfp_is_support_feature(device_info, HFP_AG_FEAT_INBAND);
 }
 
 U8 bt_hfp_hf_get_ring_type_ext(uint8_t mux_id)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
     return bt_hfp_is_support_feature(device_info, HFP_AG_FEAT_INBAND);
 }
 /*----------------------------------------------------------------------------*
@@ -351,23 +350,23 @@ bt_err_t bt_hfp_hf_start_disc(BTS2S_BD_ADDR *bd)
         return BT_ERROR_INPARAM;
     }
 
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_bd_addr(hf_data, bd);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_bd_addr(hf_data, bd);
     if (device_info)
     {
         switch (device_info->profile_state)
         {
-            case HFP_DEVICE_CONNECTED:
-            {
-                hfp_hf_disconnect(bd, HF_CONN);
-                ret = BT_EOK;
-                USER_TRACE(">> Hf disconnect send\n");
-                break;
-            }
-            default:
-            {
-                USER_TRACE(">> Hf disconnect fail");
-                break;
-            }
+        case HFP_DEVICE_CONNECTED:
+        {
+            hfp_hf_disconnect(bd, HF_CONN);
+            ret = BT_EOK;
+            USER_TRACE(">> Hf disconnect send\n");
+            break;
+        }
+        default:
+        {
+            USER_TRACE(">> Hf disconnect fail");
+            break;
+        }
         }
     }
 
@@ -393,7 +392,7 @@ bt_err_t bt_hfp_hf_audio_transfer(U8 type)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
     bt_err_t ret = BT_ERROR_STATE;
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
 
     if (device_info)
     {
@@ -446,7 +445,7 @@ bt_err_t bt_hfp_hf_audio_transfer(U8 type)
 bt_err_t bt_hfp_hf_voice_recog_send(U8 active)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
     bt_err_t ret = BT_ERROR_STATE;
 
     if (device_info)
@@ -491,7 +490,7 @@ bt_err_t bt_hfp_hf_voice_recog_send(U8 active)
 bt_err_t bt_hfp_hf_dial_by_mem_send(U16 memory)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
     bt_err_t ret = BT_ERROR_STATE;
 
     if (device_info)
@@ -532,7 +531,7 @@ bt_err_t bt_hfp_hf_dial_by_mem_send(U16 memory)
 bt_err_t bt_hfp_hf_last_num_dial_send(void)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
     bt_err_t ret = BT_ERROR_STATE;
 
     if (device_info)
@@ -571,7 +570,7 @@ bt_err_t bt_hfp_hf_last_num_dial_send(void)
 bt_err_t bt_hfp_hf_make_call_by_number_send(U8 *payload, U8 payload_len)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
     bt_err_t ret = BT_ERROR_STATE;
 
     if (device_info)
@@ -624,7 +623,7 @@ bt_err_t bt_hfp_hf_make_call_by_number_send(U8 *payload, U8 payload_len)
 bt_err_t bt_hfp_hf_answer_call_send(void)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
     bt_err_t ret = BT_ERROR_STATE;
 
     if (device_info)
@@ -663,7 +662,7 @@ bt_err_t bt_hfp_hf_answer_call_send(void)
 bt_err_t bt_hfp_hf_hangup_call_send(void)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
     bt_err_t ret = BT_ERROR_STATE;
 
     if (device_info)
@@ -702,7 +701,7 @@ bt_err_t bt_hfp_hf_hangup_call_send(void)
 bt_err_t bt_hfp_hf_update_spk_vol(U8 vol)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
     bt_err_t ret = BT_ERROR_STATE;
 
     if (device_info)
@@ -747,7 +746,7 @@ bt_err_t bt_hfp_hf_update_spk_vol(U8 vol)
 bt_err_t bt_hfp_hf_update_mic_vol(U8 vol)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
     bt_err_t ret = BT_ERROR_STATE;
 
     if (device_info)
@@ -792,7 +791,7 @@ bt_err_t bt_hfp_hf_update_mic_vol(U8 vol)
 bt_err_t bt_hfp_hf_at_btrh_query_send(void)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
     bt_err_t ret = BT_ERROR_STATE;
 
     if (device_info)
@@ -830,7 +829,7 @@ bt_err_t bt_hfp_hf_at_btrh_query_send(void)
 bt_err_t bt_hfp_hf_at_btrh_cmd_send(U8 mode)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
     bt_err_t ret = BT_ERROR_STATE;
 
     USER_TRACE(">> enter \n");
@@ -869,7 +868,7 @@ bt_err_t bt_hfp_hf_at_btrh_cmd_send(U8 mode)
 bt_err_t bt_hfp_hf_at_binp_send(void)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
     bt_err_t ret = BT_ERROR_STATE;
 
     if (device_info)
@@ -908,7 +907,7 @@ bt_err_t bt_hfp_hf_at_binp_send(void)
 bt_err_t bt_hfp_hf_at_clip_send(U8 enable)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
     bt_err_t ret = BT_ERROR_STATE;
 
     if (device_info)
@@ -954,7 +953,7 @@ bt_err_t bt_hfp_hf_at_clip_send(U8 enable)
 bt_err_t bt_hfp_hf_at_cmee_send(BOOL val)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
     bt_err_t ret = BT_ERROR_STATE;
 
     if (device_info)
@@ -999,7 +998,7 @@ bt_err_t bt_hfp_hf_at_cmee_send(BOOL val)
 bt_err_t bt_hfp_hf_at_cnum_send(void)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
     bt_err_t ret = BT_ERROR_STATE;
 
     if (device_info)
@@ -1037,7 +1036,7 @@ bt_err_t bt_hfp_hf_at_cnum_send(void)
 bt_err_t bt_hfp_hf_at_ccwa_send(BOOL val)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
     bt_err_t ret = BT_ERROR_STATE;
 
     if (device_info)
@@ -1082,7 +1081,7 @@ bt_err_t bt_hfp_hf_at_ccwa_send(BOOL val)
 bt_err_t bt_hfp_hf_at_chld_send(U8 *payload, U8 payload_len)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
     bt_err_t ret = BT_ERROR_STATE;
 
     if (device_info)
@@ -1120,7 +1119,7 @@ bt_err_t bt_hfp_hf_at_chld_send(U8 *payload, U8 payload_len)
 bt_err_t bt_hfp_hf_at_clcc_send(void)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
     bt_err_t ret = BT_ERROR_STATE;
 
     if (device_info)
@@ -1161,7 +1160,7 @@ bt_err_t bt_hfp_hf_at_clcc_send(void)
 bt_err_t bt_hfp_hf_at_cops_cmd_send(void)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
     bt_err_t ret = BT_ERROR_STATE;
 
     if (device_info && (device_info->profile_state == HFP_DEVICE_CONNECTED))
@@ -1199,7 +1198,7 @@ bt_err_t bt_hfp_hf_at_dtmf_send(char key)
 {
     //U8 *data;
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
     bt_err_t ret = BT_ERROR_STATE;
 
     if (device_info)
@@ -1238,7 +1237,7 @@ bt_err_t bt_hfp_hf_at_dtmf_send(char key)
 bt_err_t bt_hfp_hf_at_nrec_send(void)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
     bt_err_t ret = BT_ERROR_STATE;
 
     if (device_info)
@@ -1277,7 +1276,7 @@ bt_err_t bt_hfp_hf_at_nrec_send(void)
 bt_err_t bt_hfp_hf_update_batt_send(U8 batt_val)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
     bt_err_t ret = BT_ERROR_STATE;
 
     if (device_info)
@@ -1310,7 +1309,7 @@ bt_err_t bt_hfp_hf_update_batt_send(U8 batt_val)
 bt_err_t hfp_hf_get_at_cind_status()
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
     bt_err_t ret = BT_ERROR_STATE;
 
     if (device_info)
@@ -1372,12 +1371,22 @@ void bt_hfp_hf_rfc_conn_rej_hdl(BTS2S_BD_ADDR *bd, U8 srv_chnl)
 static void bt_hfp_hf_at_cmd_cfm_hdl(BTS2S_HF_AT_CMD_CFM *msg)
 {
     USER_TRACE("bt_hfp_at_cmd_cfm cmd_id:0x%2x  res:0x%2x", msg->at_cmd_id, msg->res);
+
+    bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, msg->mux_id);
+
     switch (msg->at_cmd_id)
     {
     case HFP_HF_AT_BVRA:
-    case HFP_HF_AT_CLCC:
     case HFP_HF_AT_ATD:
     case HFP_HF_AT_BLDN:
+    {
+        break;
+    }
+    case HFP_HF_AT_CLCC:
+    {
+        break;
+    }
     case HFP_HF_AT_VTS:
     case HFP_HF_AT_VGS:
     {
@@ -1560,7 +1569,7 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
         USER_TRACE("BTS2MU_HF_CONN_CFM state %d res:%x", msg->device_state, msg->res);
         if ((msg->res == BTS2_SUCC) && (msg->device_state == HFP_DEVICE_CONNECTED))
         {
-            bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(inst_data, msg->mux_id);
+            bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(inst_data, msg->mux_id);
             if (!device_info)
             {
                 device_info = bt_hfp_hf_app_alloc_device(inst_data);
@@ -1592,7 +1601,7 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
                 call_info.signal = device_info->cind_status.signal;
                 call_info.batt_level = device_info->cind_status.batt_level;
                 bt_interface_bt_event_notify(BT_NOTIFY_HFP_HF, BT_NOTIFY_HF_CALL_STATUS_UPDATE,
-                                            &call_info, sizeof(bt_notify_all_call_status));
+                                             &call_info, sizeof(bt_notify_all_call_status));
             }
 
             bt_notify_profile_state_info_t profile_state;
@@ -1621,7 +1630,7 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
         else if (msg->device_state == HFP_DEVICE_DISCONNECTED)
         {
 
-            bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(inst_data, msg->mux_id);
+            bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(inst_data, msg->mux_id);
             bt_hfp_hf_app_dealloc_device(device_info);
 
             bt_notify_profile_state_info_t profile_state;
@@ -1647,7 +1656,7 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
         profile_state.profile_channel = msg->mux_id;
         bt_profile_update_connection_state(BT_NOTIFY_HFP_HF, BT_NOTIFY_HF_PROFILE_DISCONNECTED,  &profile_state);
 
-        bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(inst_data, msg->mux_id);
+        bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(inst_data, msg->mux_id);
         bt_hfp_hf_app_dealloc_device(device_info);
 #if defined(AUDIO_USING_MANAGER) && !defined(BT_USING_HF)
         hfp_audio_close_path();
@@ -1666,7 +1675,7 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
         profile_state.profile_channel = msg->mux_id;
         bt_profile_update_connection_state(BT_NOTIFY_HFP_HF, BT_NOTIFY_HF_PROFILE_DISCONNECTED, &profile_state);
 
-        bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(inst_data, msg->mux_id);
+        bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(inst_data, msg->mux_id);
         bt_hfp_hf_app_dealloc_device(device_info);
 #if defined(AUDIO_USING_MANAGER) && !defined(BT_USING_HF)
         hfp_audio_close_path();
@@ -1748,7 +1757,7 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
     {
         BTS2S_HF_AUDIO_INFO *msg;
         msg = (BTS2S_HF_AUDIO_INFO *)bts2_app_data->recv_msg;
-        bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(inst_data, msg->mux_id);
+        bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(inst_data, msg->mux_id);
         if (msg->audio_on == TRUE)
         {
             USER_TRACE("<< Audio connected\n");
@@ -1809,6 +1818,11 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
         BTS2S_HF_RING_IND *msg;
         msg = (BTS2S_HF_RING_IND *) bts2_app_data->recv_msg;
         USER_TRACE("<< Ring......\n");
+        bt_notify_ag_at_arg_t *data_info = (bt_notify_ag_at_arg_t *)bmalloc(sizeof(bt_notify_ag_at_arg_t));
+        data_info->profile_channel = msg->mux_id;
+        data_info->payload_len = 0;
+        bt_interface_bt_event_notify(BT_NOTIFY_HFP_HF, BT_NOTIFY_HF_RING_IND, data_info, sizeof(bt_notify_ag_at_arg_t));
+        bfree(data_info);
         break;
     }
     case BTS2MU_HF_STS_IND:
@@ -1857,6 +1871,12 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
         BTS2S_HF_CHLD_IND *msg;
         msg = (BTS2S_HF_CHLD_IND *) bts2_app_data->recv_msg;
         USER_TRACE(">> \"%s\":%d\n", msg->chld_str, msg->supp);
+        bt_notify_ag_at_arg_t *data_info = (bt_notify_ag_at_arg_t *)bmalloc(sizeof(bt_notify_ag_at_arg_t) + 1);
+        data_info->profile_channel = msg->mux_id;
+        data_info->payload_len = 1;
+        bmemcpy(data_info->payload, &msg->supp, 1);
+        bt_interface_bt_event_notify(BT_NOTIFY_HFP_HF, BT_NOTIFY_HF_CHLD_IND, data_info, sizeof(bt_notify_ag_at_arg_t) + 1);
+        bfree(data_info);
         break;
     }
 
@@ -1959,7 +1979,6 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
             bt_interface_bt_event_notify(BT_NOTIFY_HFP_HF, BT_NOTIFY_HF_REMOTE_CALL_INFO_IND,
                                          &ind, sizeof(bt_notify_clcc_ind_t));
         }
-
         if (NULL != msg->data)
         {
             bfree(msg->data);
@@ -1979,7 +1998,7 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
         USER_TRACE(">> Phone number \"%s\",phone type <%d>\n", msg->phone_number, msg->phone_type);
         bt_notify_ag_at_arg_t *data_info = (bt_notify_ag_at_arg_t *)bmalloc(sizeof(bt_notify_ag_at_arg_t) + msg->phone_len);
         data_info->profile_channel = msg->mux_id;
-        data_info->payload_len = 1;
+        data_info->payload_len = msg->phone_len;
         bmemcpy(data_info->payload, msg->phone_number, msg->phone_len);
         bt_interface_bt_event_notify(BT_NOTIFY_HFP_HF, BT_NOTIFY_HF_LOCAL_PHONE_NUMBER, data_info, sizeof(bt_notify_ag_at_arg_t) + msg->phone_len);
         bfree(data_info);
@@ -1992,7 +2011,7 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
         USER_TRACE("cind call status %d callHeldStatus %d callSetupStatus %d",
                    msg->cind_status.callStatus, msg->cind_status.callHeldStatus, msg->cind_status.callSetupStatus);
 
-        bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(inst_data, msg->mux_id);
+        bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(inst_data, msg->mux_id);
         if (!device_info)
         {
             device_info = bt_hfp_hf_app_alloc_device(inst_data);
@@ -2001,7 +2020,6 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
                 device_info->mux_id = msg->mux_id;
             }
         }
-
         if (device_info)
         {
             device_info->cind_status.callStatus = msg->cind_status.callStatus;
@@ -2033,6 +2051,12 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
         BTS2S_HF_BTRH_IND *msg;
         msg = (BTS2S_HF_BTRH_IND *)bts2_app_data->recv_msg;
         USER_TRACE("URC call 3way btrh ind\n");
+        bt_notify_ag_at_arg_t *data_info = (bt_notify_ag_at_arg_t *)bmalloc(sizeof(bt_notify_ag_at_arg_t) + 1);
+        data_info->profile_channel = msg->mux_id;
+        data_info->payload_len = 1;
+        bmemcpy(data_info->payload, &msg->val, 1);
+        bt_interface_bt_event_notify(BT_NOTIFY_HFP_HF, BT_NOTIFY_HF_CALL_RESPONSE_HOLD_IND, data_info, sizeof(bt_notify_ag_at_arg_t) + 1);
+        bfree(data_info);
         break;
     }
 
@@ -2041,6 +2065,12 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
         BTS2S_HF_CLIP_IND *msg;
         msg = (BTS2S_HF_CLIP_IND *)bts2_app_data->recv_msg;
         USER_TRACE("CLIP call phone number: %s,phone type %d", msg->phone_number, msg->phone_type);
+        bt_notify_ag_at_arg_t *data_info = (bt_notify_ag_at_arg_t *)bmalloc(sizeof(bt_notify_ag_at_arg_t) + msg->phone_len);
+        data_info->profile_channel = msg->mux_id;
+        data_info->payload_len = msg->phone_len;
+        bmemcpy(data_info->payload, msg->phone_number, msg->phone_len);
+        bt_interface_bt_event_notify(BT_NOTIFY_HFP_HF, BT_NOTIFY_HF_CALL_INCOMING_NUMBER_IND, data_info, sizeof(bt_notify_ag_at_arg_t) + msg->phone_len);
+        bfree(data_info);
         break;
     }
 
@@ -2049,6 +2079,12 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
         BTS2S_HF_CCWA_IND *msg;
         msg = (BTS2S_HF_CCWA_IND *)bts2_app_data->recv_msg;
         USER_TRACE("CCWA Phone number: %s phone type: %d", msg->phone_number, msg->phone_type);
+        bt_notify_ag_at_arg_t *data_info = (bt_notify_ag_at_arg_t *)bmalloc(sizeof(bt_notify_ag_at_arg_t) + msg->phone_len);
+        data_info->profile_channel = msg->mux_id;
+        data_info->payload_len = msg->phone_len;
+        bmemcpy(data_info->payload, msg->phone_number, msg->phone_len);
+        bt_interface_bt_event_notify(BT_NOTIFY_HFP_HF, BT_NOTIFY_HF_CALL_INCOMING_NUMBER_IND, data_info, sizeof(bt_notify_ag_at_arg_t) + msg->phone_len);
+        bfree(data_info);
         break;
     }
 
@@ -2101,7 +2137,7 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
         BTS2S_HF_COMMON_CFM *msg;
         msg = (BTS2S_HF_COMMON_CFM *)bts2_app_data->recv_msg;
         USER_TRACE("BTS2MU_HF_BSIR_IND %d\n", msg->res);
-        bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(inst_data, msg->mux_id);
+        bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(inst_data, msg->mux_id);
         if (device_info)
         {
             if (msg->res)
@@ -2121,7 +2157,7 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
         U8 supp_voice_reg;
         BTS2S_HF_BRSF_IND *msg;
         msg = (BTS2S_HF_BRSF_IND *)bts2_app_data->recv_msg;
-        bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(inst_data, msg->mux_id);
+        bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(inst_data, msg->mux_id);
         if (!device_info)
         {
             device_info = bt_hfp_hf_app_alloc_device(inst_data);
@@ -2149,7 +2185,7 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
 bt_err_t bt_hfp_hf_audio_transfer_request(U8 mux_id, U8 type)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
     bt_err_t ret = BT_ERROR_STATE;
     if (device_info)
     {
@@ -2188,7 +2224,7 @@ bt_err_t bt_hfp_hf_voice_recog_request(U8 mux_id, U8 active)
 {
     bt_err_t ret = BT_ERROR_STATE;
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
 
     if (device_info)
     {
@@ -2218,7 +2254,7 @@ bt_err_t bt_hfp_hf_dial_by_mem_request(U8 mux_id, U16 memory)
 {
     bt_err_t ret = BT_ERROR_STATE;
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
     if (device_info)
     {
         switch (device_info->profile_state)
@@ -2242,7 +2278,7 @@ bt_err_t bt_hfp_hf_dial_by_mem_request(U8 mux_id, U16 memory)
 bt_err_t bt_hfp_hf_last_num_dial_request(U8 mux_id, U16 memory)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
     bt_err_t ret = BT_ERROR_STATE;
     if (device_info)
     {
@@ -2265,7 +2301,7 @@ bt_err_t bt_hfp_hf_last_num_dial_request(U8 mux_id, U16 memory)
 bt_err_t bt_hfp_hf_make_call_by_number_request(U8 mux_id, U8 *payload, U8 payload_len)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
     bt_err_t ret = BT_ERROR_STATE;
     if (device_info)
     {
@@ -2302,7 +2338,7 @@ bt_err_t bt_hfp_hf_make_call_by_number_request(U8 mux_id, U8 *payload, U8 payloa
 bt_err_t bt_hfp_hf_answer_call_request(U8 mux_id)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
     bt_err_t ret = BT_ERROR_STATE;
     if (device_info)
     {
@@ -2325,7 +2361,7 @@ bt_err_t bt_hfp_hf_answer_call_request(U8 mux_id)
 bt_err_t bt_hfp_hf_hangup_call_request(U8 mux_id)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
     bt_err_t ret = BT_ERROR_STATE;
     if (device_info)
     {
@@ -2347,7 +2383,7 @@ bt_err_t bt_hfp_hf_hangup_call_request(U8 mux_id)
 bt_err_t bt_hfp_hf_update_spk_vol_ext(U8 mux_id, U8 vol)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
 
     bt_err_t ret = BT_ERROR_STATE;
     if (device_info)
@@ -2377,7 +2413,7 @@ bt_err_t bt_hfp_hf_update_spk_vol_ext(U8 mux_id, U8 vol)
 bt_err_t bt_hfp_hf_update_mic_vol_ext(U8 mux_id, U8 vol)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
     bt_err_t ret = BT_ERROR_STATE;
     if (device_info)
     {
@@ -2406,7 +2442,7 @@ bt_err_t bt_hfp_hf_update_mic_vol_ext(U8 mux_id, U8 vol)
 bt_err_t bt_hfp_hf_at_btrh_query_request(U8 mux_id)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
 
     bt_err_t ret = BT_ERROR_STATE;
     if (device_info)
@@ -2429,7 +2465,7 @@ bt_err_t bt_hfp_hf_at_btrh_query_request(U8 mux_id)
 bt_err_t bt_hfp_hf_at_btrh_cmd_request(U8 mux_id, U8 mode)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
     bt_err_t ret = BT_ERROR_STATE;
 
     USER_TRACE(">> enter \n");
@@ -2453,7 +2489,7 @@ bt_err_t bt_hfp_hf_at_btrh_cmd_request(U8 mux_id, U8 mode)
 bt_err_t bt_hfp_hf_at_binp_request(U8 mux_id)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
     bt_err_t ret = BT_ERROR_STATE;
     if (device_info)
     {
@@ -2476,7 +2512,7 @@ bt_err_t bt_hfp_hf_at_binp_request(U8 mux_id)
 bt_err_t bt_hfp_hf_at_clip_request(U8 mux_id, U8 enable)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
     bt_err_t ret = BT_ERROR_STATE;
     if (device_info)
     {
@@ -2505,7 +2541,7 @@ bt_err_t bt_hfp_hf_at_clip_request(U8 mux_id, U8 enable)
 bt_err_t bt_hfp_hf_at_cmee_request(U8 mux_id, BOOL val)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
     bt_err_t ret = BT_ERROR_STATE;
     if (device_info)
     {
@@ -2534,7 +2570,7 @@ bt_err_t bt_hfp_hf_at_cmee_request(U8 mux_id, BOOL val)
 bt_err_t bt_hfp_hf_at_cnum_request(U8 mux_id)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
     bt_err_t ret = BT_ERROR_STATE;
     if (device_info)
     {
@@ -2556,7 +2592,7 @@ bt_err_t bt_hfp_hf_at_cnum_request(U8 mux_id)
 bt_err_t bt_hfp_hf_at_ccwa_request(U8 mux_id, BOOL val)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
     bt_err_t ret = BT_ERROR_STATE;
     if (device_info)
     {
@@ -2585,7 +2621,7 @@ bt_err_t bt_hfp_hf_at_ccwa_request(U8 mux_id, BOOL val)
 bt_err_t bt_hfp_hf_at_chld_request(U8 mux_id, U8 *payload, U8 payload_len)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
     bt_err_t ret = BT_ERROR_STATE;
     if (device_info)
     {
@@ -2608,7 +2644,7 @@ bt_err_t bt_hfp_hf_at_clcc_request(U8 mux_id)
 {
     bt_err_t ret = BT_ERROR_STATE;
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
 
     if (device_info)
     {
@@ -2633,7 +2669,7 @@ bt_err_t bt_hfp_hf_at_clcc_request(U8 mux_id)
 bt_err_t bt_hfp_hf_at_cops_cmd_request(U8 mux_id)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
     bt_err_t ret = BT_ERROR_STATE;
 
     if (device_info && (device_info->profile_state == HFP_DEVICE_CONNECTED))
@@ -2656,7 +2692,7 @@ bt_err_t bt_hfp_hf_at_dtmf_request(U8 mux_id, char key)
 {
     //U8 *data;
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, g_mux_id);
     bt_err_t ret = BT_ERROR_STATE;
     if (device_info)
     {
@@ -2679,7 +2715,7 @@ bt_err_t bt_hfp_hf_at_dtmf_request(U8 mux_id, char key)
 bt_err_t bt_hfp_hf_at_nrec_request(U8 mux_id)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
     bt_err_t ret = BT_ERROR_STATE;
     if (device_info)
     {
@@ -2702,7 +2738,7 @@ bt_err_t bt_hfp_hf_at_nrec_request(U8 mux_id)
 bt_err_t bt_hfp_hf_update_batt_request(U8 mux_id, U8 batt_val)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
     bt_err_t ret = BT_ERROR_STATE;
     if (device_info)
     {
@@ -2734,7 +2770,7 @@ bt_err_t bt_hfp_hf_update_batt_request(U8 mux_id, U8 batt_val)
 bt_err_t hfp_hf_get_at_cind_status_ext(U8 mux_id)
 {
     bts2_hfp_hf_inst_data *hf_data = bt_hfp_hf_get_context();
-    bts2_hfp_hf_device_info * device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
+    bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(hf_data, mux_id);
     bt_err_t ret = BT_ERROR_STATE;
     if (device_info)
     {

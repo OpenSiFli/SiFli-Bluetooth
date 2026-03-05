@@ -193,6 +193,9 @@ menu "Bluetooth"
             bool "Enable BT pan finsh"
             depends on BT_FINSH && RT_USING_LWIP
             default n
+        config CFG_HFP_CALL_STATUS
+            bool "Enable hfp call status"
+            default n
 
         config BT_FINSH
             bool "Enable BT finsh"
@@ -220,7 +223,7 @@ menu "Bluetooth"
         config CFG_HFP_HF
             bool "Enable HandsFree HF"
             depends on BT_PROFILE_CUSTOMIZE
-            default n     
+            default n
 
         config CFG_HFP_AG
             bool "Enable HandsFree AG"

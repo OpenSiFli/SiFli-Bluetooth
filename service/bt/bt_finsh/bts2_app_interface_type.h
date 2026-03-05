@@ -130,6 +130,16 @@ typedef enum
     BT_NOTIFY_HF_INDICATOR_UPDATE,
     ///  HFP HF profile at cmd send result event
     BT_NOTIFY_HF_AT_CMD_CFM,
+    ///  HFP HF profile at cmd send result event
+    BT_NOTIFY_HF_RING_IND,
+    ///  HFP HF profile at cmd send result event
+    BT_NOTIFY_HF_CHLD_IND,
+    ///  HFP HF profile at cmd send result event
+    BT_NOTIFY_HF_CALL_RESPONSE_HOLD_IND,
+    ///  HFP HF profile at cmd send result event
+    BT_NOTIFY_HF_BTRH_IND,
+    ///  HFP HF profile at cmd send result event
+    BT_NOTIFY_HF_CALL_INCOMING_NUMBER_IND,
 } bt_notify_hfp_hf_event_id_t;
 
 ///  these type are BT_NOTIFY_HFP_AG event id

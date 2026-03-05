@@ -20,7 +20,6 @@
 
 #include "hfp_type_api.h"
 
-
 //#if defined(BSP_BTS2_PAN) || defined(BT_FINSH_PAN)
 //#define CFG_PAN
 //#endif
