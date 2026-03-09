@@ -30,7 +30,7 @@
 
 #ifndef BSP_USING_PC_SIMULATOR
 //#define ULOG_BACKEND_USING_FS 1
-#if defined (RT_USING_DFS) && (defined(ULOG_BACKEND_USING_FS) || defined(BSP_USING_LVGL_INPUT_AGENT) || defined(SAVE_ASSERT_CONTEXT_IN_FLASH) || defined(MC_BACKEND_USING_FILE))
+#if defined (RT_USING_DFS) && (defined(ULOG_BACKEND_USING_FS) || defined(BSP_USING_LVGL_INPUT_AGENT) || defined(USING_COREDUMP) || defined(MC_BACKEND_USING_FILE))
     #define LOG_USING_FS 1
     #include <dfs_posix.h>
 #endif
@@ -45,6 +45,10 @@
 #if defined(ULOG_BACKEND_USING_RAM)
     #include "ram_be.h"
 #endif
+
+#ifdef USING_COREDUMP
+    #include "coredump.h"
+#endif /* USING_COREDUMP */
 
 
 static ble_log_env_t g_ble_log;
@@ -96,15 +100,6 @@ static void ble_log_send_data_response(uint32_t size);
 
 
 #endif
-
-#ifdef SAVE_ASSERT_CONTEXT_IN_FLASH
-    extern int ble_assert_onoff(int flag);  //flag: 0->off  1->on       2->return on/off
-    extern int ble_assert_clear();       //delete file or erase flash
-    extern int ble_assert_type_get();       //retun: -1:no assert   0:write flash   1:use FS
-    extern int ble_assert_mem_get(uint32_t *addr, uint32_t *len);  //return:  0:err  1:ok
-    extern const char *ble_assert_file_get();   //return:   NULL:err  other:file full path
-#endif
-
 
 static int ble_log_data_send(uint8_t *raw_data, uint16_t size)
 {
@@ -326,34 +321,30 @@ uint8_t ble_log_get_transport_state()
     return env->state;
 }
 
-static void ble_minidump_info_send(void)
+static void ble_dump_info_send(coredump_backend_read_t dump_reader, uint32_t size)
 {
-#if defined(SAVE_MINIDUMP_INFO)
     int iCnt = 0;
     int block_len = 2048;
-    uint32_t minidump_info_len = assert_minidump_get_size();
+    uint32_t dump_info_len = size;
     uint8_t *data = bt_mem_alloc(block_len);
     BT_OOM_ASSERT(data);
     if (data)
     {
-        uint32_t addr = assert_minidump_get_addr();
-
-        for (iCnt = 0; iCnt < minidump_info_len / block_len; iCnt++)
+        for (iCnt = 0; iCnt < dump_info_len / block_len; iCnt++)
         {
             memset(data, 0, block_len);
-            assert_minidump_read(addr + iCnt * block_len, data, block_len);
+            dump_reader(iCnt * block_len, data, block_len);
             ble_log_send_advance(data, block_len);
         }
 
-        if (minidump_info_len % block_len)
+        if (dump_info_len % block_len)
         {
             memset(data, 0, block_len);
-            assert_minidump_read(addr + iCnt * block_len, data,  minidump_info_len % block_len);
-            ble_log_send_advance(data, minidump_info_len % block_len);
+            dump_reader(iCnt * block_len, data,  dump_info_len % block_len);
+            ble_log_send_advance(data, dump_info_len % block_len);
         }
         bt_mem_free(data);
     }
-#endif
     return;
 }
 
@@ -365,6 +356,10 @@ static void ble_send_thread(void *param)
     uint32_t flash_addr = 0;
     uint32_t flash_len = 0;
     ble_log_env_t *env = ble_log_get_env();
+#ifdef USING_COREDUMP
+    coredump_data_t coredump_data;
+    coredump_err_code_t err;
+#endif /* USING_COREDUMP */
 
 #ifdef ULOG_BACKEND_USING_FS
     int ble_log_status = 0;
@@ -397,21 +392,17 @@ static void ble_send_thread(void *param)
     }
 
 
-#ifdef SAVE_ASSERT_CONTEXT_IN_FLASH
+#ifdef USING_COREDUMP
     if (env->command == BLE_LOG_ASSERT_GET)
     {
-        mem_type = ble_assert_type_get();
-        if (mem_type == 0)
-        {
-            ble_assert_mem_get(&flash_addr, &flash_len);
-        }
-        else if (mem_type == 1)
-        {
-            path_mc = ble_assert_file_get();
-        }
-
+        err = coredump_get_data(&coredump_data);
+        RT_ASSERT(err == COREDUMP_ERR_NO);
+        mem_type = coredump_data.is_file ? 1 : 0;
+        path_mc = (const char *)coredump_data.fulldump_addr;
+        flash_addr = coredump_data.fulldump_addr;
+        flash_len = coredump_data.fulldump_size;
     }
-#endif
+#endif /* USING_COREDUMP */
 
 #ifdef MC_BACKEND_USING_FILE
     if (env->command == BLE_LOG_METRICS_GET)
@@ -443,13 +434,15 @@ static void ble_send_thread(void *param)
             int file_len = lseek(fptr, 0, SEEK_END);
             lseek(fptr, 0, SEEK_SET);
 
-#if defined(SAVE_MINIDUMP_INFO)
-            minidump_info_len = assert_minidump_get_size();
+#if defined(COREDUMP_MINIDUMP_ENABLED)
+            minidump_info_len = coredump_data.minidump_size;
 #endif
             ble_log_send_data_response(file_len + minidump_info_len);
             env->send_index = 0;
             LOG_I("log file len %d minidump_info_len:%d", file_len, minidump_info_len);
-            ble_minidump_info_send();
+#if defined(COREDUMP_MINIDUMP_ENABLED)
+            ble_dump_info_send(coredump_read_minidump, minidump_info_len);
+#endif
             uint8_t *data = bt_mem_alloc(block_len);
             BT_OOM_ASSERT(data);
             if (data)
@@ -498,19 +491,22 @@ static void ble_send_thread(void *param)
     else if (mem_type == 0 && flash_len > 0) //MEM
     {
         int minidump_info_len = 0;
+        uint32_t minidump_addr = 0;
         env->state = BLE_LOG_STATE_TRANSPORT;
         ble_log_connection_update();
 
-#if defined(SAVE_MINIDUMP_INFO)
-        minidump_info_len = assert_minidump_get_size();
+#if defined(COREDUMP_MINIDUMP_ENABLED)
+        minidump_info_len = coredump_data.minidump_size;
 #endif
 
         uint8_t *data = (uint8_t *)flash_addr;
         ble_log_send_data_response(flash_len + minidump_info_len);
         env->send_index = 0;
         LOG_I("assert addr 0x%08x, len %d", flash_addr, flash_len);
-        ble_minidump_info_send();
-        ble_log_buf_send(data, flash_len);
+#if defined(COREDUMP_MINIDUMP_ENABLED)
+        ble_dump_info_send(coredump_read_minidump, minidump_info_len);
+#endif
+        ble_dump_info_send(coredump_read_dump, flash_len);
 
         LOG_I("log file len end %d", flash_len);
 
@@ -867,9 +863,9 @@ static void ble_log_inquiry_handler()
         general_log_enable = 1;
 #endif
 
-#ifdef SAVE_ASSERT_CONTEXT_IN_FLASH
+#ifdef USING_COREDUMP
         assert_save_enable = 1;
-#endif
+#endif /* USING_COREDUMP */
 
 #ifdef MC_BACKEND_USING_FILE
         metrics_enable = 1;
@@ -930,7 +926,7 @@ static void ble_log_packet_handler(ble_log_protocol_t *msg, uint16_t length)
         break;
     }
 
-#ifdef SAVE_ASSERT_CONTEXT_IN_FLASH
+#ifdef USING_COREDUMP
     case BLE_LOG_ASSERT_GET:
     {
         env->command = BLE_LOG_ASSERT_GET;
@@ -939,18 +935,18 @@ static void ble_log_packet_handler(ble_log_protocol_t *msg, uint16_t length)
     }
     case BLE_LOG_ASSERT_CLEAR:
     {
-        ble_assert_clear();
+        coredump_clear();
         ble_log_send_data_finish();
         break;
     }
     case BLE_LOG_ASSERT_ON_OFF:
     {
         uint8_t op = msg->data[0];
-        ble_assert_onoff(op);
+        coredump_set_onoff(op);
         ble_log_send_data_finish();
         break;
     }
-#endif
+#endif /* USING_COREDUMP */
     case BLE_AUDIO_DUMP_GET:
     {
         ble_audio_dump_get_proccess();
