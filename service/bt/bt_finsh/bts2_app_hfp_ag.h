@@ -56,5 +56,3 @@ void bt_hfp_ag_at_result_res(U8 mux_id, U8 res);
 }
 #endif
 
-
-

@@ -6,10 +6,13 @@
 
 #include "bts2_app_inc.h"
 #include "rtthread.h"
+#include "bf0_sibles.h"
 
 #ifdef RT_USING_BT
     #include "bt_rt_device.h"
 #endif
+
+extern bts2_app_stru *bts2g_app_p;
 
 #ifdef CFG_HFP_HF
 
@@ -1770,12 +1773,22 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
             bt_notify_device_sco_info_t sco_info;
             sco_info.sco_type = BT_NOTIFY_HFP_HF;
             sco_info.sco_res = BTS2_SUCC;
-            sco_info.profile_channel = msg->mux_id;
+            sco_info.para.type = msg->type;
+            sco_info.para.mux_id = msg->mux_id;
+            sco_info.para.audio_on = msg->audio_on;
+            sco_info.para.sco_hdl = msg->sco_hdl;
+            sco_info.para.profile_type = msg->profile_type;
+            sco_info.para.tx_intvl = msg->tx_intvl;
+            sco_info.para.we_sco = msg->we_sco;
+            sco_info.para.rx_pkt_len = msg->rx_pkt_len;
+            sco_info.para.tx_pkt_len = msg->tx_pkt_len;
+            sco_info.para.air_mode = msg->mux_id;
+            bt_addr_convert_to_general(&msg->bd, (bd_addr_t *)&sco_info.para.bd);
             bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_SCO_CONNECTED,
                                          &sco_info, sizeof(bt_notify_device_sco_info_t));
 
 #if defined(AUDIO_USING_MANAGER) && !defined(BT_USING_HF)
-            hfp_set_audio_voice_para(msg, msg->audio_on, 1);
+            hfp_set_audio_voice_para(&sco_info.para, msg->audio_on, 1);
 #endif // AUDIO_USING_MANAGER
 
         }

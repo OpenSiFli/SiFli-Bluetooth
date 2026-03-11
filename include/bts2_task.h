@@ -11,6 +11,8 @@
 extern "C" {
 #endif
 
+#include "config.h"
+
 #define BTS2_TASK_MAX_NAME_LEN       (16)
 #define BTS2_MSG_MAX_NUM             (0xFF)
 #define BTS2_TIME_EV_MAX_NUM         (0xFF)

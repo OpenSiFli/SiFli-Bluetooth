@@ -2114,11 +2114,14 @@ static void bt_av_hdl_conn_cfm(bts2_app_stru *bts2_app_data)
     if (msg->res != AV_ACPT)
     {
 #if defined(CFG_AV)
-        bt_notify_profile_state_info_t profile_state;
-        bt_addr_convert(&msg->bd, profile_state.mac.addr);
-        profile_state.profile_type = BT_NOTIFY_A2DP;
-        profile_state.res = msg->res;
-        bt_profile_update_connection_state(BT_NOTIFY_A2DP, BT_NOTIFY_A2DP_PROFILE_DISCONNECTED, &profile_state);
+        if (msg->res != AV_DUPLICATE_CONNECTING)
+        {
+            bt_notify_profile_state_info_t profile_state;
+            bt_addr_convert(&msg->bd, profile_state.mac.addr);
+            profile_state.profile_type = BT_NOTIFY_A2DP;
+            profile_state.res = msg->res;
+            bt_profile_update_connection_state(BT_NOTIFY_A2DP, BT_NOTIFY_A2DP_PROFILE_DISCONNECTED, &profile_state);
+        }
 #endif
         USER_TRACE(" -- a2dp connect failed %x\n", msg->res);
         return;
@@ -2296,7 +2299,7 @@ static void bt_av_hdl_disc_ind(bts2_app_stru *bts2_app_data)
 bts2s_av_inst_data *bt_av_get_inst_data(void)
 {
     // global_inst  should already init
-    RT_ASSERT(global_inst != NULL);
+    // RT_ASSERT(global_inst != NULL);
     return global_inst;
 }
 
@@ -2854,7 +2857,6 @@ U8 bt_av_get_slience_filter_enable(U8 con_idx)
 #endif // CFG_AV_SNK
 }
 
-
 #ifndef CFG_AVRCP
     #define AVRCP_PLAY_STATUS_STOP 0x00
     #define AVRCP_PLAY_STATUS_PLAYING 0x01
@@ -2863,6 +2865,11 @@ U8 bt_av_get_slience_filter_enable(U8 con_idx)
 U8 bt_av_get_a2dp_stream_state(BTS2S_BD_ADDR *bd_addr)
 {
     bts2s_av_inst_data *inst = bt_av_get_inst_data();
+
+    if (inst == NULL)
+    {
+        return AVRCP_PLAY_STATUS_STOP;
+    }
 
     for (U8 i = 0; i < MAX_CONNS; i++)
     {

@@ -1354,4 +1354,3 @@ void a2dp_reset_req(void);
 #endif
 
 #endif
-

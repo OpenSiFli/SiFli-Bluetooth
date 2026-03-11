@@ -10,7 +10,6 @@
 #include <sys/stat.h>
 #include <stdio.h>
 #include "rtthread.h"
-//#include "log.h"
 
 //add for pan project start
 #include "bts2_type.h"
@@ -245,6 +244,7 @@ typedef struct
     U8             abs_vol_support;//0:TG has not register absolute volume; 1:TG has register absolute volume.
     U8             tgTlable_2;
     U8             abs_volume_pending;
+    U8             rmt_abs_sup;//remote device support absolute volume?
 #ifdef CFG_AVRCP_COVER_ART
     U8             is_cover_connected;
     U8             need_reconnect;
@@ -315,7 +315,7 @@ typedef struct
 
 typedef enum
 {
-    BTS_SCAN_MODE_IDLE,
+    BTS_SCAN_MODE_IDLE = 0,
     BTS_SCAN_MODE_SETTING,
 } bts_scan_mode_fsm_t;
 

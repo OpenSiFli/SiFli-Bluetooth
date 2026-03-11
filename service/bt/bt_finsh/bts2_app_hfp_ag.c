@@ -43,13 +43,13 @@ static void bt_hfp_ag_app_init_device_info(bts2_hfp_ag_inst_data *ag_data)
     }
 }
 
-static bts2_hfp_ag_device_info * bt_hfp_ag_app_get_device_by_mux_id(bts2_hfp_ag_inst_data *ag_data, U8 mux_id)
+static bts2_hfp_ag_device_info *bt_hfp_ag_app_get_device_by_mux_id(bts2_hfp_ag_inst_data *ag_data, U8 mux_id)
 {
     if (ag_data->devices_info)
     {
         for (int i = 0; i < CFG_MAX_HFP_CONN_NUM; i++)
         {
-            if(ag_data->devices_info[i].mux_id == mux_id)
+            if (ag_data->devices_info[i].mux_id == mux_id)
             {
                 return &ag_data->devices_info[i];
             }
@@ -58,13 +58,13 @@ static bts2_hfp_ag_device_info * bt_hfp_ag_app_get_device_by_mux_id(bts2_hfp_ag_
     return NULL;
 }
 
-static bts2_hfp_ag_device_info * bt_hfp_ag_app_alloc_device(bts2_hfp_ag_inst_data *ag_data)
+static bts2_hfp_ag_device_info *bt_hfp_ag_app_alloc_device(bts2_hfp_ag_inst_data *ag_data)
 {
     if (ag_data->devices_info)
     {
         for (int i = 0; i < CFG_MAX_HFP_CONN_NUM; i++)
         {
-            if(ag_data->devices_info[i].is_use)
+            if (ag_data->devices_info[i].is_use)
             {
                 ag_data->devices_info[i].is_use = 0;
                 return &ag_data->devices_info[i];
@@ -74,7 +74,7 @@ static bts2_hfp_ag_device_info * bt_hfp_ag_app_alloc_device(bts2_hfp_ag_inst_dat
     return NULL;
 }
 
-static void bt_hfp_ag_app_dealloc_device(bts2_hfp_ag_device_info * device)
+static void bt_hfp_ag_app_dealloc_device(bts2_hfp_ag_device_info *device)
 {
     if (device)
     {
@@ -88,13 +88,13 @@ static void bt_hfp_ag_app_dealloc_device(bts2_hfp_ag_device_info * device)
     }
 }
 
-static bts2_hfp_ag_device_info * bt_hfp_ag_app_get_busy_device(bts2_hfp_ag_inst_data *ag_data)
+static bts2_hfp_ag_device_info *bt_hfp_ag_app_get_busy_device(bts2_hfp_ag_inst_data *ag_data)
 {
     if (ag_data->devices_info)
     {
         for (int i = 0; i < CFG_MAX_HFP_CONN_NUM; i++)
         {
-            if(ag_data->devices_info[i].is_use == 0)
+            if (ag_data->devices_info[i].is_use == 0)
             {
                 return &ag_data->devices_info[i];
             }
@@ -288,8 +288,8 @@ static void bt_hfp_ag_app_device_state_changed(bts2_app_stru *bts2_app_data, BTS
     case HFP_AG_APP_OPENING:
     case HFP_AG_APP_OPEN:
     {
-        bts2_hfp_ag_device_info * device_info = bt_hfp_ag_app_get_device_by_mux_id(p_data, con_msg->mux_id);
-        if(device_info == NULL)
+        bts2_hfp_ag_device_info *device_info = bt_hfp_ag_app_get_device_by_mux_id(p_data, con_msg->mux_id);
+        if (device_info == NULL)
         {
             device_info = bt_hfp_ag_app_alloc_device(p_data);
             if (device_info)
@@ -337,9 +337,9 @@ static void bt_hfp_ag_app_device_state_changed(bts2_app_stru *bts2_app_data, BTS
             profile_state.profile_type = BT_NOTIFY_HFP_AG;
             profile_state.res = con_msg->res;
             profile_state.profile_channel = con_msg->mux_id;
-            bt_profile_update_connection_state(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_PROFILE_DISCONNECTED,&profile_state);
+            bt_profile_update_connection_state(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_PROFILE_DISCONNECTED, &profile_state);
 
-            if(device_info)
+            if (device_info)
             {
                 bt_hfp_ag_app_dealloc_device(device_info);
             }
@@ -356,7 +356,7 @@ static void bt_hfp_ag_app_device_state_changed(bts2_app_stru *bts2_app_data, BTS
     {
         if (con_msg->device_state == HFP_DEVICE_DISCONNECTED)
         {
-            bts2_hfp_ag_device_info * device_info = bt_hfp_ag_app_get_device_by_mux_id(p_data, con_msg->mux_id);
+            bts2_hfp_ag_device_info *device_info = bt_hfp_ag_app_get_device_by_mux_id(p_data, con_msg->mux_id);
             if (device_info)
             {
                 bt_hfp_ag_app_dealloc_device(device_info);
@@ -614,6 +614,7 @@ static void bt_hfp_ag_app_at_cmd_hdl(BTS2S_AG_AT_CMD_INFO *at_cmd)
     {
         hfp_batt_vaule_t *batt = (hfp_batt_vaule_t *) at_cmd->str;
         // USER_TRACE("recv HFP_AG_BATT_EVT status:%d val :%d",batt->batt_status,batt->batt_val);
+        bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_BATTERY_UPDATE, batt, sizeof(hfp_batt_vaule_t));
         break;
     }
     }
@@ -835,7 +836,7 @@ void bt_hfp_stop_profile_service(bts2_app_stru *bts2_app_data)
     }
     case HFP_AG_APP_OPEN:
     {
-        bts2_hfp_ag_device_info * device_info = bt_hfp_ag_app_get_busy_device(ptr);
+        bts2_hfp_ag_device_info *device_info = bt_hfp_ag_app_get_busy_device(ptr);
         if (device_info && (device_info->profile_state != HFP_DEVICE_DISCONNECTED))
         {
             bt_hfp_ag_disconnect_request(&device_info->ag_bd);

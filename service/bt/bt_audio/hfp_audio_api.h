@@ -10,6 +10,7 @@
 #ifdef AUDIO_USING_MANAGER
 
 #include "audio_server.h"
+#include "bts2_app_inc.h"
 
 typedef audio_type_t  hfp_audio_type_t;
 
@@ -27,7 +28,7 @@ typedef struct
 
 void hfp_audio_init(void);
 void hfp_audio_set_default_para(void);
-void hfp_set_audio_voice_para(BTS2S_HF_AUDIO_INFO *msg, BOOL audio_on, U8 direct_audio_on);
+void hfp_set_audio_voice_para(bt_device_sco_conn_para_t *msg, BOOL audio_on, U8 direct_audio_on);
 void hfp_aduio_open_path(hfp_audio_type_t audioType);
 void hfp_audio_close_path(void);
 
@@ -40,5 +41,3 @@ void hfp_ag_audio_register(void);
 
 
 #endif
-
-

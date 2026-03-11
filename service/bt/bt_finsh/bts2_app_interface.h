@@ -214,6 +214,21 @@ void bt_interface_rd_local_rssi(unsigned char *mac);
 uint8_t bt_interface_get_current_scan_mode(void);
 
 /**
+ * @brief            get bluetooth's target scan mode
+ *
+ * @return           Bluetooth target scan mode
+ **/
+uint8_t bt_interface_get_target_scan_mode(void);
+
+/**
+ * @brief            get bluetooth's current scan mode set fsm
+ *
+ * @return           Bluetooth scan mode fsm
+ **/
+uint8_t bt_interface_get_scan_mode_fsm(void);
+
+
+/**
  * @brief                     set bluetooth phy
  * @param[in] map             This parameter contains 80 1-bit fields.
  *                            The nth such field (in the range 0 to 78) contains the value for channel n:
@@ -1143,6 +1158,17 @@ bt_err_t bt_interface_hf_update_battery(uint8_t batt_val);
  * @return                       bt_err_t
  **/
 bt_err_t bt_interface_set_wbs_status(uint8_t status);
+
+/**
+ * @brief                        Send extern AT command.
+ *
+ * @param[in] payload            Expand command content (string)
+ *
+ * @param[in] payload_len        contention length
+ *
+ * @return                       bt_err_t
+ **/
+bt_err_t bt_interface_hfp_set_extern_cmd(uint8_t *payload, uint16_t payload_len);
 
 /// @}  HFP_HF
 

@@ -23,7 +23,7 @@
 
 
 #ifdef BSP_USING_PC_SIMULATOR
-void hfp_set_audio_voice_para(BTS2S_HF_AUDIO_INFO *msg)
+void hfp_set_audio_voice_para(bt_device_sco_conn_para_t *msg)
 {
 }
 
@@ -85,7 +85,7 @@ static hfp_audio_env_t g_hfp_audio_env;
 /****************************************func define*************************************************/
 static int hfp_audio_client_callback(audio_server_callback_cmt_t cmd, void *userdata, uint32_t unused)
 {
-    audio_type_t type = (audio_type_t)(uint32_t)userdata;
+    audio_type_t type = (audio_type_t)userdata;
     //BT_DBG_D("hfp_audio_client_callback cmd=%d type=%d\r\n", cmd, type);
     return 0;
 }
@@ -103,7 +103,7 @@ void hfp_audio_set_default_para(void)
     g_hfp_audio_env.audioStop = 0xff;
 }
 
-void hfp_set_audio_voice_para(BTS2S_HF_AUDIO_INFO *msg, BOOL audio_on, U8 direct_audio_on)
+void hfp_set_audio_voice_para(bt_device_sco_conn_para_t *msg, BOOL audio_on, U8 direct_audio_on)
 {
     BT_DBG_D("voice para on:%d supportInband %d", audio_on, direct_audio_on);
     if (audio_on)
@@ -285,6 +285,11 @@ static uint32_t bt_hfpag_register_audio_output(void *user_data, struct rt_ringbu
     uint8_t buf[240];
     rt_size_t getsize, putsize;
     int ret;
+
+    if (NULL == ag_inf->handle)
+    {
+        return 0;
+    }
 
     if (rt_ringbuffer_space_len(ag_rb_cache) >= ag_inf->data_len)
     {

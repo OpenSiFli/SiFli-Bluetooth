@@ -58,8 +58,8 @@ typedef enum
 
 typedef enum
 {
-    BT_LINK_PHONE = 0x00,
-    BT_LINK_EARPHONE
+    BT_LINK_EARPHONE = 0x00,
+    BT_LINK_PHONE,
 } bt_cm_link_type_t;
 
 // Master device means audio provider, not BT's role
@@ -107,7 +107,7 @@ typedef struct
     BTS2S_BD_ADDR bd_addr;
     uint32_t dev_cls;   // device of class
     bt_cm_link_role_t role;
-    uint8_t link_type;// phone or earphone
+    bt_cm_link_type_t link_type;// phone or earphone
     uint8_t is_reconn;
     uint8_t is_use;
 } bt_cm_dev_info_t;
@@ -122,8 +122,8 @@ typedef struct
     uint16_t conn_hdl;
     // Curretly connect as master or slave;
     uint8_t link_dir;
-    uint8_t state;
-    uint8_t sub_state;
+    bt_cm_acl_state_t state;
+    bt_cm_profile_state_t sub_state;
     uint8_t link_status_update; // link mode update flag
     uint8_t link_mode;
     float   link_interval;

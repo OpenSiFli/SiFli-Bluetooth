@@ -15,8 +15,7 @@ extern "C" {
 //add for tcpip route
 extern BTS2S_ETHER_ADDR   bts2_local_ether_addr;
 #endif
-// # include "bts2_app_avrcp.h"
-// #include "bts2_app_interface_type.h"
+
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:

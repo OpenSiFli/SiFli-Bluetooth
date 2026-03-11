@@ -469,6 +469,18 @@ uint8_t bt_interface_get_current_scan_mode(void)
     return bts2_app_data->scan_mode;
 }
 
+uint8_t bt_interface_get_target_scan_mode(void)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    return bts2_app_data->target_scan_mode;
+}
+
+uint8_t bt_interface_get_scan_mode_fsm(void)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    return bts2_app_data->scan_mode_fsm;
+}
+
 uint8_t bt_interface_wr_afh_chnl_cls_req(uint8_t *map)
 {
     bt_wr_afh_chnl_cls_req(map);
@@ -488,7 +500,8 @@ uint8_t bt_interface_set_scan_mode(uint8_t inquiry_scan, uint8_t page_scan)
     {
         target_scan_mode |= 0x02;
     }
-
+    USER_TRACE("%s target_scan_mode:%d scan_mode:%d fsm:%d %d \n", __func__, target_scan_mode, bts2_app_data->scan_mode, \
+               bts2_app_data->scan_mode_fsm, bts2_app_data->target_scan_mode);
     if ((target_scan_mode != bts2_app_data->scan_mode) ||
             (bts2_app_data->scan_mode_fsm && (target_scan_mode !=  bts2_app_data->target_scan_mode)))
     {
@@ -548,7 +561,7 @@ BTS2S_BD_ADDR *bt_interface_this_connect_addr(unsigned char *mac)
 
 void bt_interface_acl_accept_role_set(uint8_t role) //0；master 1:slave
 {
-    // bt_acl_accept_role_set(role);
+    bt_acl_accept_role_set(role);
 }
 
 void bt_interface_set_linkpolicy(uint16_t lp_in, uint16_t lp_out)//bit0:roleswitch   bit2:sniff
@@ -1227,18 +1240,21 @@ bt_err_t bt_interface_spp_send_data_ext(uint8_t *data, uint16_t len, bt_notify_d
         if ((bts2_spp_srv_inst->service_list & (1 << srv_chl)) == 0)
         {
             ret = BT_ERROR_DISCONNECTED;
+            free(data);
             return ret;
         }
 
         if (len > bt_spp_get_mtu_size(bts2_app_data, bts2_spp_srv_inst->device_id))
         {
             ret = BT_ERROR_INPARAM;
+            free(data);
             return ret;
         }
     }
     else
     {
         ret = BT_ERROR_DISCONNECTED;
+        free(data);
         return ret;
     }
 
@@ -1539,7 +1555,7 @@ void bt_interface_bt_gatt_mtu_changed(uint16_t mtu)
 #ifdef BT_USING_AG
 void bt_interface_phone_state_changed(HFP_CALL_INFO_T *call_info)
 {
-    bt_hfp_ag_call_state_update_listener(call_info);
+    bt_hfp_ag_call_state_update_listener(call_info->mux_id, call_info);
 }
 
 void bt_interface_local_phone_info_res(uint16_t profile_channel, hfp_phone_number_t *local_phone_num)
@@ -1572,7 +1588,7 @@ void bt_interface_mic_vol_change_req(uint16_t profile_channel, uint8_t vol)
     bt_hfp_ag_mic_vol_control((uint8_t)profile_channel, vol);
 }
 
-void bt_interface_make_call_res(Uuint16_t profile_channel, uint8_t res)
+void bt_interface_make_call_res(uint16_t profile_channel, uint8_t res)
 {
     bt_hfp_ag_at_result_res((uint8_t)profile_channel, res);
 }
@@ -1783,6 +1799,14 @@ bt_err_t bt_interface_set_wbs_status(uint8_t status)
     hfp_hf_set_wbs(0, HF_CONN, status);
     return ret;
 }
+
+bt_err_t bt_interface_hfp_set_extern_cmd(uint8_t *payload, uint16_t payload_len)
+{
+    bt_err_t ret = BT_EOK;
+    hfp_hf_at_data_req(0, HF_CONN, payload, payload_len);
+    return ret;
+}
+
 #endif
 
 /// @}  HFP_HF

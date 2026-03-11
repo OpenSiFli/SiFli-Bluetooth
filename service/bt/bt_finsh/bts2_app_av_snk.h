@@ -184,4 +184,3 @@ void bt_avsnk_msg_handler(bts2_app_stru *bts2_app_data);
 }
 #endif
 #endif
-

@@ -420,6 +420,11 @@ int bt_avsrc_get_plyback_conn(bts2s_av_inst_data *inst)
     U8 i = 0;
     int res = - 1;
 
+    if (inst == NULL)
+    {
+        return res;
+    }
+
     for (i = 0; i < MAX_CONNS; i++)
     {
         if ((inst->con[i].local_seid_idx != 0xff) && (inst->local_seid_info[inst->con[i].local_seid_idx].local_seid.sep_type == AV_SRC) &&
@@ -1375,4 +1380,3 @@ void bt_avsrc_msg_handler(bts2_app_stru *bts2_app_data)
     }
 }
 #endif
-

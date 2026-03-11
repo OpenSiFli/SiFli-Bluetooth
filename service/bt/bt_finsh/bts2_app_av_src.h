@@ -206,4 +206,3 @@ BOOL bt_avsrc_get_start_flag(void);
 #endif
 
 #endif
-

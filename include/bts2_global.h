@@ -13,6 +13,7 @@ extern "C" {
 
 
 #include "rtthread.h"
+#include "rtconfig.h"
 #include "config.h"
 #include "string.h"
 #include <stdint.h>
@@ -25,13 +26,14 @@ extern "C" {
 #include "bts2_mem.h"
 #include "bts2_sys.h"
 #include "bts2_msg.h"
+#include "bts2_task.h"
 #include "bts2_dbg.h"
 #include "bts2_api.h"
 #include "bts2_file.h"
 
 /* temp put here */
 #if defined(CFG_GNU) || defined(CFG_ANDROID)
-    #pragma   pack  (4)
+#pragma   pack  (4)
 #endif
 
 #define CFG_SBC

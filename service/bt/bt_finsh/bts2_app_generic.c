@@ -53,7 +53,9 @@ extern bts2_app_stru *bts2g_app_p;
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void bt_pincode_indi(bts2_app_stru *bts2_app_data)
+//!If you need to set pincode, you need to implement this function as an empty function,
+//!otherwise it will automatically reply that pincode is 0000
+__WEAK void bt_pincode_indi(bts2_app_stru *bts2_app_data)
 {
     if (bts2_app_data->pin_code_len == 0)
     {
@@ -123,6 +125,13 @@ void bt_stop_inquiry(bts2_app_stru *bts2_app_data)
     gap_esc_discov_req(bts2_app_data->phdl);
     USER_TRACE(">> inquiry esc...\n");
 }
+
+
+void bt_register_receive_connect_req_handler(BOOL (*cb)(BTS2S_BD_ADDR *p_bd, U24 dev_cls))
+{
+    hcia_register_receive_connect_req_handler(cb);
+}
+
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
@@ -184,6 +193,7 @@ void bt_add_eir_data(U8 type, U8 length, U8 *data)
     return;
 }
 
+
 __WEAK uint32_t bt_get_class_of_device(void)
 {
     return 0x240704;
@@ -191,9 +201,8 @@ __WEAK uint32_t bt_get_class_of_device(void)
 
 __WEAK void bt_sc_io_capability_rsp(BTS2S_BD_ADDR *bd)
 {
-    bt_io_capability_rsp(bd, IO_CAPABILITY_DISPLAY_YES_NO, FALSE, TRUE);
+    bt_io_capability_rsp(bd, IO_CAPABILITY_NO_INPUT_NO_OUTPUT, FALSE, TRUE);
 }
-
 __WEAK uint8_t bt_is_auto_request_connect(void)
 {
     return 1; // 0:it doesn't need check
@@ -387,7 +396,6 @@ void bt_wr_afh_chnl_cls_req(uint8_t *map)
     // bt_map[2] = 0xff;
     gap_set_afh_chnl_cls_req(bts2_task_get_app_task_id(), map);
 }
-
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
@@ -670,7 +678,6 @@ void bt_exit_sniff_mode(BTS2S_BD_ADDR *bd)
  *
  * DESCRIPTION:
  *
- *
  * INPUT:
  *      bts2_app_stru *bts2_app_data:
  *
@@ -770,7 +777,7 @@ void bt_hdl_sc_msg(bts2_app_stru *bts2_app_data)
                    msg->bd.nap,
                    msg->bd.uap,
                    msg->bd.lap);
-        // bt_pincode_indi(bts2_app_data);
+        bt_pincode_indi(bts2_app_data);
         break;
     }
     case BTS2MU_SC_PAIR_CFM:
@@ -1345,6 +1352,7 @@ void bt_hdl_gap_msg(bts2_app_stru *bts2_app_data)
     /*inq res recvd */
     case BTS2MU_GAP_DISCOV_RES_IND:
     {
+        int rssi;
         BTS2S_DEV_NAME d_name;
         BTS2S_DEV_NAME tmp;
         BTS2S_EIR_DATA eir_data;
@@ -1366,25 +1374,36 @@ void bt_hdl_gap_msg(bts2_app_stru *bts2_app_data)
 
         bmemcpy((U8 *)eir_data, (const U8 *)msg->eir_data, sizeof(eir_data));
 
+        if (msg->conn_info.rssi > 20)
+        {
+            rssi = msg->conn_info.rssi - 256;
+        }
+        else
+        {
+            rssi = msg->conn_info.rssi;
+        }
+
         bt_notify_remote_device_info_t remote_info;
         bmemset(&remote_info, 0, sizeof(bt_notify_remote_device_info_t));
         bt_addr_convert(&msg->bd, remote_info.mac.addr);
         strcpy((char *)remote_info.bt_name, (const char *)msg->dev_disp_name);
         remote_info.name_size = sizeof(remote_info.bt_name);
         remote_info.dev_cls = msg->dev_cls;
+        remote_info.rssi = rssi;
         bmemcpy((U8 *)remote_info.eir_data, (const U8 *)msg->eir_data, sizeof(remote_info.eir_data));
         bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_DISCOVER_IND, &remote_info, sizeof(bt_notify_remote_device_info_t));
 
         if (bts2_app_data->inquiry_flag == TRUE)
         {
             bts2_app_data->inquiry_list[bts2_app_data->inquiry_list_num] = msg->bd;
-            USER_TRACE("<< idx: %02d--address: %04X:%02X:%06lX--class: %06lX--name: %s\n",
+            USER_TRACE("<< idx:%02d address:%04X:%02X:%06lX class:%06lX name:%s rssi:%d\n",
                        bts2_app_data->inquiry_list_num,
                        msg->bd.nap,
                        msg->bd.uap,
                        msg->bd.lap,
                        msg->dev_cls,
-                       tmp);
+                       tmp,
+                       rssi);
 
 
             //temp
@@ -1808,6 +1827,8 @@ void bt_hdl_gap_msg(bts2_app_stru *bts2_app_data)
             USER_TRACE("<< Failed to read scan mode!\n");
         }
         bts2_app_data->scan_mode = msg->scan_enb;
+        bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_SCAN_ENB_CFM_IND, &bts2_app_data->scan_mode, sizeof(U8));
+        bts2_app_data->scan_mode_fsm = BTS_SCAN_MODE_IDLE;
         break;
     }
     case BTS2MU_GAP_WR_SCAN_ENB_CFM:

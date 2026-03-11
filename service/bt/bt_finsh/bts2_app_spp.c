@@ -425,7 +425,7 @@ void bt_spp_data_ind_hdl(bts2_app_stru *bts2_app_data)
     }
     else
     {
-#ifndef SOLUTION_WATCH
+#ifndef SOLUTION
         if (spp_service_list)
         {
             if (spp_service_list->receive_first_packet == 0)
@@ -1119,7 +1119,7 @@ BOOL bt_spp_check_addr_is_connected(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR 
 {
     BOOL is_connected = FALSE;
 
-    BT_SPP_DEBUG("[BT_SPP_DEBUG]bt_spp_check_addr_is_connected\n");
+    // BT_SPP_DEBUG("[BT_SPP_DEBUG]bt_spp_check_addr_is_connected\n");
 
     for (int i = 0; i < CFG_MAX_ACL_CONN_NUM; i++)
     {
@@ -1372,7 +1372,7 @@ void bt_spp_dump_all_spp_connect_information(bts2_app_stru *bts2_app_data)
     for (int i = 0; i < CFG_MAX_ACL_CONN_NUM; i++)
     {
         bts2_spp_srv_inst_data *sub_inst = &bts2_app_data->spp_srv_inst[i];
-        INFO_TRACE("[SPP_DEBUG]device_id = %d,bd = %04X:%02X:%06X,service list = %x\n",
+        INFO_TRACE("[SPP_DEBUG]device_id = %d,bd = %04X:%02X:%06X,connect server channel = %x\n",
                    sub_inst->device_id, sub_inst->bd_addr.nap, sub_inst->bd_addr.uap, sub_inst->bd_addr.lap, sub_inst->service_list);
     }
 

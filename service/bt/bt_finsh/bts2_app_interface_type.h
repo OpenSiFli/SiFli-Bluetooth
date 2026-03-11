@@ -94,6 +94,8 @@ typedef enum
     BT_NOTIFY_COMMON_USER_CONFIRM_IND,
     ///  receive io capability request event
     BT_NOTIFY_COMMON_IO_CAPABILITY_IND,
+    ///  scan enb confirm event
+    BT_NOTIFY_COMMON_SCAN_ENB_CFM_IND,
     /// read local device inquiry response event
     BT_NOTIFY_COMMON_RD_INQUIRY_RESP_RSP,
     /// write local device inquiry response event
@@ -104,6 +106,7 @@ typedef enum
     BT_NOTIFY_COMMON_RD_INQUIRY_MODE_RSP,
     /// read remote extend feature event
     BT_NOTIFY_COMMON_RD_EXT_FEATURE_RSP,
+    ///  write afh channel cls confirm event
     BT_NOTIFY_COMMON_WR_AFH_CFM_IND,
 } bt_notify_common_event_id_t;
 
@@ -167,6 +170,8 @@ typedef enum
     BT_NOTIFY_AG_GET_LOCAL_PHONE_INFO_REQ,
     ///  HFP AG profile receive extern at cmd event
     BT_NOTIFY_AG_EXTERN_AT_CMD_KEY_REQ,
+    ///  HFP AG profile battery update
+    BT_NOTIFY_AG_BATTERY_UPDATE,
 } bt_notify_hfp_ag_event_id_t;
 
 ///  these type are BT_NOTIFY_A2DP event id
@@ -228,6 +233,8 @@ typedef enum
     BT_NOTIFY_AVRCP_TRACK_CHANGE_STATUS,
     ///  get media attribute confirm event
     BT_NOTIFY_AVRCP_MEDIA_ATTRIBUTE_CFM,
+    ///  remote device switch song
+    BT_NOTIFY_SWITCH_SONG,
 } bt_notify_avrcp_event_id_t;
 
 typedef enum
@@ -444,6 +451,8 @@ typedef struct
     uint32_t dev_cls;
     ///  remote device name size
     uint8_t name_size;
+    ///  remote device RSSI
+    int rssi;
     ///  remote device name,utf8
     char bt_name[BT_NOTIFY_MAX_FRIENDLY_NAME_LEN + 1];
     /// remote device EIR data
@@ -478,11 +487,11 @@ typedef struct
     /// read remote extend feature result
     uint8_t res;
     //page number
-    U8 page_num;
+    uint8_t page_num;
     //max page number
-    U8 max_page_num;
+    uint8_t max_page_num;
     //Bit map of requested page of LMP features
-    U16 ext_lmp_featr[4];
+    uint16_t ext_lmp_featr[4];
     /// remote device mac
     bt_notify_device_mac_t mac;
 } bt_notify_rd_extend_feature_resp_t;
@@ -558,6 +567,33 @@ typedef struct
     uint32_t dev_cls;
 } bt_notify_device_conn_request_t;
 
+typedef struct
+{
+    uint16_t type;
+    uint8_t mux_id;
+    bt_notify_device_mac_t bd;
+    bool audio_on;
+    uint16_t sco_hdl;
+    /*
+    * 0x00 SCO connection
+    * 0x01 Reserved for future use
+    * 0x02 eSCO connection
+    */
+    uint8_t profile_type;
+    uint8_t tx_intvl;
+    /* Retransmission Window */
+    uint8_t we_sco;
+    uint16_t rx_pkt_len;
+    uint16_t tx_pkt_len;
+    /*
+    * 0x00 |��-law log
+    * 0x01 A-law log
+    * 0x02 CVSD
+    * 0x03 Transparent Data
+    */
+    uint8_t air_mode;
+} bt_device_sco_conn_para_t;
+
 ///  bt sco connection state information
 typedef struct
 {
@@ -567,6 +603,7 @@ typedef struct
     uint8_t sco_res;
     ///  profile channel
     uint16_t profile_channel;
+    bt_device_sco_conn_para_t para;
 } bt_notify_device_sco_info_t;
 
 ///  HFP HF at cmd send result

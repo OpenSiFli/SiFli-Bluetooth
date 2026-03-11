@@ -9,6 +9,7 @@
 #include "bts2_app_pan.h"
 #include "bts2_task.h"
 #include "rtdef.h"
+#include "bf0_sibles.h"
 
 #ifdef RT_USING_BT
     #include "bt_rt_device_urc.h"
@@ -248,7 +249,12 @@ void bt_pan_reg(bts2_app_stru *bts2_app_data)
         /*
         void pan_reg_req(U16 the_conn_phdl, U16 the_data_phdl);
         */
-        pan_reg_req(bts2_task_get_app_task_id(), bts2_task_get_pan_task_id(), bts2_app_data->local_bd);
+        bd_addr_t addr;
+        BTS2S_BD_ADDR bd_addr;
+        ble_get_public_address(&addr);
+        bt_addr_convert_to_bts((bd_addr_t *)&addr, &bd_addr);
+        bt_pan_update_addr(&bd_addr);
+        pan_reg_req(bts2_task_get_app_task_id(), bts2_task_get_pan_task_id(), bd_addr);
         ptr->pan_st = PAN_IDLE_ST;
         bt_pan_enable(bts2_app_data);
         USER_TRACE(">> PAN register successful\n");
