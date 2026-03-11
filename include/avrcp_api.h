@@ -1,7 +1,46 @@
+/**
+  ******************************************************************************
+  * @file   avrcp_api.h
+  * @author Sifli software development team
+  ******************************************************************************
+*/
 /*
- * SPDX-FileCopyrightText: 2019-2025 SiFli Technologies(Nanjing) Co., Ltd
+ * @attention
+ * Copyright (c) 2019 - 2022,  Sifli Technology
  *
- * SPDX-License-Identifier: Apache-2.0
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form, except as embedded into a Sifli integrated circuit
+ *    in a product or a software update for such product, must reproduce the above
+ *    copyright notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of Sifli nor the names of its contributors may be used to endorse
+ *    or promote products derived from this software without specific prior written permission.
+ *
+ * 4. This software, with or without modification, must only be used with a
+ *    Sifli integrated circuit.
+ *
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ *
+ * THIS SOFTWARE IS PROVIDED BY SIFLI TECHNOLOGY "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL SIFLI TECHNOLOGY OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 #ifndef _AVRCP_API_H_
@@ -10,27 +49,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#define AVRCP_FIXED_MEDIA_PKT_HDR_SIZE    12
-
-/* service capabilities */
-//?not used
-typedef enum
-{
-    AVRCP_SC_MEDIA_TRS = 1,
-    AVRCP_SC_REPORTING,
-    AVRCP_SC_RECOVERY,
-    AVRCP_SC_CONT_PROTECTION,
-    AVRCP_SC_HDR_COMPRESSION,
-    AVRCP_SC_MULTIPLEXING,
-    AVRCP_SC_MEDIA_CODEC,
-    AVRCP_SC_NEXT = 0xFFFF
-} BTS2E_AVRCP_SERV_CAP;
-
-/* response / error codes */
-#define AVRCP_OPEN_STREAM_FAIL   ((U8)0x01)
-#define AVRCP_L2CA_CONN_ACPT_ERR ((U8)0x02) /* not possible to make conn_acpt */
-#define AVRCP_INVLD_ROLE         ((U8)0x03)
 
 /* command / response types */
 #define AVRCP_CR_CTRL            (0x00)
@@ -59,12 +77,6 @@ typedef enum
 #define AVRCP_PASS_THROUGH_SUBUNIT_ID (0x00)
 #define AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID (0x00)
 
-/* opp_cltodes */
-#define AVRCP_VENDOR_TYPE       (0x00)
-#define AVRCP_UNIT_INFO_TYPE    (0x30)
-#define AVRCP_SUBUNIT_INFO_TYPE (0x31)
-#define AVRCP_PASS_THROUGH_TYPE (0x7c)
-
 
 /* AVRCP device roles */
 #define AVRCP_TG   ((U16)0x00)
@@ -80,25 +92,34 @@ typedef enum
 #define AVRCP_VENDOR_DEPENDENT_PDU_ID_SET_ABSOLUTE_VOLUME 0x50
 #define AVRCP_VENDOR_DEPENDENT_PDU_ID_INVALD 0xff
 
-
+/* avrcp capability id */
 #define AVRCP_VENDOR_DEPENDENT_EVENT_CAPABILITY_COMPANY_ID 0x02
 #define AVRCP_VENDOR_DEPENDENT_EVENT_CAPABILITY_FOR_EVENTS 0x03
+/* avrcp playback status */
 #define AVRCP_PLAY_STATUS_STOP 0x00
 #define AVRCP_PLAY_STATUS_PLAYING 0x01
 #define AVRCP_PLAY_STATUS_PAUSED 0x02
 
-// notification events id
+/* notification event id */
 #define AVRCP_VENDOR_DEPENDENT_EVENT_PLAYBACK_STATUS_CHANGED 0x01
 #define AVRCP_VENDOR_DEPENDENT_EVENT_TRACK_CHANGED 0x02
 #define AVRCP_VENDOR_DEPENDENT_EVENT_PLAYBACK_POS_CHANGED 0x05
+#define AVRCP_VENDOR_DEPENDENT_EVENT_PLAYER_APPLICATION_SETTING_CHANGED 0x08
+#define AVRCP_VENDOR_DEPENDENT_EVENT_NOW_PLAYING_CONTENT_CHANGED 0x09
+#define AVRCP_VENDOR_DEPENDENT_EVENT_AVAILABLE_PLAYERS_CHANGED 0x0A
+#define AVRCP_VENDOR_DEPENDENT_EVENT_ADDRESSED_PLAYER_CHANGED 0x0B
+#define AVRCP_VENDOR_DEPENDENT_EVENT_UIDS_CHANGED 0x0C
 #define AVRCP_VENDOR_DEPENDENT_EVENT_VOLUME_CHANGED 0x0D
 
 
+/* media attribute id */
 #define AVRCP_MEDIA_ATTRIBUTES_TITLE 0x01
 #define AVRCP_MEDIA_ATTRIBUTES_ARTIST 0x02
 #define AVRCP_MEDIA_ATTRIBUTES_ALBUM 0x03
 #define AVRCP_MEDIA_ATTRIBUTES_GENRE 0x06
 #define AVRCP_MEDIA_ATTRIBUTES_PLAYTIME 0x07
+#define AVRCP_MEDIA_ATTRIBUTES_COVER_ART 0x08
+
 
 typedef enum BTS2E_AVRCP_MSG_TAG
 {
@@ -113,6 +134,10 @@ typedef enum BTS2E_AVRCP_MSG_TAG
     BTS2MD_AVRCP_DISC_REQ_EXT,
     BTS2MD_AVRCP_CMD_FRM_REQ_EXT,
     BTS2MD_AVRCP_CMD_FRM_RSP_EXT,
+    //!Used for cover art feature
+    BTS2MD_AVRCP_COVER_ART_CONN_REQ,
+    BTS2MD_AVRCP_GET_COVER_ART_REQ,
+    BTS2MD_AVRCP_COVER_ART_DISCONN_REQ,
 
     //New messages must be added before this
     BTS2M_AVRCP_APP_MAX_MSG_NUM,
@@ -131,14 +156,15 @@ typedef enum BTS2E_AVRCP_MSG_TAG
     BTS2MU_AVRCP_VENDOR_DEPEND_CMD_CFM,
     BTS2MU_AVRCP_PASS_THROUGH_CMD_CFM,
     BTS2MU_AVRCP_ERROR_IND,
+    //!Used for cover art feature
+    BTS2MU_AVRCP_COVER_ART_CONN_CFM,
+    BTS2MU_AVRCP_GET_COVER_ART_BEGIN_IND,
+    BTS2MU_AVRCP_GET_COVER_ART_ABORT_IND,
+    BTS2MU_AVRCP_COVER_ART_DISC_IND,
 
     //New messages must be added before this
     BTS2M_AVRCP_MAX_MSG_NUM
 } AVRCPMSG;
-
-#define BTS2MD_HIGHEST_AVRCP_RECV_MSG_NUM (BTS2M_AVRCP_APP_MAX_MSG_NUM + 1)
-#define AVRCP_RECV_MSG_NUM    (BTS2M_AVRCP_APP_MAX_MSG_NUM - BTS2MD_START + 1)
-#define AVRCP_SEND_MSG_NUM    (BTS2M_AVRCP_MAX_MSG_NUM - BTS2MU_START)
 
 typedef struct
 {
@@ -176,6 +202,29 @@ typedef struct
 typedef struct
 {
     U16          type;
+    U16          tid;
+    BTS2S_BD_ADDR bd;
+} BTS2S_AVRCP_COVER_ART_CONN_REQ;
+
+typedef struct
+{
+    U16          type;
+    U8           res;
+    BTS2S_BD_ADDR bd;
+} BTS2S_AVRCP_COVER_ART_CONN_CFM;
+
+typedef struct
+{
+    U16          type;
+    U16          tid;
+    U8           first_request;
+    const char  *image_handle;
+    BTS2S_BD_ADDR bd;
+} BTS2S_AVRCP_GET_COVER_ART_REQ;
+
+typedef struct
+{
+    U16          type;
     U8           res;
     BTS2S_BD_ADDR bd;
     U16          mfs;
@@ -189,6 +238,22 @@ typedef struct
 
 typedef struct
 {
+    U16 type;                   /* message identity */
+    BOOL is_final_packet;       /* is last packet */
+    BTS2S_BD_ADDR bd;
+    U16 total_length;            /* the length of file */
+    U16 body_data_length;            /* the length of payload */
+    U8 body_data[];                   /* payload */
+} BTS2S_AVRCPGET_COVER_ART_BEGIN_IND;
+
+typedef struct
+{
+    U16 type;                   /* message identity */
+    BTS2S_BD_ADDR bd;
+} BTS2S_AVRCPGET_COVER_ART_ABORT_IND;
+
+typedef struct
+{
     U16 type;
 } BTS2S_AVRCP_DISC_REQ;
 
@@ -198,12 +263,21 @@ typedef struct
     BTS2S_BD_ADDR bd;
 } BTS2S_AVRCP_DISC_REQ_EXT;
 
+typedef BTS2S_AVRCP_DISC_REQ_EXT BTS2S_AVRCP_COVER_ART_DISC_REQ;
+
 typedef struct
 {
     U16 type;
     BTS2S_BD_ADDR bd;
     U8      res;
 } BTS2S_AVRCP_DISC_IND;
+
+typedef struct
+{
+    U16 type;
+    BTS2S_BD_ADDR bd;
+    U8      res;
+} BTS2S_AVRCP_COVER_ART_DISC_IND;
 
 typedef struct
 {
@@ -226,7 +300,6 @@ typedef struct
 {
     U16 type;
 } BTS2S_AVRCP_RESET_REQ;
-
 
 typedef BTS2S_AVRCP_CMD_FRM_REQ BTS2S_AVRCP_CMD_FRM_RSP;
 typedef BTS2S_AVRCP_CMD_FRM_REQ_EXT BTS2S_AVRCP_CMD_FRM_RSP_EXT;
@@ -253,17 +326,6 @@ typedef BTS2S_AVRCP_UNIT_INFO_CMD_IND BTS2S_AVRCP_SUBUNIT_INFO_CMD_CFM;
 typedef BTS2S_AVRCP_UNIT_INFO_CMD_IND BTS2S_AVRCP_VENDOR_DEPEND_CMD_CFM;
 typedef BTS2S_AVRCP_UNIT_INFO_CMD_IND BTS2S_AVRCP_PASS_THROUGH_CMD_CFM;
 
-typedef struct
-{
-    U16 type;
-    BOOL  conn;
-} BTS2S_AVRCP_STS_IND;
-
-typedef struct
-{
-    U16 error_type;
-    U16 type;
-} BTS2S_AVRCP_ERROR_IND;
 
 /*----------------------------------------------------------------------------*
  *
@@ -344,6 +406,9 @@ void avrcp_conn_req(U16 tid,
  *
  *----------------------------------------------------------------------------*/
 void avrcp_disc_req(void);
+
+void avrcp_cover_art_disc_req(BTS2S_BD_ADDR *bd);
+
 
 /*----------------------------------------------------------------------------*
  *
@@ -447,9 +512,13 @@ void avrcp_cmd_data_rsp_ext(BTS2S_BD_ADDR *bd,
 
 void avrcp_reset_req(void);
 
+void avrcp_cover_art_conn_req(U16 tid, BTS2S_BD_ADDR *bd);
+
+void avrcp_get_cover_art_req(U16 tid, BTS2S_BD_ADDR *bd, const char *image_handle, U8 first_request);
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif
-
+/************************ (C) COPYRIGHT Sifli Technology *******END OF FILE****/

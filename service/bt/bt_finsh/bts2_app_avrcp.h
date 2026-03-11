@@ -385,6 +385,27 @@ BOOL bt_avrcp_check_connection_by_addr(bts2_app_stru *bts2_app_data, BTS2S_BD_AD
 U8 bt_avrcp_get_connection_by_addr(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
 
 void bt_avrcp_dump_connection_info(bts2_app_stru *bts2_app_data);
+
+#ifdef CFG_AVRCP_COVER_ART
+void bt_avrcp_cover_art_client_connect(BTS2S_BD_ADDR *bd);
+
+void bt_avrcp_player_application_setting_register_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
+
+void bt_avrcp_now_playing_content_register_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
+
+void bt_avrcp_available_players_register_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
+
+void bt_avrcp_uids_changed_register_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
+
+void bt_avrcp_addressed_player_register_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
+
+void bt_avrcp_cover_art_get_linked_thumbnail(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
+
+void bt_avrcp_cover_art_get_linked_thumbnail_test(BTS2S_BD_ADDR *bd);
+
+void bt_avrcp_cover_art_disconnect(BTS2S_BD_ADDR *bd);
+
+#endif
 #else
 
 #define bt_avrcp_init(bts2_app_data)

@@ -1866,6 +1866,24 @@ void bt_cm(uint8_t argc, char **argv)
         {
             avrcp_disc_req();
         }
+#ifdef CFG_AVRCP_COVER_ART
+        else if (strcmp(argv[1], "get_art") == 0)
+        {
+            BTS2S_BD_ADDR bd_addr;
+            bd_addr.nap = strtol(argv[2], NULL, 0);
+            bd_addr.uap = strtol(argv[3], NULL, 0);
+            bd_addr.lap = strtol(argv[4], NULL, 0);
+            bt_avrcp_cover_art_get_linked_thumbnail_test(&bd_addr);
+        }
+        else if (strcmp(argv[1], "conn_art") == 0)
+        {
+            BTS2S_BD_ADDR bd_addr;
+            bd_addr.nap = strtol(argv[2], NULL, 0);
+            bd_addr.uap = strtol(argv[3], NULL, 0);
+            bd_addr.lap = strtol(argv[4], NULL, 0);
+            bt_avrcp_cover_art_client_connect(&bd_addr);
+        }
+#endif
 #endif
 // #endif
 #ifdef CFG_SPP_LOOPBACK
@@ -1885,6 +1903,7 @@ void bt_cm(uint8_t argc, char **argv)
                     gap_rd_rmt_ext_featr_req(bts2_task_get_app_task_id(), atoi(argv[2]), env->bt_devices[i].info.bd_addr);
             }
         }
+#ifdef CFG_PBAP_CLT
         else if (strcmp(argv[1], "pbap") == 0)
         {
             BTS2S_BD_ADDR bd_addr;
@@ -1897,6 +1916,7 @@ void bt_cm(uint8_t argc, char **argv)
                   bd_addr.lap);
             bt_pbap_client_connect_request(&bd_addr, FALSE);
         }
+#endif
     }
 }
 #ifdef BSP_BQB_TEST

@@ -13,11 +13,6 @@
 extern "C" {
 #endif
 
-
-#define SBC_MAX_BLOCKS            16
-#define SBC_MAX_CHNLS             2
-#define SBC_MAX_SUBBANDS          8
-
 typedef enum
 {
     SBC_MONO = 0,

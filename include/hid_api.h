@@ -18,24 +18,6 @@ extern "C" {
 #define HID_INVLD_ROLE         ((U8)0x03)
 
 
-#define HID_ABS  0x00 // bit2 - 0 absolute, 1 relative
-#define HID_REL  0x04
-
-#define HID_NWRP 0x00 // bit3 - 0 no wrap, 1 wrap
-#define HID_WRAP 0x08
-
-#define HID_LINE 0x00 // bit4 - 0 linear, 1 non linear
-#define HID_NLIN 0x10
-
-#define HID_PREF 0x00 // bit5 - 0 preferred state, 1 no preferred
-#define HID_NPRF 0x20
-
-#define HID_NNUL 0x00 // bit6 - 0 no null position, 1 null state
-#define HID_NULL 0x40
-
-#define HID_NVLA 0x00 // bit7 - 0 non volatile, 1 volatile
-#define HID_VOLA 0x80
-
 #define HID_BOOT_PROTOCOL_MODE      0x0
 #define HID_REPORT_PROTOCOL_MODE    0x1
 
@@ -183,8 +165,6 @@ typedef enum BTS2E_HID_MSG_TAG
     BTS2MD_HID_UNKNOWN,
 } HIDMSG;
 
-
-#define BTS2MD_HIGHEST_HID_RECV_MSG_NUM (BTS2MD_HID_HANDSHAKE_RSP + 1)
 
 
 typedef enum

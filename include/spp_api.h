@@ -11,21 +11,8 @@
 extern "C" {
 #endif
 
-#ifndef DCE
-#define DCE                             (1)
-#define DTE                             (2)
-#endif
-
-
-
-
 #define SPP_DEBUG    BT_DBG_D
 
-
-#ifndef SPP_CLT_ROLE
-#define SPP_CLT_ROLE                    (DTE)
-#define SPP_SRV_ROLE                    (DCE)
-#endif
 
 #ifndef MDM_CTS_MASK
 #define MDM_CTS_MASK                    0x01
@@ -36,24 +23,9 @@ extern "C" {
 #define MDM_DCD_MASK                    0x20
 #endif
 
-#define    SPP_DISC_INIT_NUM              0x00
-#define    SPP_DISC_APP_NUM               0x01
-#define    SPP_DISC_TO_NUM                0x02
-
-
 #define    SPP_NO_ENABLE_ST                    0x00
 #define    SPP_ENABLE_PENDING_ST               0x01
 #define    SPP_ENABLED_ST                      0x02
-
-
-
-typedef enum
-{
-    SPP_OK = 0,
-    /* general error code */
-    SPP_ERROR_INPARAM            = 0x10000001,
-    SPP_ERROR_UNSUPPORTED        = 0x10000002,
-} spp_err_t;
 
 enum
 {
@@ -108,10 +80,15 @@ enum
 #define BTS2MU_SPP_SRV_PORTNEG_IND  BTS2MU_SPP_PORTNEG_IND
 #define BTS2MU_SPP_SRV_MODE_CHANGE_IND  BTS2MU_SPP_MODE_CHANGE_IND
 
-#define BTS2MD_SPP_SRV_MSG_NUM          (BTS2MD_SPP_MAX_MSG_NUM - BTS2MD_START)
 #define SPP_SRV_SVC_NAME_MAX_LEN        (50)
 
-
+typedef enum
+{
+    SPP_OK = 0,
+    /* general error code */
+    SPP_ERROR_INPARAM            = 0x10000001,
+    SPP_ERROR_UNSUPPORTED        = 0x10000002,
+} spp_err_t;
 
 typedef struct
 {
@@ -130,11 +107,6 @@ typedef struct
     void                    *next_struct;
     U8                      *uuid;
 } BTS2S_SPP_UUID_LIST_EXT;
-
-typedef struct
-{
-    U16 type;
-} BTS2S_SPP_SRV_RESET;
 
 typedef struct
 {
@@ -431,48 +403,18 @@ typedef struct
     U8 uuid_len;
 } BTS2S_SPP_DISC_IND;
 
-
 /*
 Description:
-    get additive spp uuid list header
+    get spp uuid list count
 Input:
     NULL
-Time:2024/07/23 17:28:28
+Time:2024/07/23 17:39:41
 
 Author:zhengyu
 
 Modify:
 */
-BTS2S_SPP_UUID_LIST_EXT *spp_get_uuid_list_head(void);
-
-
-/*
-Description:
-    set spp uuid list header
-Input:
-    spp_uuid: incoming spp_uuid node
-Time:2024/07/23 17:30:20
-
-Author:zhengyu
-
-Modify:
-*/
-void spp_set_uuid_list_head(BTS2S_SPP_UUID_LIST_EXT *spp_uuid);
-
-
-/*
-Description:
-    free all spp uuid list node
-Input:
-    NULL
-Time:2024/07/23 17:32:24
-
-Author:zhengyu
-
-Modify:
-*/
-void spp_free_all_uuid_list_node(void);
-
+U8 spp_get_uuid_list_node_count(void);
 
 /*
 Description:
@@ -505,35 +447,6 @@ Modify:
 */
 spp_err_t spp_add_uuid_list_node_ext(U16 bts2s_svc_record_size, U16 bts2s_svc_record_srv_ch_idx, U8 *bts2s_svc_record);
 
-
-/*
-Description:
-    dump all spp uuid list node some information
-Input:
-    NULL
-Time:2024/07/23 17:38:02
-
-Author:zhengyu
-
-Modify:
-*/
-void spp_dump_uuid_list_node(void);
-
-
-/*
-Description:
-    get spp uuid list count
-Input:
-    NULL
-Time:2024/07/23 17:39:41
-
-Author:zhengyu
-
-Modify:
-*/
-U8 spp_get_uuid_list_node_count(void);
-
-
 /*
 Description:
     get spp uuid list node through service channel
@@ -546,35 +459,6 @@ Author:zhengyu
 Modify:
 */
 BTS2S_SPP_UUID_LIST_EXT *spp_get_uuid_list_by_srv_chnl(U8 srv_chnl);
-
-
-/*
-Description:
-    check if all spp uuid list node is un-enabled
-Input:
-    NULL
-Time:2024/07/23 17:44:16
-
-Author:zhengyu
-
-Modify:
-*/
-BOOL spp_check_all_service_channel_unenable(void);
-
-
-/*
-Description:
-    get spp uuid list node through service record handle
-Input:
-    svc_rec_hdl:service record handle
-Time:2024/07/23 17:45:23
-
-Author:zhengyu
-
-Modify:
-*/
-BTS2S_SPP_UUID_LIST_EXT *spp_get_uuid_list_node_by_sds_rec_hdl(U32 svc_rec_hdl);
-
 
 BTS2S_SPP_UUID_LIST_EXT *spp_get_uuid_list_by_uuid(U8 *uuid, U8 uuid_len, U8 *srv_chnl);
 

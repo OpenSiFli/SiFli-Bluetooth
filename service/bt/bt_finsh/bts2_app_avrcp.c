@@ -49,6 +49,13 @@ uint8_t   bts2s_avrcp_openFlag;//0x00:dont open avrcp profile; 0x01:open avrcp p
 
 bt_avrcp_music_detail_t music_detail_info;
 
+
+#ifdef CFG_AVRCP_COVER_ART
+    static FILE *a2dp_sink_cover_art_file = NULL;
+    static FILE *a2dp_sink_cover_art_file1 = NULL;
+    static U16 write_idx = 0;
+#endif
+
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
@@ -79,6 +86,12 @@ void bt_avrcp_init(bts2_app_stru *bts2_app_data)
         bts2_app_data->avrcp_inst.conn[idx].playback_status = 0;
         bts2_app_data->avrcp_inst.conn[idx].abs_vol_support = 0;
         bts2_app_data->avrcp_inst.conn[idx].role = AVRCP_NO_ROLE;
+#ifdef CFG_AVRCP_COVER_ART
+        bts2_app_data->avrcp_inst.conn[idx].is_cover_connected = 0;
+        bts2_app_data->avrcp_inst.conn[idx].need_reconnect = 0;
+        bts2_app_data->avrcp_inst.conn[idx].has_image_hdl = 0;
+        bts2_app_data->avrcp_inst.conn[idx].get_cover_art_pending = 0;
+#endif
     }
 #ifdef CFG_OPEN_AVRCP
     bts2s_avrcp_openFlag = 1;
@@ -1072,6 +1085,29 @@ void bt_avrcp_get_capabilities_confirm(bts2_app_stru *bts2_app_data, BTS2S_AVRCP
                     {
                         bt_avrcp_playback_pos_register_request(bts2_app_data, &avrcmsg->bd);
                     }
+#ifdef CFG_AVRCP_COVER_ART
+                    else if ((AVRCP_VENDOR_DEPENDENT_EVENT_PLAYER_APPLICATION_SETTING_CHANGED == event) && (role == AVRCP_CT))
+                    {
+                        bt_avrcp_player_application_setting_register_request(bts2_app_data, &avrcmsg->bd);
+                    }
+                    else if ((AVRCP_VENDOR_DEPENDENT_EVENT_NOW_PLAYING_CONTENT_CHANGED == event) && (role == AVRCP_CT))
+                    {
+                        bt_avrcp_now_playing_content_register_request(bts2_app_data, &avrcmsg->bd);
+                    }
+                    else if ((AVRCP_VENDOR_DEPENDENT_EVENT_AVAILABLE_PLAYERS_CHANGED == event) && (role == AVRCP_CT))
+                    {
+                        bt_avrcp_available_players_register_request(bts2_app_data, &avrcmsg->bd);
+                    }
+                    else if ((AVRCP_VENDOR_DEPENDENT_EVENT_ADDRESSED_PLAYER_CHANGED == event) && (role == AVRCP_CT))
+                    {
+                        bt_avrcp_addressed_player_register_request(bts2_app_data, &avrcmsg->bd);
+                    }
+                    else if ((AVRCP_VENDOR_DEPENDENT_EVENT_UIDS_CHANGED == event) && (role == AVRCP_CT))
+                    {
+                        bt_avrcp_uids_changed_register_request(bts2_app_data, &avrcmsg->bd);
+                        bt_avrcp_cover_art_client_connect(&avrcmsg->bd);
+                    }
+#endif
                 }
 
                 // TODO: update remote capability for events;
@@ -1219,13 +1255,42 @@ static void bt_avrcp_get_element_attributes_confirm(bts2_app_stru *bts2_app_data
 
     bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_MEDIA_ATTRIBUTE_CFM, &media_attribute_cfm, sizeof(bt_notify_avrcp_media_attribute_cfm_t));
 
-    if (media_attribute != music_detail_info.attri_req)
-    {
-        return;
-    }
+    // if (media_attribute != music_detail_info.attri_req)
+    // {
+    //     return;
+    // }
 
     switch (media_attribute)
     {
+#ifdef CFG_AVRCP_COVER_ART
+    case AVRCP_MEDIA_ATTRIBUTES_COVER_ART:
+    {
+        U8 con_idx = 0xff;
+        if (bt_avrcp_check_connection_by_addr(bts2_app_data, &avrcmsg->bd, &con_idx))
+        {
+            if (value_length != 0)
+            {
+                value = (U8 *)(avrcmsg->data + 17);
+
+                bts2_app_data->avrcp_inst.conn[con_idx].has_image_hdl = 1;
+
+                if (bmemcmp((void *)bts2_app_data->avrcp_inst.conn[con_idx].avrcp_cover_art_image_handle, (void *) value, value_length) != 0)
+                {
+                    bt_avrcp_cover_art_get_linked_thumbnail(bts2g_app_p, &bts2_app_data->avrcp_inst.conn[con_idx].rmt_bd);
+                }
+
+                memcpy((void *)bts2_app_data->avrcp_inst.conn[con_idx].avrcp_cover_art_image_handle, (void *) value, value_length);
+
+                USER_TRACE("AVRCP Controller: Cover Art %s\n", bts2_app_data->avrcp_inst.conn[con_idx].avrcp_cover_art_image_handle);
+            }
+            else
+            {
+                bts2_app_data->avrcp_inst.conn[con_idx].has_image_hdl = 0;
+            }
+        }
+        break;
+    }
+#endif
     case AVRCP_MEDIA_ATTRIBUTES_GENRE:
     {
         if (value_length != 0)
@@ -1973,6 +2038,9 @@ static void bt_avrcp_hdl_vendor_depend_cmd_cfm(bts2_app_stru *bts2_app_data)
                         music_detail_info.track_id = value;
                         music_detail_info.attri_req = AVRCP_MEDIA_ATTRIBUTES_GENRE;
                         bt_avrcp_get_element_attributes_request(bts2_app_data, &avrcmsg->bd, AVRCP_MEDIA_ATTRIBUTES_GENRE);
+#ifdef CFG_AVRCP_COVER_ART
+                        bt_avrcp_get_element_attributes_request(bts2_app_data, &avrcmsg->bd, AVRCP_MEDIA_ATTRIBUTES_COVER_ART);
+#endif
                     }
                     else if (identifier_result == 1)
                     {
@@ -1985,6 +2053,18 @@ static void bt_avrcp_hdl_vendor_depend_cmd_cfm(bts2_app_stru *bts2_app_data)
                     }
                     break;
                 }
+#ifdef CFG_AVRCP_COVER_ART
+                case AVRCP_VENDOR_DEPENDENT_EVENT_ADDRESSED_PLAYER_CHANGED:
+                {
+                    if (bts2_app_data->avrcp_inst.conn[idx].is_cover_connected && (avrcmsg->c_type == AVRCP_CR_CHANGED))
+                    {
+                        bts2_app_data->avrcp_inst.conn[idx].need_reconnect = 1;
+                        bts2_app_data->avrcp_inst.conn[idx].has_image_hdl = 0;
+                        bt_avrcp_cover_art_disconnect(&bts2_app_data->avrcp_inst.conn[idx].rmt_bd);
+                    }
+                    break;
+                }
+#endif
                 }
             }
         }
@@ -2491,7 +2571,12 @@ void bt_avrcp_msg_handler(bts2_app_stru *bts2_app_data)
         {
             if (bd_eq(&bts2_app_data->avrcp_inst.conn[idx].rmt_bd, &msg->bd))
             {
-                bd_set_empty(&bts2_app_data->avrcp_inst.conn[idx].rmt_bd);
+#ifdef CFG_AVRCP_COVER_ART
+                bt_avrcp_cover_art_disconnect(&bts2_app_data->avrcp_inst.conn[idx].rmt_bd);
+
+                if (!bts2_app_data->avrcp_inst.conn[idx].is_cover_connected)
+#endif
+                    bd_set_empty(&bts2_app_data->avrcp_inst.conn[idx].rmt_bd);
                 bts2_app_data->avrcp_inst.conn[idx].abs_vol_support = 0;
                 bts2_app_data->avrcp_inst.conn[idx].play_status_notify = 0;
                 break;
@@ -2559,6 +2644,177 @@ void bt_avrcp_msg_handler(bts2_app_stru *bts2_app_data)
         bt_avrcp_hdl_pass_through_cmd_cfm(bts2_app_data);
         break;
     }
+#ifdef CFG_AVRCP_COVER_ART
+    case BTS2MU_AVRCP_COVER_ART_CONN_CFM:
+    {
+        BTS2S_AVRCP_COVER_ART_CONN_CFM *avrcmsg;
+        avrcmsg = (BTS2S_AVRCP_COVER_ART_CONN_CFM *)bts2_app_data->recv_msg;
+        INFO_TRACE("BTS2MU_AVRCP_COVER_ART_CONN_CFM\n");
+
+        U8 idx = bt_avrcp_get_connection_by_addr(bts2_app_data, &avrcmsg->bd);
+
+        if ((CFG_MAX_AVRCP_CONN_NUM != idx) && (avrcmsg->res == BTS2_SUCC))
+        {
+            bts2_app_data->avrcp_inst.conn[idx].is_cover_connected = 1;
+            bts2_app_data->avrcp_inst.conn[idx].need_reconnect = 0;
+            bts2_app_data->avrcp_inst.conn[idx].get_cover_art_pending = 0;
+            bt_avrcp_get_element_attributes_request(bts2_app_data, &avrcmsg->bd, AVRCP_MEDIA_ATTRIBUTES_COVER_ART);
+        }
+        break;
+    }
+    case BTS2MU_AVRCP_COVER_ART_DISC_IND:
+    {
+        BTS2S_AVRCP_COVER_ART_DISC_IND *avrcmsg;
+        avrcmsg = (BTS2S_AVRCP_COVER_ART_DISC_IND *)bts2_app_data->recv_msg;
+        INFO_TRACE("BTS2MU_AVRCP_COVER_ART_DISC_IND\n");
+
+        U8 idx = bt_avrcp_get_connection_by_addr(bts2_app_data, &avrcmsg->bd);
+
+        if (CFG_MAX_AVRCP_CONN_NUM != idx)
+        {
+            bts2_app_data->avrcp_inst.conn[idx].is_cover_connected = 0;
+            bts2_app_data->avrcp_inst.conn[idx].has_image_hdl = 0;
+            bts2_app_data->avrcp_inst.conn[idx].get_cover_art_pending = 0;
+            if (bts2_app_data->avrcp_inst.conn[idx].need_reconnect == 1)
+            {
+                bt_avrcp_cover_art_client_connect(&bts2_app_data->avrcp_inst.conn[idx].rmt_bd);
+            }
+            else
+            {
+                bd_set_empty(&bts2_app_data->avrcp_inst.conn[idx].rmt_bd);
+            }
+        }
+        break;
+    }
+    case BTS2MU_AVRCP_GET_COVER_ART_BEGIN_IND:
+    {
+        BTS2S_AVRCPGET_COVER_ART_BEGIN_IND *my_msg;
+        my_msg = (BTS2S_AVRCPGET_COVER_ART_BEGIN_IND *)bts2_app_data->recv_msg;
+
+        if (my_msg->total_length != 0)
+            INFO_TRACE(">> BTS2MU_AVRCP_GET_COVER_ART_BEGIN_IND total_length %d\n", my_msg->total_length);
+
+        U8 idx = bt_avrcp_get_connection_by_addr(bts2_app_data, &my_msg->bd);
+
+        if (write_idx % 2 == 0)
+        {
+            if (a2dp_sink_cover_art_file == NULL)
+            {
+                if ((a2dp_sink_cover_art_file = fopen("cover.JPEG", "wb")) == NULL)
+                {
+                    USER_TRACE(" -- avrcp open the file failed\n");
+                }
+                else
+                {
+                    fwrite(my_msg->body_data, sizeof(U8), my_msg->body_data_length, a2dp_sink_cover_art_file);
+                }
+            }
+            else
+            {
+                fwrite(my_msg->body_data, sizeof(U8), my_msg->body_data_length, a2dp_sink_cover_art_file);
+            }
+        }
+        else
+        {
+            if (a2dp_sink_cover_art_file1 == NULL)
+            {
+                if ((a2dp_sink_cover_art_file1 = fopen("cover1.JPEG", "wb")) == NULL)
+                {
+                    USER_TRACE(" -- avrcp open the file failed\n");
+                }
+                else
+                {
+                    fwrite(my_msg->body_data, sizeof(U8), my_msg->body_data_length, a2dp_sink_cover_art_file1);
+                }
+            }
+            else
+            {
+                fwrite(my_msg->body_data, sizeof(U8), my_msg->body_data_length, a2dp_sink_cover_art_file1);
+            }
+        }
+
+        if (!my_msg->is_final_packet)
+        {
+            if (CFG_MAX_AVRCP_CONN_NUM != idx)
+            {
+                avrcp_get_cover_art_req(bts2_app_data->phdl, &my_msg->bd, bts2_app_data->avrcp_inst.conn[idx].avrcp_cover_art_image_handle, 0);
+                INFO_TRACE(">> pull next packet\n");
+            }
+            else
+            {
+                INFO_TRACE(">> no more packet data\n");
+                bts2g_app_p->avrcp_inst.conn[idx].get_cover_art_pending = 0;
+
+                if (write_idx % 2 == 0)
+                {
+                    fclose(a2dp_sink_cover_art_file);
+                    a2dp_sink_cover_art_file = NULL;
+                }
+                else
+                {
+                    fclose(a2dp_sink_cover_art_file1);
+                    a2dp_sink_cover_art_file1 = NULL;
+                }
+                write_idx++;
+            }
+        }
+        else
+        {
+            INFO_TRACE(">> no more packet data\n");
+            bts2g_app_p->avrcp_inst.conn[idx].get_cover_art_pending = 0;
+            if (write_idx % 2 == 0)
+            {
+                fclose(a2dp_sink_cover_art_file);
+                a2dp_sink_cover_art_file = NULL;
+            }
+            else
+            {
+                fclose(a2dp_sink_cover_art_file1);
+                a2dp_sink_cover_art_file1 = NULL;
+            }
+            write_idx++;
+        }
+        break;
+    }
+    case BTS2MU_AVRCP_GET_COVER_ART_ABORT_IND:
+    {
+        BTS2S_AVRCPGET_COVER_ART_ABORT_IND *my_msg;
+        my_msg = (BTS2S_AVRCPGET_COVER_ART_ABORT_IND *)bts2_app_data->recv_msg;
+
+        U8 idx = bt_avrcp_get_connection_by_addr(bts2_app_data, &my_msg->bd);
+
+        if (CFG_MAX_AVRCP_CONN_NUM != idx)
+        {
+            if (write_idx % 2 == 0)
+            {
+                if (a2dp_sink_cover_art_file != NULL)
+                {
+                    INFO_TRACE(">> no more packet data\n");
+                    bts2g_app_p->avrcp_inst.conn[idx].get_cover_art_pending = 0;
+
+                    fclose(a2dp_sink_cover_art_file);
+                    a2dp_sink_cover_art_file = NULL;
+
+                    write_idx++;
+                }
+            }
+            else
+            {
+                if (a2dp_sink_cover_art_file1 != NULL)
+                {
+                    INFO_TRACE(">> no more packet data\n");
+                    bts2g_app_p->avrcp_inst.conn[idx].get_cover_art_pending = 0;
+
+                    fclose(a2dp_sink_cover_art_file1);
+                    a2dp_sink_cover_art_file1 = NULL;
+
+                    write_idx++;
+                }
+            }
+        }
+        break;
+    }
+#endif
     default:
         break;
     }
@@ -2621,6 +2877,225 @@ void bt_avrcp_dump_connection_info(bts2_app_stru *bts2_app_data)
 
     USER_TRACE("***********************************************************\n");
 }
+
+#ifdef CFG_AVRCP_COVER_ART
+void bt_avrcp_cover_art_client_connect(BTS2S_BD_ADDR *bd)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+
+    U8 idx = 0xff;
+    if (bt_avrcp_check_connection_by_addr(bts2_app_data, bd, &idx))
+    {
+        if (bts2_app_data->avrcp_inst.conn[idx].is_cover_connected)
+        {
+            USER_TRACE(" -- AVRCP Cover Art connection is already exist...\n");
+        }
+        else
+        {
+            USER_TRACE(" -- Create AVRCP Cover Art connection...\n");
+            USER_TRACE(" -- address: %04X:%02X:%06lX\n",
+                       bts2_app_data->avrcp_inst.conn[idx].rmt_bd.nap,
+                       bts2_app_data->avrcp_inst.conn[idx].rmt_bd.uap,
+                       bts2_app_data->avrcp_inst.conn[idx].rmt_bd.lap);
+            avrcp_cover_art_conn_req(bts2_app_data->phdl, &bts2_app_data->avrcp_inst.conn[idx].rmt_bd);
+        }
+    }
+    else
+    {
+        USER_TRACE(" -- no avrcp connection with the opposite device\n");
+    }
+}
+
+void bt_avrcp_player_application_setting_register_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
+{
+    U8 data_len = 13;
+    U8 data[13];
+    bmemcpy(data, VENDOR_DEPENDENT_BLUETOOTH_SIG_ID, 4);
+
+    *(data + 4) = AVRCP_VENDOR_DEPENDENT_PDU_ID_REGISTER_NOTIFICATION;
+    *(data + 5) = 0;
+
+    // parameter length
+    *(data + 6) = 0;
+    *(data + 7) = 5;
+
+    // parameter
+    *(data + 8) = AVRCP_VENDOR_DEPENDENT_EVENT_PLAYER_APPLICATION_SETTING_CHANGED;
+    bmemset(data + 9, 0, 4);
+
+    avrcp_cmd_data_req_ext(bd, bts2_app_data->phdl,
+                           ASSIGN_TLABEL,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_NOTIFY,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
+                           data_len,
+                           data);
+}
+
+void bt_avrcp_now_playing_content_register_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
+{
+    U8 data_len = 13;
+    U8 data[13];
+    bmemcpy(data, VENDOR_DEPENDENT_BLUETOOTH_SIG_ID, 4);
+
+    *(data + 4) = AVRCP_VENDOR_DEPENDENT_PDU_ID_REGISTER_NOTIFICATION;
+    *(data + 5) = 0;
+
+    // parameter length
+    *(data + 6) = 0;
+    *(data + 7) = 5;
+
+    // parameter
+    *(data + 8) = AVRCP_VENDOR_DEPENDENT_EVENT_NOW_PLAYING_CONTENT_CHANGED;
+    bmemset(data + 9, 0, 4);
+
+    avrcp_cmd_data_req_ext(bd, bts2_app_data->phdl,
+                           ASSIGN_TLABEL,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_NOTIFY,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
+                           data_len,
+                           data);
+}
+
+void bt_avrcp_available_players_register_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
+{
+    U8 data_len = 13;
+    U8 data[13];
+    bmemcpy(data, VENDOR_DEPENDENT_BLUETOOTH_SIG_ID, 4);
+
+    *(data + 4) = AVRCP_VENDOR_DEPENDENT_PDU_ID_REGISTER_NOTIFICATION;
+    *(data + 5) = 0;
+
+    // parameter length
+    *(data + 6) = 0;
+    *(data + 7) = 5;
+
+    // parameter
+    *(data + 8) = AVRCP_VENDOR_DEPENDENT_EVENT_AVAILABLE_PLAYERS_CHANGED;
+    bmemset(data + 9, 0, 4);
+
+    avrcp_cmd_data_req_ext(bd, bts2_app_data->phdl,
+                           ASSIGN_TLABEL,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_NOTIFY,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
+                           data_len,
+                           data);
+}
+
+void bt_avrcp_addressed_player_register_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
+{
+    U8 data_len = 13;
+    U8 data[13];
+    bmemcpy(data, VENDOR_DEPENDENT_BLUETOOTH_SIG_ID, 4);
+
+    *(data + 4) = AVRCP_VENDOR_DEPENDENT_PDU_ID_REGISTER_NOTIFICATION;
+    *(data + 5) = 0;
+
+    // parameter length
+    *(data + 6) = 0;
+    *(data + 7) = 5;
+
+    // parameter
+    *(data + 8) = AVRCP_VENDOR_DEPENDENT_EVENT_ADDRESSED_PLAYER_CHANGED;
+    bmemset(data + 9, 0, 4);
+
+    avrcp_cmd_data_req_ext(bd, bts2_app_data->phdl,
+                           ASSIGN_TLABEL,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_NOTIFY,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
+                           data_len,
+                           data);
+}
+
+void bt_avrcp_uids_changed_register_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
+{
+    U8 data_len = 13;
+    U8 data[13];
+    bmemcpy(data, VENDOR_DEPENDENT_BLUETOOTH_SIG_ID, 4);
+
+    *(data + 4) = AVRCP_VENDOR_DEPENDENT_PDU_ID_REGISTER_NOTIFICATION;
+    *(data + 5) = 0;
+
+    // parameter length
+    *(data + 6) = 0;
+    *(data + 7) = 5;
+
+    // parameter
+    *(data + 8) = AVRCP_VENDOR_DEPENDENT_EVENT_UIDS_CHANGED;
+    bmemset(data + 9, 0, 4);
+
+    avrcp_cmd_data_req_ext(bd, bts2_app_data->phdl,
+                           ASSIGN_TLABEL,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_NOTIFY,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
+                           AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
+                           data_len,
+                           data);
+}
+
+void bt_avrcp_cover_art_get_linked_thumbnail(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
+{
+    U8 idx = 0xff;
+    if (bt_avrcp_check_connection_by_addr(bts2_app_data, bd, &idx))
+    {
+        if (bts2g_app_p->avrcp_inst.conn[idx].get_cover_art_pending)
+        {
+            USER_TRACE(" -- Avrcpget cover art in progress...\n");
+            return;
+        }
+
+        if (bts2_app_data->avrcp_inst.conn[idx].is_cover_connected)
+        {
+            if (bts2_app_data->avrcp_inst.conn[idx].has_image_hdl)
+            {
+                hcia_exit_sniff_mode(&bts2g_app_p->avrcp_inst.conn[idx].rmt_bd, NULL);
+                bts2g_app_p->avrcp_inst.conn[idx].get_cover_art_pending = 1;
+                avrcp_get_cover_art_req(bts2_app_data->phdl, &bts2g_app_p->avrcp_inst.conn[idx].rmt_bd, bts2g_app_p->avrcp_inst.conn[idx].avrcp_cover_art_image_handle, 1);
+                USER_TRACE(" -- Avrcp get cover art...\n");
+            }
+            else
+                USER_TRACE(" -- Avrcp does not have a valid image handle...\n");
+        }
+        else
+        {
+            USER_TRACE(" -- AVRCP Cover Art connection not exist...\n");
+        }
+    }
+    else
+    {
+        USER_TRACE(" -- no avrcp connection with the opposite device\n");
+    }
+}
+
+void bt_avrcp_cover_art_get_linked_thumbnail_test(BTS2S_BD_ADDR *bd)
+{
+    bt_avrcp_cover_art_get_linked_thumbnail(bts2g_app_p, bd);
+}
+
+void bt_avrcp_cover_art_disconnect(BTS2S_BD_ADDR *bd)
+{
+    U8 idx = 0xff;
+    if (bt_avrcp_check_connection_by_addr(bts2g_app_p, bd, &idx))
+    {
+        if (bts2g_app_p->avrcp_inst.conn[idx].is_cover_connected)
+        {
+            avrcp_cover_art_disc_req(bd);
+        }
+        else
+        {
+            USER_TRACE(" -- AVRCP Cover Art connection not exist...\n");
+        }
+    }
+}
+#endif
 
 #endif
 

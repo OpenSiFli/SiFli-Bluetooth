@@ -77,15 +77,6 @@ enum
 #define HCI_MAX_PIN_LEN  ((U8)0x10)
 #endif
 
-#ifndef SEC_MODE0_OFF
-#define SEC_MODE0_OFF                   ((U8)0x00)
-#define SEC_MODE1_NON_SECURE            ((U8)0x01)
-#define SEC_MODE2_SVC                   ((U8)0x02)
-#define SEC_MODE3_LINK                  ((U8)0x03)
-#endif
-
-#define SEC_MODE4_SVC                   ((U8)0x04)
-
 
 #ifndef BTS2S_PORT_PART_DEF
 #define BTS2S_PORT_PART_DEF
@@ -140,8 +131,6 @@ typedef struct
     U16               type;
     BTS2S_BD_ADDR     bd;
 } BTS2S_GAP_ENCRYPTION_IND;
-
-
 
 typedef struct
 {
@@ -275,7 +264,6 @@ typedef struct
     U8              role;
     U8              res;
 } BTS2S_GAP_ROLE_SWITCH_CFM;
-
 
 typedef struct
 {
@@ -1141,19 +1129,7 @@ typedef void (bts2_data_info_cb_fn_type)(U8 dir, U8 type, U16 len, const U8 *dat
 void gap_reg_bts2_data_info_callback(bts2_data_info_cb_fn_type *fn);
 
 
-void gap_set_receive_avdtp_connect_request(BOOL flag);
-void gap_set_receive_avdtp_connect_addr(BTS2S_BD_ADDR *bd);
-void gap_reset_receive_avdtp_connect_addr(void);
-BOOL gap_get_receive_avdtp_connect_request(void);
-BOOL gap_check_receive_avdtp_connect_addr(BTS2S_BD_ADDR *bd);
-void gap_set_sco_res_by_app_flag(U8 flag);
-void gap_set_receive_avrcp_connect_request(BOOL flag);
-void gap_set_receive_avrcp_connect_addr(BTS2S_BD_ADDR *bd);
-void gap_reset_receive_avrcp_connect_addr(void);
-BOOL gap_get_receive_avrcp_connect_request(void);
-BOOL gap_check_receive_avrcp_connect_addr(BTS2S_BD_ADDR *bd);
 void gap_enable_pincode_pair_mode(U8 enable);
-BOOL gap_check_pincode_pair_mode(void);
 #ifdef __cplusplus
 }
 #endif

@@ -11,6 +11,9 @@
 extern "C" {
 #endif
 
+/** @defgroup ErrorCodes
+ *  @{
+ */
 #define AV_ACPT                       ((U8)0x00)
 #define AV_BAD_HEADER_FMT             ((U8)0x01)
 #define AV_BAD_LEN                    ((U8)0x11)
@@ -44,7 +47,6 @@ extern "C" {
 #define AV_DUPLICATE_CONNECTING       ((U8)0x9A)
 #define AV_CONNECT_CONFLICT           ((U8)0x9B)
 #define AV_SIG_TIMEOUT                ((U8)0xC0)
-
 #define AV_INVLD_CODEC_TYPE           ((U8)0xC1)
 #define AV_NOT_SUPP_CODEC_TYPE        ((U8)0xC2)
 #define AV_INVLD_SAMPLING_FREQ        ((U8)0xC3)
@@ -76,55 +78,91 @@ extern "C" {
 #define AV_INVLD_BLOCK_LEN            ((U8)0xDD)
 #define AV_INVLD_CP_TYPE              ((U8)0xE0)
 #define AV_INVLD_CP_FMT               ((U8)0xE1)
+/** @} */ //ErrorCodes
 
-/* media types */
+/** @defgroup media types
+ *  @{
+ */
 #define AV_AUDIO      ((U8)0x00)
 #define AV_VIDEO      ((U8)0x01)
 #define AV_MULTIMEDIA ((U8)0x10)
+/** @} */ //media types
 
-/* stream end - point type */
+/** @defgroup a2dp role
+ *  @{
+ */
+/// @deprecated Duplicate definition
 #define AV_SRC ((U8)0x00)
 #define AV_SNK ((U8)0x01)
 
-/* media codecs */
-#define AV_SBC            ((U8)0x00)
-#define AV_MPEG12_AUDIO   ((U8)0x01)
-#define AV_MPEG24_AAC     ((U8)0x02)
-#define AV_ATRAC          ((U8)0x04)
-#define AV_NON_A2DP_CODEC ((U8)0xFF)
-
-/* video codecs: (assigned numbers) */
-#define AV_H263_BASELINE           ((U8)0x01)
-#define AV_MPEG_VISUAL_SIMPEL_PROF ((U8)0x02)
-#define AV_H263_PROF3              ((U8)0x03)
-#define AV_H263_PROF8              ((U8)0x04)
-#define AV_NON_VDP_CODEC           ((U8)0xFF)
-
-/* service cap header sizes for video codecs */
-#define H263_MEDIA_CODEC_SC_SIZE 5
-
-/* defined in spec, same for all H263 profs */
-#define H263_CAP_LEVEL_10 ((U8)0x80)
-#define H263_CAP_LEVEL_20 ((U8)0x40)
-#define H263_CAP_LEVEL_30 ((U8)0x20)
-
-/* ther bts2g_bits in H263 service capabilities */
-#define MPEG_CAP_LEVEL_0 ((U8)0x80)
-#define MPEG_CAP_LEVEL_1 ((U8)0x40)
-#define MPEG_CAP_LEVEL_2 ((U8)0x20)
-#define MPEG_CAP_LEVEL_3 ((U8)0x10)
-
-/* av roles */
 #define AV_AUDIO_SRC ((U16)0x00)
 #define AV_AUDIO_SNK ((U16)0x01)
 #define AV_VIDEO_SRC ((U16)0x02)
 #define AV_VIDEO_SNK ((U16)0x03)
 #define AV_AUDIO_NO_ROLE ((U16)0xFF)
+/** @} */ //a2dp role
 
+/** @defgroup media codecs
+ *  @{
+ */
+#define AV_SBC            ((U8)0x00)
+#define AV_MPEG12_AUDIO   ((U8)0x01)
+#define AV_MPEG24_AAC     ((U8)0x02)
+#define AV_ATRAC          ((U8)0x04)
+#define AV_NON_A2DP_CODEC ((U8)0xFF)
+/** @} */ //media codecs
+
+/** @defgroup video codecs
+ *  @{
+ */
+#define AV_H263_BASELINE           ((U8)0x01)
+#define AV_MPEG_VISUAL_SIMPEL_PROF ((U8)0x02)
+#define AV_H263_PROF3              ((U8)0x03)
+#define AV_H263_PROF8              ((U8)0x04)
+#define AV_NON_VDP_CODEC           ((U8)0xFF)
+/** @} */ //video codecs
+
+/**
+ * @brief service cap header sizes for video codecs
+ * @details H263 codec capabilities的头大小
+ * @result 5
+ */
+#define H263_MEDIA_CODEC_SC_SIZE 5
+
+/** @deprecated video cap level - not used
+ *  @{
+ */
+/// @brief defined in spec, same for all H263 profs
+#define H263_CAP_LEVEL_10 ((U8)0x80)
+#define H263_CAP_LEVEL_20 ((U8)0x40)
+#define H263_CAP_LEVEL_30 ((U8)0x20)
+
+/// @brief the bts2g_bits in H263 service capabilities
+#define MPEG_CAP_LEVEL_0 ((U8)0x80)
+#define MPEG_CAP_LEVEL_1 ((U8)0x40)
+#define MPEG_CAP_LEVEL_2 ((U8)0x20)
+#define MPEG_CAP_LEVEL_3 ((U8)0x10)
+/** @} */ //video cap level
+
+/**
+ * @brief a2dp media packet header size
+ * @details a2dp音频数据包的头大小
+ * @result 12
+ */
 #define AV_FIXED_MEDIA_PKT_HDR_SIZE    12
-//Todo This macro presentation cannot be modified.
+
+/**
+ * @brief a2dp media packet mtu size
+ * @details 传输a2dp音频数据包的l2cap的mtu size
+ * @todo This macro presentation cannot be modified
+ * @result 1005
+ */
 #define AV_MTU_SIZE      (1005)          /* max frm size for L2C pkt */
 
+/**
+ * @brief a2dp service capability type
+ *
+ */
 typedef enum
 {
     AV_SC_MEDIA_TRS = 1,
@@ -138,6 +176,10 @@ typedef enum
     AV_SC_NEXT = 0xFFFF
 } BTS2E_AV_SERV_CAP;
 
+/**
+ * @brief commands and events of a2dp module
+ *
+ */
 typedef enum BTS2E_AV_MSG_TAG
 {
     BTS2MD_AV_ENB_REQ = BTS2MD_START,
@@ -194,7 +236,6 @@ typedef enum BTS2E_AV_MSG_TAG
     BTS2MU_AV_STS_IND,
     BTS2MU_AV_GET_ALL_CAPABILITIES_IND,
     BTS2MU_AV_DELAY_REPORT_IND,
-
     BTS2MU_AV_ENB_CFM,
     BTS2MU_AV_DISB_CFM,
     BTS2MU_AV_CONN_CFM,
@@ -231,52 +272,12 @@ typedef struct
     U8 codec;
 } BTS2S_AV_SEID_INFO;
 
-
-typedef struct
-{
-    U16 type;
-    U16 tid;
-    U16 local_role;
-} BTS2S_AV_ENB_REQ;
-
 typedef struct
 {
     U16 type;
     U16 enable_role;
     U8  res;
 } BTS2S_AV_ENB_CFM;
-
-typedef struct
-{
-    U16 type;
-} BTS2S_AV_DISB_REQ;
-
-typedef struct
-{
-    U16 type;
-    U16 local_role;
-} BTS2S_AV_UNREGISTER_SDP_REQ;
-
-typedef struct
-{
-    U16 type;
-    U16 local_role;
-} BTS2S_AV_REGISTER_SDP_REQ;
-
-typedef struct
-{
-    U16 type;
-    U8  res;
-} BTS2S_AV_DISB_CFM;
-
-typedef struct
-{
-    U16           type;
-    U16           tid;
-    BTS2S_BD_ADDR bd;
-    U16           rmt_role;
-    U16           local_role;
-} BTS2S_AV_CONN_REQ;
 
 typedef struct
 {
@@ -299,16 +300,9 @@ typedef struct
 {
     U16 type;
     U16 conn_id;
-} BTS2S_AV_DISC_REQ;
-
-typedef struct
-{
-    U16 type;
-    U16 conn_id;
     U8  res;
     BTS2S_BD_ADDR bd;
 } BTS2S_AV_DISC_IND;
-
 
 typedef struct
 {
@@ -316,9 +310,7 @@ typedef struct
     U16 shdl;    /* stream handle */
     U16 len;     /* len of data (in bytes) */
     U8  *data;   /* pointer to media pkt data */
-} BTS2S_AV_STREAM_DATA_REQ;
-
-typedef BTS2S_AV_STREAM_DATA_REQ BTS2S_AV_STREAM_DATA_IND;
+} BTS2S_AV_STREAM_DATA_IND;
 
 typedef struct
 {
@@ -348,9 +340,7 @@ typedef struct
     U16  type;
     U16  conn_id;
     U8   tlabel;
-} BTS2S_AV_DISCOVER_REQ;
-
-typedef BTS2S_AV_DISCOVER_REQ BTS2S_AV_DISCOVER_IND;
+} BTS2S_AV_DISCOVER_IND;
 
 typedef struct
 {
@@ -370,9 +360,7 @@ typedef struct
     U16 conn_id;
     U8  tlabel;
     U8  acp_seid;
-} BTS2S_AV_GET_CAPABILITIES_REQ;
-
-typedef BTS2S_AV_GET_CAPABILITIES_REQ BTS2S_AV_GET_CAPABILITIES_IND;
+} BTS2S_AV_GET_CAPABILITIES_IND;
 
 typedef struct
 {
@@ -382,22 +370,7 @@ typedef struct
     U8  res;
     U16 serv_cap_len;
     U8  *serv_cap_data; /* only bmalloc if not error */
-} BTS2S_AV_GET_CAPABILITIES_RSP;
-
-typedef BTS2S_AV_GET_CAPABILITIES_RSP BTS2S_AV_GET_CAPABILITIES_CFM;
-
-typedef struct
-{
-    U16 type;
-    U16 conn_id;
-    U8  tlabel;
-    U8  acp_seid;
-    U8  int_seid;
-    U16 app_serv_cap_len;
-    U16 rmt_serv_cap_len;
-    U8  *app_serv_cap_data;
-    U8  *rmt_serv_cap_data;
-} BTS2S_AV_SET_CFG_REQ;
+} BTS2S_AV_GET_CAPABILITIES_CFM;
 
 typedef struct
 {
@@ -414,28 +387,12 @@ typedef struct
 typedef struct
 {
     U16 type;
-    U8  shdl;
-    U8  tlabel;
-    U8  res;
-    U8  serv_category;
-} BTS2S_AV_SET_CFG_RSP;
-
-typedef struct
-{
-    U16 type;
     U16 conn_id;
     U8  tlabel;
     U8  res;
     U8  shdl;
     U8  serv_category;
 } BTS2S_AV_SET_CFG_CFM;
-
-typedef struct
-{
-    U16 type;
-    U8  shdl;
-    U8  tlabel;
-} BTS2S_AV_GET_CFG_REQ;
 
 typedef struct
 {
@@ -452,25 +409,6 @@ typedef struct
     U16 serv_cap_len;
     U8  *serv_cap_data;
 } BTS2S_AV_GET_CFG_CFM;
-
-typedef struct
-{
-    U16 type;
-    U8  shdl;
-    U8  tlabel;
-    U8  res;
-    U16 serv_cap_len;
-    U8  *serv_cap_data;
-} BTS2S_AV_GET_CFG_RSP;
-
-typedef struct
-{
-    U16 type;
-    U8  shdl;
-    U8  tlabel;
-    U16 serv_cap_len;
-    U8  *serv_cap_data;
-} BTS2S_AV_CFG_REQ;
 
 typedef struct
 {
@@ -494,22 +432,6 @@ typedef struct
     U16 type;
     U8  shdl;
     U8  tlabel;
-    U8  res;
-    U8  serv_category;
-} BTS2S_AV_CFG_RSP;
-
-typedef struct
-{
-    U16 type;
-    U8  shdl;
-    U8  tlabel;
-} BTS2S_AV_OPEN_REQ;
-
-typedef struct
-{
-    U16 type;
-    U8  shdl;
-    U8  tlabel;
 } BTS2S_AV_OPEN_IND;
 
 typedef struct
@@ -518,17 +440,7 @@ typedef struct
     U8  shdl;
     U8  tlabel;
     U8  res;
-} BTS2S_AV_OPEN_RSP;
-
-typedef BTS2S_AV_OPEN_RSP BTS2S_AV_OPEN_CFM;
-
-typedef struct
-{
-    U16 type;
-    U8  tlabel;
-    U8  list_len;
-    U8  first_shdl;
-} BTS2S_AV_START_REQ;
+} BTS2S_AV_OPEN_CFM;
 
 typedef struct
 {
@@ -544,24 +456,7 @@ typedef struct
     U8  tlabel;
     U8  res;
     U8  rej_shdl;
-    U8  list_len;
-    U8  first_shdl;
-} BTS2S_AV_START_RSP;
-
-typedef struct
-{
-    U16 type;
-    U8  tlabel;
-    U8  res;
-    U8  rej_shdl;
 } BTS2S_AV_START_CFM;
-
-typedef struct
-{
-    U16  type;
-    U8   shdl;
-    U8   tlabel;
-} BTS2S_AV_CLOSE_REQ;
 
 typedef struct
 {
@@ -573,26 +468,10 @@ typedef struct
 typedef struct
 {
     U16 type;
-    U8  shdl;
-    U8  tlabel;
-    U8  res;
-} BTS2S_AV_CLOSE_RSP;
-
-typedef struct
-{
-    U16 type;
     U8  tlabel;
     U8  res;
     U8  shdl;
 } BTS2S_AV_CLOSE_CFM;
-
-typedef struct
-{
-    U16 type;
-    U8  tlabel;
-    U8  list_len;
-    U8  first_shdl;
-} BTS2S_AV_SUSPEND_REQ;
 
 typedef struct
 {
@@ -613,23 +492,6 @@ typedef struct
 typedef struct
 {
     U16 type;
-    U8  tlabel;
-    U8  res;
-    U16 list_len;
-    U8  rej_shdl;
-    U8  first_shdl;
-} BTS2S_AV_SUSPEND_RSP;
-
-typedef struct
-{
-    U16 type;
-    U8  shdl;
-    U8  tlabel;
-} BTS2S_AV_ABORT_REQ;
-
-typedef struct
-{
-    U16 type;
     U8  shdl;
     U8  tlabel;
 } BTS2S_AV_ABORT_IND;
@@ -639,18 +501,7 @@ typedef struct
     U16 type;
     U8  shdl;
     U8  tlabel;
-} BTS2S_AV_ABORT_RSP;
-
-typedef BTS2S_AV_ABORT_RSP BTS2S_AV_ABORT_CFM;
-
-typedef struct
-{
-    U16 type;
-    U8  shdl;
-    U8  tlabel;
-    U16 cont_prot_method_len;
-    U8  *cont_prot_method_data;
-} BTS2S_AV_SECU_CTRL_REQ;
+} BTS2S_AV_ABORT_CFM;
 
 typedef struct
 {
@@ -658,9 +509,7 @@ typedef struct
     U16 conn_id;
     U8  tlabel;
     U8  acp_seid;
-} BTS2S_AV_GET_ALL_CAPABILITIES_REQ;
-
-typedef BTS2S_AV_GET_ALL_CAPABILITIES_REQ BTS2S_AV_GET_ALL_CAPABILITIES_IND;
+} BTS2S_AV_GET_ALL_CAPABILITIES_IND;
 
 typedef struct
 {
@@ -670,9 +519,7 @@ typedef struct
     U8  res;
     U16 serv_cap_len;
     U8  *serv_cap_data; /* only bmalloc if not error */
-} BTS2S_AV_GET_ALL_CAPABILITIES_RSP;
-
-typedef BTS2S_AV_GET_ALL_CAPABILITIES_RSP BTS2S_AV_GET_ALL_CAPABILITIES_CFM;
+} BTS2S_AV_GET_ALL_CAPABILITIES_CFM;
 
 typedef struct
 {
@@ -681,67 +528,17 @@ typedef struct
     U8  shdl;
     U8  acp_seid;
     U16 delay; // 1/10 milliseconds
-} BTS2S_AV_DELAY_REPORT_REQ;
-
-typedef struct
-{
-    U16 error_type;
-    U16 type;
-} BTS2S_AV_ERROR_IND;
-
-typedef BTS2S_AV_DELAY_REPORT_REQ BTS2S_AV_DELAY_REPORT_IND;
-
-typedef struct
-{
-    U16 type;
-    U8  shdl;
-    U8  tlabel;
-    U8  res;
-} BTS2S_AV_DELAY_REPORT_RSP;
-
-typedef BTS2S_AV_DELAY_REPORT_RSP BTS2S_AV_DELAY_REPORT_CFM;
-
-typedef struct
-{
-    U16 type;
-    U8  shdl;
-    U8  tlabel;
-    U16 cont_prot_method_len;
-    U8  *cont_prot_method_data;
-} BTS2S_AV_SECU_CTRL_IND;
-
-typedef struct
-{
-    U16  type;
-    U8   shdl;
-    U8   tlabel;
-    U8   res;
-    U16  cont_prot_method_len;
-    U8   *cont_prot_method_data;
-} BTS2S_AV_SECU_CTRL_RSP;
-
-typedef BTS2S_AV_SECU_CTRL_RSP BTS2S_AV_SECU_CTRL_CFM;
-
-typedef struct
-{
-    U16 type;
-} BTS2S_AV_LP_SUPVISN_TIMER;
-
-typedef struct
-{
-    U16 type;
-} BTS2S_A2DP_RESET_REQ;
+} BTS2S_AV_DELAY_REPORT_IND;
 
 
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
- *      This signal is used to enable a service and make it accessible from a
- *      remote device.
+ *      This signal is used to disable a service and make in inaccessible from
+ *      other devices.
  *
  * INPUT:
- *      U16 tid: task id
- *      U16 local_role: the role of this device
+ *      void.
  *
  * OUTPUT:
  *      void.
@@ -769,7 +566,9 @@ void av_enb_req(U16 tid, U16 local_role);
  *
  *----------------------------------------------------------------------------*/
 void av_disb_req(void);
+
 void av_unregister_sdp(U16 local_role);
+
 void av_register_sdp(U16 local_role);
 
 /*----------------------------------------------------------------------------*
@@ -1543,8 +1342,6 @@ U8 *av_get_svc_cap(BTS2E_AV_SERV_CAP svc_cap,
  *
  *----------------------------------------------------------------------------*/
 U8 av_vldate_svc_cap(U8 *svc_cap_ptr);
-
-void av_set_stream_buffize(U16 stream_buffize);
 
 U16 av_get_stream_buffize(void);
 

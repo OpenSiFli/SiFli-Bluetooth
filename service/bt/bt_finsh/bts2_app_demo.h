@@ -16,6 +16,7 @@
 #include "bts2_type.h"
 #include "bts2_bt.h"
 #include "gap_api.h"
+#include "config.h"
 #include "os_adaptor.h"
 
 
@@ -231,7 +232,7 @@ typedef struct
 } bts2_pan_inst_data;
 #endif
 #ifdef CFG_AVRCP
-
+#define AVRCP_COVER_ART_IMAGE_HANDLE_LEN   (8)
 typedef struct
 {
     BTS2S_BD_ADDR  rmt_bd;
@@ -244,6 +245,13 @@ typedef struct
     U8             abs_vol_support;//0:TG has not register absolute volume; 1:TG has register absolute volume.
     U8             tgTlable_2;
     U8             abs_volume_pending;
+#ifdef CFG_AVRCP_COVER_ART
+    U8             is_cover_connected;
+    U8             need_reconnect;
+    U8             has_image_hdl;
+    U8             get_cover_art_pending;
+    const char     avrcp_cover_art_image_handle[AVRCP_COVER_ART_IMAGE_HANDLE_LEN];
+#endif
 } bts2_avrcp_conn;
 
 typedef struct
