@@ -1885,6 +1885,18 @@ void bt_cm(uint8_t argc, char **argv)
                     gap_rd_rmt_ext_featr_req(bts2_task_get_app_task_id(), atoi(argv[2]), env->bt_devices[i].info.bd_addr);
             }
         }
+        else if (strcmp(argv[1], "pbap") == 0)
+        {
+            BTS2S_BD_ADDR bd_addr;
+            bd_addr.nap = strtol(argv[2], NULL, 0);
+            bd_addr.uap = strtol(argv[3], NULL, 0);
+            bd_addr.lap = strtol(argv[4], NULL, 0);
+            LOG_I("conn addr: %04X:%02X:%06lX",
+                  bd_addr.nap,
+                  bd_addr.uap,
+                  bd_addr.lap);
+            bt_pbap_client_connect_request(&bd_addr, FALSE);
+        }
     }
 }
 #ifdef BSP_BQB_TEST

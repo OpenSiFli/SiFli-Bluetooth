@@ -366,7 +366,7 @@ void sdpa_sdc_svc_attrute_req(U16 tid,
                               BTS2S_BD_ADDR *bd,
                               U32 svc_rec_hndl,
                               U16 num_attr,
-                              U16 *attr_list,
+                              GAP_BT_ATTR_ID *attr_list,
                               U16 max_num_attr);
 
 /*----------------------------------------------------------------------------*
@@ -393,7 +393,7 @@ void sdpa_sdc_svc_srch_attrute_req(U16 tid,
                                    U16 num_uuid,
                                    GAP_BT_UUID *uuid_list,
                                    U16 num_attr,
-                                   U16 *attr_list,
+                                   GAP_BT_ATTR_ID *attr_list,
                                    U16 max_num_attr);
 
 /*----------------------------------------------------------------------------*

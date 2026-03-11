@@ -1261,15 +1261,14 @@ void bt_get_svc_res(bts2_app_stru *bts2_app_data)
 {
 #ifdef CFG_BQB_SDC_SSA
     BTS2S_SDC_SVC_SRCH_CFM *msg;
-    U16 attr_id;
     msg = (BTS2S_SDC_SVC_SRCH_CFM *)bts2_app_data->recv_msg;
 
-    attr_id =   /*0x0001;  SVC_ID_ATTRUTE_ID;               TP/SERVER/SA/BV-04-C*/
-        /* 0x0004;PROT_DESP_LIST_ATTRUTE_ID; surpport       TP/SERVER/SA/BV-05-C*/
-        /*0x0002;SVC_RECORD_ST_ATTRUTE_ID;          TP/SERVER/SA/BV-06-C*/
-        /* 0x0007;                                  TP/SERVER/SA/BV-07-C*/
-        /* 0x0005;                                  TP/SERVER/SA/BV-08-C*/
-        0x0006;                                     /*TP/SERVER/SA/BV-09-C*/
+    // attr_id =   /*0x0001;  SVC_ID_ATTRUTE_ID;               TP/SERVER/SA/BV-04-C*/
+    /* 0x0004;PROT_DESP_LIST_ATTRUTE_ID; surpport       TP/SERVER/SA/BV-05-C*/
+    /*0x0002;SVC_RECORD_ST_ATTRUTE_ID;          TP/SERVER/SA/BV-06-C*/
+    /* 0x0007;                                  TP/SERVER/SA/BV-07-C*/
+    /* 0x0005;                                  TP/SERVER/SA/BV-08-C*/
+    //0x0006;                                     /*TP/SERVER/SA/BV-09-C*/
     /*0x0008;                                   TP/SERVER/SA/BV-10-C*/
     /*0x000C;                                   TP/SERVER/SA/BV-11-C*/
     /*0x0100;  SVC_NAME_ATTRUTE_ID; suuport     TP/SERVER/SA/BV-12-C*/
@@ -1289,11 +1288,13 @@ void bt_get_svc_res(bts2_app_stru *bts2_app_data)
     0x0102
     */
 
+    GAP_BT_ATTR_ID attr_id[] = {LEN_ATTR_ID_16, {.attr_id_16 = 0x0006}};
+
     sdpa_sdc_svc_attrute_req(bts2_task_get_app_task_id(),
                              &bts2_app_data->bd_list[bts2_app_data->dev_idx],
                              0x00010002,
                              1,
-                             &attr_id,
+                             attr_id,
                              0x80);
 #endif
 }
@@ -2134,13 +2135,15 @@ void bt_hdl_sdp_msg(bts2_app_stru *bts2_app_data)
         INFO_TRACE("BTS2M_SDC_SVC_ATTRUTE_CFM\n");
         if (msg->rsp == 0x0000 && msg->size_attr_list == 0xe && msg->attr_list[2] == 0x06)
         {
-            U16 attr_list = 0x0100;
+            // U16 attr_list = 0x0100;
             /*{0x35,0x03,0x09, 0x01,0x02};*/
+            GAP_BT_ATTR_ID attr_list[] = {LEN_ATTR_ID_16, {.attr_id_16 = 0x0100}};
+
             sdpa_sdc_svc_attrute_req(bts2_task_get_app_task_id(),
                                      &bts2_app_data->bd_list[bts2_app_data->dev_idx],
                                      0x00010002,
                                      1,
-                                     &attr_list,
+                                     attr_list,
                                      0x80);
         }
     }

@@ -346,6 +346,7 @@ void bt_interface_set_local_name(int len, void *data)
             USER_TRACE("set name %s\n", eir);
             gap_wr_eir_req(0, eir, len + 2);
         }
+        bfree(eir);
     }
     else
     {

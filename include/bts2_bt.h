@@ -719,16 +719,6 @@ typedef enum
 } BTS2E_PAGE_SCAN;
 #endif
 
-typedef struct
-{
-    U8  svc_type;     /* best effort, etc */
-    U32 token_rate;   /* token rate */
-    U32 token_bucket; /* token bucket */
-    U32 peak_bw;      /* peak bandwidth */
-    U32 latency;      /* latency */
-    U32 delay_var;    /* delay variation */
-} BTS2S_QOS_FLOW;
-
 typedef struct BTS2S_ETHER_ADDR
 {
     U16 w[3]; /* big endian */

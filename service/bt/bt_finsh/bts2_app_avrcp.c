@@ -797,7 +797,11 @@ void bt_avrcp_get_play_status_response(bts2_app_stru *bts2_app_data, BTS2S_BD_AD
     *(data + 14) = 0xFF;
     *(data + 15) = 0xFF;
     // play status
+#ifdef CFG_AV_SRC
     *(data + 16) = bt_av_get_a2dp_stream_state(bd);
+#else
+    *(data + 16) = AVRCP_PLAY_STATUS_STOP;
+#endif
     avrcp_cmd_data_rsp_ext(bd, bts2_app_data->phdl,
                            tlabel,
                            BT_UUID_AVRCP_CT,
@@ -1637,7 +1641,11 @@ static void bt_avrcp_hdl_vendor_depend_cmd_ind(bts2_app_stru *bts2_app_data)
                 case AVRCP_VENDOR_DEPENDENT_EVENT_PLAYBACK_STATUS_CHANGED:
                 {
                     BEGIN_ACCESS_VAR();
+#ifdef CFG_AV_SRC
                     U8 play_status = bt_av_get_a2dp_stream_state(&avrcmsg->bd);
+#else
+                    U8 play_status = AVRCP_PLAY_STATUS_STOP;
+#endif
 
                     bts2_app_data->avrcp_inst.conn[idx].tgTlable_1  = avrcmsg->tlabel;
 

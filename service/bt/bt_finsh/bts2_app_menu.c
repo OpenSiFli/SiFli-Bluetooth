@@ -1686,12 +1686,12 @@ static void bt_hdl_menu_gen_9(bts2_app_stru *bts2_app_data)
     }
     case '3':
     {
-        U16 attr_list = 0x0100;
+        GAP_BT_ATTR_ID attr_list[] = {LEN_ATTR_ID_16, {.attr_id_16 = 0x0100}};
         sdpa_sdc_svc_attrute_req(bts2_task_get_app_task_id(),
                                  &bts2_app_data->bd_list[bts2_app_data->dev_idx],
                                  0x00010002,  // service_handle
                                  1,
-                                 &attr_list,
+                                 attr_list,
                                  0x80);
         break;
     }
@@ -1714,9 +1714,11 @@ static void bt_hdl_menu_gen_9(bts2_app_stru *bts2_app_data)
     case '5':
     {
         extern void  gap_sdc_attrute_req(U32 tid,
-                                         U16 attrute_indentifier,
+                                         GAP_BT_ATTR_ID attrute_indentifier,
                                          U16 max_bytes_to_return);
-        U16 attr_list = 0x0100;
+        GAP_BT_ATTR_ID attr_list;
+        attr_list.len = LEN_ATTR_ID_16;
+        attr_list.uu.attr_id_16 = 0x0100;
         gap_sdc_attrute_req(0x00010002, attr_list, MAX_FRIENDLY_NAME_LEN);
         break;
     }
@@ -4894,7 +4896,7 @@ static void bt_hdl_menu_pbap_clt(bts2_app_stru *bts2_app_data)
     }
     case '5':
     {
-        bt_pbap_client_pull_pb(0, 1, 0x00);
+        bt_pbap_client_pull_pb(0, 1, 0xffff);
         break;
     }
     case '6':

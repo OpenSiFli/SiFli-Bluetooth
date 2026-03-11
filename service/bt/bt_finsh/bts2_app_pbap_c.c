@@ -56,8 +56,10 @@ typedef struct TUserData
 } TUserData;
 
 static bts2s_pbap_clt_inst_data *local_inst = NULL;
+
 TUserData userData = {0, 0, 0, 0, NULL};
 CARD_Parser vp = NULL;
+
 int count = 0;
 int pring_count = 1;
 int type = BT_PBAP_CLT_VCARD_IDLE;
@@ -277,6 +279,8 @@ void PropHandler(void *userData, const CARD_Char *propName, const CARD_Char **pa
         ud->indent++;
 
         local_inst->pbab_vcard = (BT_PBAP_VCARD *)bmalloc(sizeof(BT_PBAP_VCARD));
+        bmemset(local_inst->pbab_vcard, 0x00, sizeof(BT_PBAP_VCARD));
+
         if (!local_inst->pbab_vcard)
         {
             USER_TRACE(">> Can't create phone-book buffer!!!!!!!!!\n");
@@ -367,7 +371,6 @@ void DataHandler(void *userData, const CARD_Char *data, int len)
             {
                 LOG_E("error,no valid vcard!!!!!!\n");
             }
-
             bfree(local_inst->pbab_vcard->v_name.name);
             local_inst->pbab_vcard->v_name.name = NULL;
 
@@ -378,6 +381,7 @@ void DataHandler(void *userData, const CARD_Char *data, int len)
                 /* kill it and move on */
                 last_ptr = ptr;
                 ptr = ptr->next_struct;
+
                 if (last_ptr->tel)
                 {
                     bfree(last_ptr->tel);
@@ -415,6 +419,7 @@ void DataHandler(void *userData, const CARD_Char *data, int len)
                     if (local_inst->pbab_vcard->v_tel->num == 0)
                     {
                         local_inst->pbab_vcard->v_tel->tel = bmalloc(len);
+
                         BT_OOM_ASSERT(local_inst->pbab_vcard->v_tel->tel);
                         if (local_inst->pbab_vcard->v_tel->tel)
                         {
@@ -455,6 +460,13 @@ void DataHandler(void *userData, const CARD_Char *data, int len)
             {
                 if (local_inst->is_valid_vcard)
                 {
+                    if (local_inst->pbab_vcard->v_name.name)
+                    {
+                        bfree(local_inst->pbab_vcard->v_name.name);
+                        local_inst->pbab_vcard->v_name.name = NULL;
+                        local_inst->pbab_vcard->v_name.length = 0;
+                    }
+
                     local_inst->pbab_vcard->v_name.length = len;
                     local_inst->pbab_vcard->v_name.name = bmalloc(len);
                     BT_OOM_ASSERT(local_inst->pbab_vcard->v_name.name);
@@ -466,36 +478,45 @@ void DataHandler(void *userData, const CARD_Char *data, int len)
     }
 }
 
-void bt_parser_vcard_property(U8 *buf, U32 len, void *param)
+void bt_parser_vcard_property(U8 *buf, U32 len, int isFinal)
 {
     int parseErr = FALSE;
-    TUserData userData = {0, 0, 0, 0, NULL};
-    CARD_Parser vp = NULL;
+    // TUserData userData = {0, 0, 0, 0, NULL};
+    // CARD_Parser vp = NULL;
     U32 rc = 0;
 
     /* allocate parser */
-    vp = CARD_ParserCreate(NULL);
-
-    /* initialize */
-    CARD_SetUserData(vp, &userData);
-    CARD_SetPropHandler(vp, PropHandler);
-    CARD_SetDataHandler(vp, DataHandler);
-
-    rc = CARD_Parse(vp, (const char *)buf, len, FALSE);
-    if (rc != 0)
+    if (vp == NULL)
     {
-        CARD_Parse(vp, NULL, 0, TRUE);
-        USER_TRACE("parsing vcard complete\n");
-    }
-    else
-    {
-        USER_TRACE("Error parsing vcard\n");
+        vp = CARD_ParserCreate(NULL);
+
+        /* initialize */
+        CARD_SetUserData(vp, &userData);
+        CARD_SetPropHandler(vp, PropHandler);
+        CARD_SetDataHandler(vp, DataHandler);
     }
 
-    /* free parser */
-    CARD_ParserFree(vp);
-    /* free up any remaining user data buffers */
-    bfree(userData.cardType);
+    rc = CARD_Parse(vp, (const char *)buf, len, isFinal);
+    // if (rc != 0)
+    // {
+    //     CARD_Parse(vp, NULL, 0, TRUE);
+    //     USER_TRACE("parsing vcard complete\n");
+    // }
+    // else
+    // {
+    //     // USER_TRACE("Error parsing vcard\n");
+    //     return ;
+    // }
+
+    if (isFinal)
+    {
+        /* free parser */
+        CARD_ParserFree(vp);
+        /* free up any remaining user data buffers */
+        bfree(userData.cardType);
+        vp = NULL;
+        userData.cardType = NULL;
+    }
 }
 
 static int bt_pbapc_parse_vcard_list(const char *data, U16 dataLen)
@@ -709,61 +730,38 @@ void bt_pbap_clt_rel(bts2_app_stru *bts2_app_data, void *msg_data)
     case BTS2MU_PBAP_CLT_PULL_PB_BEGIN_IND:
     {
         BTS2S_PBAP_CLT_PULL_PB_BEGIN_IND *msg = msg_data;
-
-        if (msg->data != NULL)
-        {
-            bfree(msg->data);
-        }
         break;
     }
 
     case BTS2MU_PBAP_CLT_PULL_PB_NEXT_IND:
     {
         BTS2S_PBAP_CLT_PULL_PB_NEXT_IND *msg = msg_data;
-        if (msg->data != NULL)
-        {
-            bfree(msg->data);
-        }
     }
     break;
 
     case BTS2MU_PBAP_CLT_PULL_VCARD_BEGIN_IND:
     {
         BTS2S_PBAP_CLT_PULL_VCARD_LIST_BEGIN_IND *msg = msg_data;
-        if (msg->data != NULL)
-        {
-            bfree(msg->data);
-        }
         break;
     }
 
     case BTS2MU_PBAP_CLT_PULL_VCARD_NEXT_IND:
     {
         BTS2S_PBAP_CLT_PULL_VCARD_LIST_NEXT_IND *msg = msg_data;
-        if (msg->data != NULL)
-        {
-            bfree(msg->data);
-        }
+
         break;
     }
 
     case BTS2MU_PBAP_CLT_PULL_VCARD_LIST_BEGIN_IND:
     {
         BTS2S_PBAP_CLT_PULL_VCARD_BEGIN_IND *msg = msg_data;
-        if (msg->data != NULL)
-        {
-            bfree(msg->data);
-        }
+
         break;
     }
 
     case BTS2MU_PBAP_CLT_PULL_VCARD_LIST_NEXT_IND:
     {
         BTS2S_PBAP_CLT_PULL_VCARD_NEXT_IND *msg = msg_data;
-        if (msg->data != NULL)
-        {
-            bfree(msg->data);
-        }
         break;
     }
     default:
@@ -834,10 +832,10 @@ static U8 bt_pbapc_get_curr_path(U8 *curr_path)
  * If the server requires authentication, a PBAP_SUBEVENT_AUTHENTICATION_REQUEST is emitted, which
  * can be answered with pbap_authentication_password(..).
  * The status of PBAP connection establishment is reported via PBAP_SUBEVENT_CONNECTION_OPENED event,
- * i.e. on success status field is set to ERROR_CODE_SUCCESS.
+ * i.e. on success status field is set to 0.
  *
  * @param addr
- * @return status ERROR_CODE_SUCCESS on success, otherwise BTSTACK_MEMORY_ALLOC_FAILED if PBAP or GOEP connection already exists.
+ * @return status 0 on success, otherwise BTSTACK_MEMORY_ALLOC_FAILED if PBAP or GOEP connection already exists.
  */
 
 bt_err_t bt_pbap_client_connect_request(BTS2S_BD_ADDR *bd, BOOL auth_flag)
@@ -886,7 +884,7 @@ bt_err_t bt_pbap_client_disconnect(BTS2S_BD_ADDR *bd)
 
 // #define FILTER_TEST PBAP_FILTER_VERSION | PBAP_FILTER_FN | PBAP_FILTER_N | pbap_filter_tel
 
-bt_err_t bt_pbap_client_pull_pb(BTS2E_PBAP_PHONE_REPOSITORY repos, U8 phone_book, U8 max_size)
+bt_err_t bt_pbap_client_pull_pb(BTS2E_PBAP_PHONE_REPOSITORY repos, U8 phone_book, U16 max_size)
 {
     bt_err_t ret = BT_ERROR_STATE;
     if (local_inst->curr_cmd == BT_PBAP_CLT_IDLE)
@@ -899,13 +897,13 @@ bt_err_t bt_pbap_client_pull_pb(BTS2E_PBAP_PHONE_REPOSITORY repos, U8 phone_book
                              max_size, //0x00
                              0x00);
         USER_TRACE(">> Download phone book\n");
-        /* allocate parser */
-        vp = CARD_ParserCreate(NULL);
+        // /* allocate parser */
+        // vp = CARD_ParserCreate(NULL);
 
-        /* initialize */
-        CARD_SetUserData(vp, &userData);
-        CARD_SetPropHandler(vp, PropHandler);
-        CARD_SetDataHandler(vp, DataHandler);
+        // /* initialize */
+        // CARD_SetUserData(vp, &userData);
+        // CARD_SetPropHandler(vp, PropHandler);
+        // CARD_SetDataHandler(vp, DataHandler);
         ret = BT_EOK;
     }
     else
@@ -960,11 +958,13 @@ bt_err_t bt_pbap_client_pull_vcard(U8 *p, U8 len)
     {
         U8 name[30];
         U32 name_len;
-        U8 vCardExt[] = {0, '.', 0, 'v', 0, 'c', 0, 'f', 0, 0};
+        U8 vCardExt[] = ".vcf";
 
         local_inst->entry_handle = atoi((const char *)p);
-        name_len = bstr2u((char *)name, (const char *)p);
-        bmemcpy(name + name_len - 2, vCardExt, sizeof(vCardExt));
+        name_len = len;
+        bmemcpy(name, p, len);
+        bmemcpy(name + len, vCardExt, sizeof(vCardExt));
+        // USER_TRACE("name %s len:%d %s", name, len, p);
         pbap_clt_pull_vcard_req(name,
                                 0x84,
                                 0,
@@ -1070,15 +1070,15 @@ bt_err_t bt_pbap_client_auth(U8 *password, U8 len)
 
 void bt_pbapc_hdl_vcardlist(BTS2S_PBAP_CLT_PULL_VCARD_LIST_BEGIN_IND *msg)
 {
-    if (msg->data != NULL)
+    INFO_TRACE("bt_pbapc_hdl_vcardlist msg data_len: 0x%2x %s", msg->body_data_length, &msg->body_data);
+    if (msg->body_data_length)
     {
         // USER_TRACE("vcard_list msg type: 0x%2x  pbook_size:0x%2x totalLength:0x%2x",msg->type,msg->pbook_size,msg->totalLength);
-        // USER_TRACE("vcard_list msg data_len: 0x%2x  data:%s more_data:0x%2x",msg->dataLen,msg->data,msg->more_data);
-        bt_pbapc_parse_vcard_list((const char *)msg->data, msg->dataLen);
-        bfree(msg->data);
+        // INFO_TRACE("vcard_list msg data_len: 0x%2x  data:%s more_data:0x%2x",&msg->body_data,msg->body_data_length);
+        bt_pbapc_parse_vcard_list((const char *)&msg->body_data, msg->body_data_length);
     }
 
-    if (msg->more_data)
+    if (!msg->is_final_packet)
     {
         pbap_clt_pull_vcard_list_next_req();
         INFO_TRACE(">> pull next packet\n");
@@ -1088,8 +1088,8 @@ void bt_pbapc_hdl_vcardlist(BTS2S_PBAP_CLT_PULL_VCARD_LIST_BEGIN_IND *msg)
 void bt_pbapc_hdl_phone_book_entry(BTS2S_PBAP_CLT_PULL_VCARD_BEGIN_IND *msg)
 {
 
-    const char *data = (char *)msg->data;
-    U16 len = msg->dataLen;
+    const char *data = (char *)&msg->body_data;
+    U16 len = msg->body_data_length;
     const char *pend = data + len;
     const char *curr_start = NULL;
     const char *curr_end = NULL;
@@ -1157,6 +1157,7 @@ void bt_pbap_clt_hdl_msg(bts2_app_stru *bts2_app_data)
             profile_state.profile_type = BT_NOTIFY_PBAP;
             profile_state.res = msg->res;
             bt_profile_update_connection_state(BT_NOTIFY_PBAP, BT_NOTIFY_PBAP_PROFILE_DISCONNECTED, &profile_state);
+            local_inst->curr_cmd = BT_PBAP_CLT_IDLE;
             INFO_TRACE(">> Connect fail, result = %d\n", msg->res);
         }
         break;
@@ -1172,8 +1173,8 @@ void bt_pbap_clt_hdl_msg(bts2_app_stru *bts2_app_data)
         profile_state.profile_type = BT_NOTIFY_PBAP;
         profile_state.res = msg->res;
         bt_profile_update_connection_state(BT_NOTIFY_PBAP, BT_NOTIFY_PBAP_PROFILE_DISCONNECTED, &profile_state);
-
         local_inst->pbap_clt_st = BT_PBAPC_IDLE_ST;
+        local_inst->curr_cmd = BT_PBAP_CLT_IDLE;
         USER_TRACE(">> Connection disconnect indcation\n");
         break;
     }
@@ -1204,16 +1205,14 @@ void bt_pbap_clt_hdl_msg(bts2_app_stru *bts2_app_data)
     case BTS2MU_PBAP_CLT_PULL_PB_BEGIN_IND:
     {
         BTS2S_PBAP_CLT_PULL_PB_BEGIN_IND *msg;
-
-        INFO_TRACE(">> BTS2MU_PBAP_CLT_PULL_PB_BEGIN_IND\n");
         msg = (BTS2S_PBAP_CLT_PULL_PB_BEGIN_IND *)bts2_app_data->recv_msg;
-        if (msg->data)
+        INFO_TRACE(">> BTS2MU_PBAP_CLT_PULL_PB_BEGIN_IND msg->body_data_length %d\n", msg->body_data_length);
+        if (msg->body_data_length)
         {
-            CARD_Parse(vp, (const char *)msg->data + msg->dataOffset, msg->dataLen, FALSE);
-            bfree(msg->data);
+            bt_parser_vcard_property((U8 *)&msg->body_data, msg->body_data_length, msg->is_final_packet);
         }
 
-        if (msg->more_data)
+        if (!msg->is_final_packet)
         {
             pbap_clt_pull_pb_next_req();
             INFO_TRACE(">> pull next packet\n");
@@ -1230,22 +1229,14 @@ void bt_pbap_clt_hdl_msg(bts2_app_stru *bts2_app_data)
 
         msg = (BTS2S_PBAP_CLT_PULL_PB_NEXT_IND *)bts2_app_data->recv_msg;
         INFO_TRACE(">> BTS2MU_PBAP_CLT_PULL_PB_NEXT_IND\n");
-        if (msg->data)
+        if (msg->body_data_length)
         {
-            if (msg->more_data)
-            {
-                CARD_Parse(vp, (const char *)msg->data + msg->dataOffset, msg->dataLen, FALSE);
-            }
-            else
-            {
-                CARD_Parse(vp, (const char *)msg->data + msg->dataOffset, msg->dataLen, TRUE);
-            }
+            bt_parser_vcard_property((U8 *)&msg->body_data, msg->body_data_length, msg->is_final_packet);
         }
-        if (msg->more_data)
+        if (!msg->is_final_packet)
         {
             pbap_clt_pull_pb_next_req();
         }
-        bfree(msg->data);
         break;
     }
     case BTS2MU_PBAP_CLT_PULL_PB_COMPLETE_IND:
@@ -1272,12 +1263,11 @@ void bt_pbap_clt_hdl_msg(bts2_app_stru *bts2_app_data)
 
         msg = (BTS2S_PBAP_CLT_PULL_VCARD_BEGIN_IND *)bts2_app_data->recv_msg;
         bt_pbapc_hdl_phone_book_entry(msg);
-        if (msg->more_data)
+        if (!msg->is_final_packet)
         {
             pbap_clt_pull_vcard_next_req();
             USER_TRACE(">> Pull phone book entry\n");
         }
-        bfree(msg->data);
         INFO_TRACE(">> BTS2MU_PBAP_CLT_PULL_VCARD_BEGIN_IND\n");
         break;
     }
@@ -1286,9 +1276,9 @@ void bt_pbap_clt_hdl_msg(bts2_app_stru *bts2_app_data)
         BTS2S_PBAP_CLT_PULL_VCARD_NEXT_IND *msg;
 
         msg = (BTS2S_PBAP_CLT_PULL_VCARD_NEXT_IND *)bts2_app_data->recv_msg;
-        if (local_inst->cur_file_hdl != NULL && msg->data != NULL)
+        if (local_inst->cur_file_hdl != NULL && msg->body_data_length)
         {
-            fwrite(msg->data + msg->dataOffset, 1, msg->dataLen, local_inst->cur_file_hdl);
+            fwrite(&msg->body_data, 1, msg->body_data_length, local_inst->cur_file_hdl);
         }
         INFO_TRACE(">> BTS2MU_PBAP_CLT_PULL_VCARD_NEXT_IND\n");
         break;
@@ -1326,15 +1316,14 @@ void bt_pbap_clt_hdl_msg(bts2_app_stru *bts2_app_data)
         BTS2S_PBAP_CLT_PULL_VCARD_LIST_NEXT_IND *msg;
         msg = (BTS2S_PBAP_CLT_PULL_VCARD_LIST_NEXT_IND *)bts2_app_data->recv_msg;
 
-        if (msg->data != NULL)
+        if (msg->body_data_length)
         {
             // USER_TRACE("vcard_list msg type: 0x%2x  pbook_size:0x%2x totalLength:0x%2x",msg->type,msg->pbook_size,msg->totalLength);
-            // USER_TRACE("vcard_list msg data_len: 0x%2x  data:%s more_data:0x%2x",msg->dataLen,msg->data,msg->more_data);
-            bt_pbapc_parse_vcard_list((const char *)msg->data, msg->dataLen);
-            bfree(msg->data);
+            // INFO_TRACE("vcard_list msg data_len: 0x%2x  data:%s more_data:0x%2x",&msg->body_data,msg->body_data_length);
+            bt_pbapc_parse_vcard_list((const char *)&msg->body_data, msg->body_data_length);
         }
 
-        if (msg->more_data)
+        if (!msg->is_final_packet)
         {
             pbap_clt_pull_vcard_list_next_req();
             INFO_TRACE(">> pull next packet\n");

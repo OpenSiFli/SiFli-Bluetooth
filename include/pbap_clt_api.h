@@ -97,41 +97,37 @@ typedef struct
     U16 type;                   /* message identity */
     U16 pbook_size;             /* the number of indexes in the device phone book */
     U32 totalLength;            /* the data total length */
-    U16 dataLen;                /* the length of payload */
-    U16 dataOffset;             /* data offset from the packet */
-    BOOL more_data;             /* is last packet */
+    BOOL is_final_packet;       /* is last packet */
     U8 new_missed;              /* the number of missed calls */
-    U8 *data;                   /* payload */
     BTS2S_BD_ADDR bd;
+    U16 body_data_length;            /* the length of payload */
+    U8 body_data[];                   /* payload */
 } BTS2S_PBAP_CLT_PULL_PB_BEGIN_IND;
 
 typedef struct
 {
-    U16 type;                   /* message identity */
-    U16 dataLen;                /* the data total length */
-    U16 dataOffset;             /* data offset from the packet */
-    BOOL more_data;             /* is last packet */
-    U8 *data;                   /* payload */
+    U16 type;                           /* message identity */
+    BOOL is_final_packet;               /* is last packet */
+    U16 body_data_length;               /* the length of payload */
+    U8 body_data[];                     /* payload */
 } BTS2S_PBAP_CLT_PULL_PB_NEXT_IND;
 
 typedef struct
 {
     U16 type;                   /* message identity */
     U32 totalLength;            /* the data total length */
-    U16 dataLen;                /* the length of data */
-    U16 dataOffset;             /* the length of payload */
-    BOOL more_data;             /* is last packet */
-    U8 *data;                   /* payload */
     BTS2S_BD_ADDR bd;
+    BOOL is_final_packet;             /* is last packet */
+    U16 body_data_length;            /* the length of payload */
+    U8 body_data[];                   /* payload */
 } BTS2S_PBAP_CLT_PULL_VCARD_BEGIN_IND;
 
 typedef struct
 {
     U16 type;                   /* message identity */
-    U16 dataLen;                /* the length of data  */
-    U16 dataOffset;             /* the length of payload */
-    BOOL more_data;             /* is last packet */
-    U8 *data;                   /* payload */
+    BOOL is_final_packet;             /* is last packet */
+    U16 body_data_length;            /* the length of payload */
+    U8 body_data[];                   /* payload */
 } BTS2S_PBAP_CLT_PULL_VCARD_NEXT_IND;
 
 typedef struct
@@ -139,21 +135,19 @@ typedef struct
     U16 type;                   /* message identity */
     U16 pbook_size;             /* the number of indexes in the device phone book */
     U32 totalLength;            /* the data total length */
-    U16 dataLen;                /* the length of data */
-    U16 dataOffset;             /* the length of payload */
-    BOOL more_data;             /* is last packet */
+    BOOL is_final_packet;             /* is last packet */
     U8 new_missed;              /* the number of missed calls */
-    U8 *data;                   /* payload */
     BTS2S_BD_ADDR bd;
+    U16 body_data_length;                /* the length of payload */
+    U8 body_data[];                   /* payload */
 } BTS2S_PBAP_CLT_PULL_VCARD_LIST_BEGIN_IND;
 
 typedef struct
 {
     U16 type;                   /* message identity */
-    U16 dataLen;                /* the length of data */
-    U16 dataOffset;             /* the length of payload */
-    BOOL more_data;             /* is last packet */
-    U8 *data;                   /* payload */
+    BOOL is_final_packet;               /* is last packet */
+    U16 body_data_length;               /* the length of payload */
+    U8 body_data[];                     /* payload */
 } BTS2S_PBAP_CLT_PULL_VCARD_LIST_NEXT_IND;
 
 typedef struct
