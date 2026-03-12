@@ -62,7 +62,7 @@ typedef struct
     ble_serial_client_char_t data_char;
     uint8_t cb_count;
     uint8_t is_assemable;
-    uint16_t mtu;
+    uint16_t mtu[MAX_CONNECTION_LINK_NUM];
     ble_serial_tran_export_t *cb_table;
     ble_serial_tran_assemable_t assemable;
     uint8_t conn_idx;
@@ -434,7 +434,7 @@ ble_serial_tran_error_event_t ble_serial_client_send_data(ble_serial_tran_data_t
     if (data == NULL || data->data == NULL)
         return BLE_SERIAL_TRAN_ERROR_INVALID_PARA;                                  // Parameter error;
 
-    if (data->len <= env->mtu - 3 - 4)
+    if (data->len <= env->mtu[env->conn_idx] - 3 - 4)
     {
         if ((packet = bt_mem_alloc(data->len + 4)) == NULL)
             return BLE_SERIAL_TRAN_ERROR_LACK_OF_MEMORY;                                  // No enough memory
@@ -455,7 +455,7 @@ ble_serial_tran_error_event_t ble_serial_client_send_data(ble_serial_tran_data_t
     else
     {
         // use fragment packet
-        uint16_t max_packet_len = env->mtu - 3;
+        uint16_t max_packet_len = env->mtu[env->conn_idx] - 3;
         uint16_t single_packet_len = max_packet_len - 4;
 
         packet = bt_mem_alloc(max_packet_len);
@@ -536,18 +536,24 @@ int ble_serial_client_event_handler(uint16_t event_id, uint8_t *data, uint16_t l
     case BLE_GAP_CONNECTED_IND:
     {
         ble_gap_connect_ind_t *ind = (ble_gap_connect_ind_t *)data;
-        env->mtu = 23;
+        env->mtu[env->conn_idx] = 23;
         break;
     }
     case SIBLES_MTU_EXCHANGE_IND:
     {
         sibles_mtu_exchange_ind_t *ind = (sibles_mtu_exchange_ind_t *)data;
-        env->mtu = ind->mtu;
+        env->mtu[env->conn_idx] = ind->mtu;
         break;
     }
     case BLE_GAP_DISCONNECTED_IND:
     {
         ble_gap_disconnected_ind_t *ind = (ble_gap_disconnected_ind_t *)data;
+
+        if (env->conn_idx != ind->conn_idx)
+        {
+            break;
+        }
+
         // clear assemable env if disconnect
         env->is_assemable = 0;
         if (env->assemable.ptr)
@@ -565,11 +571,22 @@ int ble_serial_client_event_handler(uint16_t event_id, uint8_t *data, uint16_t l
         }
 
         env->state = BLE_SERIAL_CLIENT_STATE_IDLE;
+        env->conn_idx = INVALID_CONN_IDX;
         break;
     }
     case SIBLES_SEARCH_SVC_RSP:
     {
         sibles_svc_search_rsp_t *rsp = (sibles_svc_search_rsp_t *)data;
+
+        if (env->state != BLE_SERIAL_CLIENT_STATE_SEARCHING)
+        {
+            break;
+        }
+
+        if (env->conn_idx != rsp->conn_idx)
+        {
+            break;
+        }
 
         // rsp->svc may null
         if (memcmp(rsp->search_uuid, g_serial_tran_svc_uuid, rsp->search_svc_len) != 0)
