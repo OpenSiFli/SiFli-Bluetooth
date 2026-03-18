@@ -40,7 +40,7 @@ extern bts2_app_stru *bts2g_app_p;
 /*******************************************device info func start**********************************************/
 static void bt_hfp_hf_app_init_device_info(bts2_hfp_hf_inst_data *hf_data)
 {
-    if (hf_data->devices_info)
+    if (hf_data)
     {
         for (int i = 0; i < CFG_MAX_HFP_CONN_NUM; i++)
         {
@@ -61,7 +61,7 @@ static void bt_hfp_hf_app_init_device_info(bts2_hfp_hf_inst_data *hf_data)
 
 static bts2_hfp_hf_device_info *bt_hfp_hf_app_get_device_by_mux_id(bts2_hfp_hf_inst_data *hf_data, U8 mux_id)
 {
-    if (hf_data->devices_info)
+    if (hf_data)
     {
         for (int i = 0; i < CFG_MAX_HFP_CONN_NUM; i++)
         {
@@ -76,7 +76,7 @@ static bts2_hfp_hf_device_info *bt_hfp_hf_app_get_device_by_mux_id(bts2_hfp_hf_i
 
 static bts2_hfp_hf_device_info *bt_hfp_hf_app_get_device_by_bd_addr(bts2_hfp_hf_inst_data *hf_data, BTS2S_BD_ADDR *bd)
 {
-    if (hf_data->devices_info)
+    if (hf_data)
     {
         for (int i = 0; i < CFG_MAX_HFP_CONN_NUM; i++)
         {
@@ -91,7 +91,7 @@ static bts2_hfp_hf_device_info *bt_hfp_hf_app_get_device_by_bd_addr(bts2_hfp_hf_
 
 static bts2_hfp_hf_device_info *bt_hfp_hf_app_alloc_device(bts2_hfp_hf_inst_data *hf_data)
 {
-    if (hf_data->devices_info)
+    if (hf_data)
     {
         for (int i = 0; i < CFG_MAX_HFP_CONN_NUM; i++)
         {
@@ -125,7 +125,7 @@ static void bt_hfp_hf_app_dealloc_device(bts2_hfp_hf_device_info *device)
 
 static bts2_hfp_hf_device_info *bt_hfp_hf_app_get_busy_device(bts2_hfp_hf_inst_data *hf_data)
 {
-    if (hf_data->devices_info)
+    if (hf_data)
     {
         for (int i = 0; i < CFG_MAX_HFP_CONN_NUM; i++)
         {

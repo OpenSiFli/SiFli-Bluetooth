@@ -28,7 +28,7 @@
 /*******************************************device info func start**********************************************/
 static void bt_hfp_ag_app_init_device_info(bts2_hfp_ag_inst_data *ag_data)
 {
-    if (ag_data->devices_info)
+    if (ag_data)
     {
         for (int i = 0; i < CFG_MAX_HFP_CONN_NUM; i++)
         {
@@ -45,7 +45,7 @@ static void bt_hfp_ag_app_init_device_info(bts2_hfp_ag_inst_data *ag_data)
 
 static bts2_hfp_ag_device_info *bt_hfp_ag_app_get_device_by_mux_id(bts2_hfp_ag_inst_data *ag_data, U8 mux_id)
 {
-    if (ag_data->devices_info)
+    if (ag_data)
     {
         for (int i = 0; i < CFG_MAX_HFP_CONN_NUM; i++)
         {
@@ -60,7 +60,7 @@ static bts2_hfp_ag_device_info *bt_hfp_ag_app_get_device_by_mux_id(bts2_hfp_ag_i
 
 static bts2_hfp_ag_device_info *bt_hfp_ag_app_alloc_device(bts2_hfp_ag_inst_data *ag_data)
 {
-    if (ag_data->devices_info)
+    if (ag_data)
     {
         for (int i = 0; i < CFG_MAX_HFP_CONN_NUM; i++)
         {
@@ -90,7 +90,7 @@ static void bt_hfp_ag_app_dealloc_device(bts2_hfp_ag_device_info *device)
 
 static bts2_hfp_ag_device_info *bt_hfp_ag_app_get_busy_device(bts2_hfp_ag_inst_data *ag_data)
 {
-    if (ag_data->devices_info)
+    if (ag_data)
     {
         for (int i = 0; i < CFG_MAX_HFP_CONN_NUM; i++)
         {
