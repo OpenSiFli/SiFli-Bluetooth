@@ -56,9 +56,8 @@ extern uint8_t a2dp_relay_get_channel(void);
 
 
 #ifdef CFG_AV_AAC
-static NeAACDecHandle hAac[MAX_NUM_LOCAL_SNK_AAC_SEIDS] = {NULL};
+static NeAACDecHandle aac_decoder[MAX_NUM_LOCAL_SNK_AAC_SEIDS] = {NULL};
 static unsigned long  aac_samplerate[MAX_NUM_LOCAL_SNK_AAC_SEIDS] = {0};
-static uint8_t        is_aac_inited[MAX_NUM_LOCAL_SNK_AAC_SEIDS] = {0};
 #endif
 
 
@@ -312,22 +311,20 @@ static U8 *play_data_decode(bts2s_av_inst_data *inst, U16 *out_len, U8 con_idx)
 #endif
         // Check if decoder has the needed capabilities
         // Open the library
-        if (!is_aac_inited[con_idx])
+
+        char err = NeAACDecInit(aac_decoder[con_idx], (unsigned char *)fin, fileread, &aac_samplerate[con_idx],
+                                &channels);
+        if (err != 0)
         {
-            char err = NeAACDecInit(hAac[con_idx], (unsigned char *)fin, fileread, &aac_samplerate[con_idx],
-                                    &channels);
-            if (err != 0)
-            {
-                RT_ASSERT(0);
-            }
-            is_aac_inited[con_idx] = 1;
+            RT_ASSERT(0);
         }
+
         unsigned long frame_index = 0;
         frameInfo.bytesconsumed = 0;
 
 
         // Only one frame
-        sample_buffer = NeAACDecDecode(hAac[con_idx], &frameInfo, (unsigned char *)fin,  fileread);
+        sample_buffer = NeAACDecDecode(aac_decoder[con_idx], &frameInfo, (unsigned char *)fin,  fileread);
 
         fileread -= frameInfo.bytesconsumed;
 
@@ -1336,11 +1333,10 @@ void bt_avsnk_hdl_disc_handler(bts2s_av_inst_data *inst, uint8_t con_idx)
         bts2_sbc_decode_completed_ext(con_idx);
 
 #ifdef CFG_AV_AAC
-    if ((codec == AV_MPEG24_AAC) && is_aac_inited[con_idx])
+    if ((codec == AV_MPEG24_AAC) && (aac_decoder[con_idx] != NULL))
     {
-        is_aac_inited[con_idx] = 0;
-        NeAACDecClose(hAac[con_idx]);
-        hAac[con_idx] = NULL;
+        NeAACDecClose(aac_decoder[con_idx]);
+        aac_decoder[con_idx] = NULL;
     }
 #endif
 
@@ -1391,11 +1387,10 @@ void bt_avsnk_close_handler(bts2s_av_inst_data *inst, uint8_t con_idx)
 #endif
 
 #ifdef CFG_AV_AAC
-    if ((codec == AV_MPEG24_AAC) && is_aac_inited[con_idx])
+    if ((codec == AV_MPEG24_AAC) && (aac_decoder[con_idx] != NULL))
     {
-        is_aac_inited[con_idx] = 0;
-        NeAACDecClose(hAac[con_idx]);
-        hAac[con_idx] = NULL;
+        NeAACDecClose(aac_decoder[con_idx]);
+        aac_decoder[con_idx] = NULL;
     }
 #endif
 }
@@ -1408,11 +1403,10 @@ void bt_avsnk_abort_handler(bts2s_av_inst_data *inst, uint8_t con_idx)
 #endif
 
 #ifdef CFG_AV_AAC
-    if ((codec == AV_MPEG24_AAC) && is_aac_inited[con_idx])
+    if ((codec == AV_MPEG24_AAC) && (aac_decoder[con_idx] != NULL))
     {
-        is_aac_inited[con_idx] = 0;
-        NeAACDecClose(hAac[con_idx]);
-        hAac[con_idx] = NULL;
+        NeAACDecClose(aac_decoder[con_idx]);
+        aac_decoder[con_idx] = NULL;
     }
 #endif
 }
@@ -1462,11 +1456,10 @@ uint8_t bt_avsnk_hdl_start_ind(bts2s_av_inst_data *inst, BTS2S_AV_START_IND *msg
                 {
 #ifdef CFG_AV_AAC
                     USER_TRACE("aac open\n");
-                    hAac[con_idx] = NeAACDecOpen();
-                    is_aac_inited[con_idx] = 0;
+                    aac_decoder[con_idx] = NeAACDecOpen();
                     // Get the current config
                     NeAACDecConfigurationPtr conf =
-                        NeAACDecGetCurrentConfiguration(hAac[con_idx]);
+                        NeAACDecGetCurrentConfiguration(aac_decoder[con_idx]);
                     conf->defObjectType = LC;
                     conf->outputFormat = FAAD_FMT_16BIT;
                     conf->downMatrix = 1;
@@ -1474,7 +1467,7 @@ uint8_t bt_avsnk_hdl_start_ind(bts2s_av_inst_data *inst, BTS2S_AV_START_IND *msg
                     // If needed change some of the values in conf
                     //
                     // Set the new configuration
-                    NeAACDecSetConfiguration(hAac[con_idx], conf);
+                    NeAACDecSetConfiguration(aac_decoder[con_idx], conf);
 #endif
                 }
             }
@@ -1560,11 +1553,10 @@ void bt_avsnk_hdl_suspend_ind(bts2s_av_inst_data *inst, uint8_t con_idx)
 #endif
 
 #ifdef CFG_AV_AAC
-    if ((codec == AV_MPEG24_AAC) && is_aac_inited[con_idx])
+    if ((codec == AV_MPEG24_AAC) && (aac_decoder[con_idx] != NULL))
     {
-        is_aac_inited[con_idx] = 0;
-        NeAACDecClose(hAac[con_idx]);
-        hAac[con_idx] = NULL;
+        NeAACDecClose(aac_decoder[con_idx]);
+        aac_decoder[con_idx] = NULL;
     }
 #endif
 }
