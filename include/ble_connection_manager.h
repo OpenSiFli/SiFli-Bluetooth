@@ -28,7 +28,6 @@ typedef struct
     uint8_t auth_state;
     uint8_t connection_state;
     uint8_t enc_state;
-    uint8_t svc_changed_ccc;
     uint8_t first_bond;
     uint8_t role;
 

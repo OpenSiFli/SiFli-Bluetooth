@@ -47,15 +47,6 @@
 #define ADVERTISE_MODE_BALANCED 2  // 250ms
 
 connection_para_updata_ind_t ble_connect_para_ind = {LOW_POWER_INTERVAL_MIN, LOW_POWER_INTERVAL_MAX, LOW_POWER_LATENCY, CONNECTION_MANAGER_INTERVAL_LOW_POWER};
-const uint8_t generic_attribute_uuid[ATT_UUID_16_LEN] =
-{
-    0x01, 0x18,
-};
-
-const uint8_t svc_changed_uuid[ATT_UUID_16_LEN] =
-{
-    0x05, 0x2a,
-};
 
 void connection_manager_connection_state_change(uint8_t manager_index, uint8_t new_states, uint16_t event);
 
@@ -878,16 +869,6 @@ uint8_t connection_manager_delete_all_bond()
 }
 #endif //BLE_CM_BOND_DISABLE
 
-#ifdef BLE_SVC_CHG_ENABLE
-uint8_t ble_svc_change_enable(uint8_t conn_idx)
-{
-    LOG_I("ble_svc_change_enable");
-    sibles_search_service(conn_idx, ATT_UUID_16_LEN, (uint8_t *)generic_attribute_uuid);
-    // Only treat enable conn as search target
-    return 0;
-}
-#endif //BLE_SVC_CHG_ENABLE
-
 #ifndef BLE_CM_BOND_DISABLE
 static void update_pair_infor(ble_gap_bond_ind_t *ind, uint8_t manager_index)
 {
@@ -1060,9 +1041,6 @@ static void process_bond_event(ble_gap_bond_ind_t *ind, uint16_t command)
             // Store LTK in NVDS
             g_bonding_info.ltk = ind->data.ltk;
         }
-#ifdef BLE_SVC_CHG_ENABLE
-        ble_svc_change_enable(ind->conn_idx);
-#endif //BLE_SVC_CHG_ENABLE
         break;
     }
     case GAPC_PAIRING_FAILED:
@@ -1798,62 +1776,6 @@ void update_data_length(uint8_t conn_idx, uint16_t mtu)
     //ble_gap_update_data_len(&len);
 }
 
-#ifdef BLE_SVC_CHG_ENABLE
-static void send_svc_changed_indication(uint8_t conn_idx)
-{
-    uint8_t manager_index = get_manager_index_by_connection_index(conn_idx);
-    if (manager_index == CM_CONN_INDEX_ERROR)
-    {
-        return;
-    }
-    if (g_conn_manager[manager_index].first_bond == 1)
-    {
-        return;
-    }
-
-    if ((g_conn_manager[manager_index].svc_changed_ccc == INDICATION_ENABLE_VALUE) &&
-            (g_conn_manager[manager_index].enc_state == ENC_STATE_ON))
-    {
-        sibles_send_svc_changed_ind(conn_idx, 1, 0xFFFF);
-    }
-}
-
-static int ble_svc_change_event_handler(uint16_t event_id, uint8_t *data, uint16_t len)
-{
-    connection_manager_env_t *env = cm_get_env();
-
-    switch (event_id)
-    {
-    case SIBLES_REGISTER_REMOTE_SVC_RSP:
-    {
-        sibles_write_remote_value_t value;
-        uint16_t enable = 2;
-        value.handle = env->svc_change.cccd_hdl;
-        value.write_type = SIBLES_WRITE;
-        value.len = 2;
-        value.value = (uint8_t *)&enable;
-        sibles_write_remote_value(env->svc_change.remote_handle, env->svc_change.remote_index, &value);
-        break;
-    }
-    case SIBLES_REMOTE_EVENT_IND:
-    {
-        // Notify upper layer
-        uint16_t start_handle, end_handle;
-
-        sibles_remote_event_ind_t *ind = (sibles_remote_event_ind_t *)data;
-        memcpy(&start_handle, ind->value, 2);
-        memcpy(&end_handle, ind->value + 2, 2);
-
-        sibles_send_remote_svc_change_ind(ind->conn_idx, start_handle, end_handle);
-        break;
-    }
-    default:
-        break;
-    }
-    return 0;
-}
-#endif //BLE_SVC_CHG_ENABLE
-
 int ble_connection_manager_handler(uint16_t event_id, uint8_t *data, uint16_t len, uint32_t context)
 {
     connection_manager_env_t *env = cm_get_env();
@@ -1907,7 +1829,6 @@ int ble_connection_manager_handler(uint16_t event_id, uint8_t *data, uint16_t le
         g_conn_manager[manager_index].peer_addr_type = ind->peer_addr_type;
         g_conn_manager[manager_index].bond_state = BOND_STATE_NONE;
         g_conn_manager[manager_index].enc_state = ENC_STATE_NONE;
-        g_conn_manager[manager_index].svc_changed_ccc = 0;
         g_conn_manager[manager_index].first_bond = 0;
         g_conn_manager[manager_index].role = ind->role;
 
@@ -2006,12 +1927,6 @@ int ble_connection_manager_handler(uint16_t event_id, uint8_t *data, uint16_t le
         }
         connection_manager_event_process(CM_DISCONNECTED_IND, sizeof(connection_manager_disconnected_ind_t), data);
         connection_manager_connection_state_change(manager_index, CONNECTION_STATE_DISCONNECTED, event_id);
-#ifdef BLE_SVC_CHG_ENABLE
-        if (env->svc_change.remote_index == ind->conn_idx)
-        {
-            sibles_unregister_remote_svc(env->svc_change.remote_index, env->svc_change.svc_start_handle, env->svc_change.svc_end_handle, ble_svc_change_event_handler);
-        }
-#endif //BLE_SVC_CHG_ENABLE
         break;
     }
 #ifndef BLE_CM_BOND_DISABLE
@@ -2069,21 +1984,6 @@ int ble_connection_manager_handler(uint16_t event_id, uint8_t *data, uint16_t le
         break;
 
     }
-#ifdef BLE_SVC_CHG_ENABLE
-    case SIBLES_SVC_CHANGED_CFG:
-    {
-        sibles_svc_changed_cfg_t *rsp = (sibles_svc_changed_cfg_t *)data;
-        LOG_I("SIBLES_SVC_CHANGED_CFG %d", rsp->ind_cfg);
-        uint8_t manager_index = get_manager_index_by_connection_index(rsp->conn_idx);
-        if (manager_index == CM_CONN_INDEX_ERROR)
-        {
-            break;
-        }
-        g_conn_manager[manager_index].svc_changed_ccc = rsp->ind_cfg;
-        send_svc_changed_indication(rsp->conn_idx);
-        break;
-    }
-#endif //BLE_SVC_CHG_ENABLE
 #ifndef BLE_CM_BOND_DISABLE
     case BLE_GAP_ENCRYPT_IND:
     {
@@ -2098,13 +1998,7 @@ int ble_connection_manager_handler(uint16_t event_id, uint8_t *data, uint16_t le
         }
         g_conn_manager[manager_index].enc_state = ENC_STATE_ON;
 
-#ifdef BLE_SVC_CHG_ENABLE
-        send_svc_changed_indication(ind->conn_idx);
-#endif //BLE_SVC_CHG_ENABLE
         connection_manager_event_process(ENCRYPT_IND_EVENT, sizeof(ble_gap_encrypt_ind_t), ind);
-#ifdef BLE_SVC_CHG_ENABLE
-        ble_svc_change_enable(ind->conn_idx);
-#endif
         break;
     }
     case BLE_GAP_ENCRYPT_REQ_IND:
@@ -2183,47 +2077,6 @@ int ble_connection_manager_handler(uint16_t event_id, uint8_t *data, uint16_t le
         update_data_length(ind->conn_idx, ind->mtu);
         break;
     }
-#ifdef BLE_SVC_CHG_ENABLE
-    case SIBLES_SEARCH_SVC_RSP:
-    {
-        sibles_svc_search_rsp_t *rsp = (sibles_svc_search_rsp_t *)data;
-
-        if (rsp->result != HL_ERR_NO_ERROR)
-        {
-            break;
-        }
-        if (memcmp(rsp->search_uuid, generic_attribute_uuid, rsp->search_svc_len) == 0)
-        {
-            LOG_I("generic attribute");
-
-            sibles_svc_search_char_t *chara = (sibles_svc_search_char_t *)rsp->svc->att_db;
-            uint8_t find = 0;
-            for (int i = 0; i < rsp->svc->char_count; i++)
-            {
-                if (memcmp(chara->uuid, svc_changed_uuid, chara->uuid_len) == 0)
-                {
-                    LOG_I("noti_uuid received, att handle(%x), des handle(%x)", chara->attr_hdl, chara->desc[0].attr_hdl);
-                    env->svc_change.cccd_hdl = sibles_descriptor_handle_find(chara, ATT_DESC_CLIENT_CHAR_CFG);
-                    find = 1;
-                    break;
-                }
-
-            }
-
-            if (find == 0)
-            {
-                break;
-            }
-            env->svc_change.svc_start_handle = rsp->svc->hdl_start;
-            env->svc_change.svc_end_handle = rsp->svc->hdl_end;
-
-            env->svc_change.remote_index = rsp->conn_idx;
-            env->svc_change.remote_handle = sibles_register_remote_svc(rsp->conn_idx, rsp->svc->hdl_start, rsp->svc->hdl_end, ble_svc_change_event_handler);
-            LOG_I("svc change register result %d", env->svc_change.remote_handle);
-        }
-        break;
-    }
-#endif // BLE_SVC_CHG_ENABLE
 #ifndef BLE_CM_BOND_DISABLE
     case BLE_GAP_BOND_REQ_IND:
     {
@@ -3015,18 +2868,6 @@ static void cm_cmd(uint8_t argc, char **argv)
         else if (strcmp(argv[1], "reboot") == 0)
         {
             drv_reboot();
-        }
-#ifdef BLE_SVC_CHG_ENABLE
-        else if (strcmp(argv[1], "svc_change") == 0)
-        {
-            ble_svc_change_enable(0);
-        }
-#endif //BLE_SVC_CHG_ENABLE
-        else if (strcmp(argv[1], "svc_dis") == 0)
-        {
-#ifdef BLE_SVC_CHG_ENABLE
-            sibles_unregister_remote_svc(env->svc_change.remote_index, env->svc_change.svc_start_handle, env->svc_change.svc_end_handle, ble_svc_change_event_handler);
-#endif // BLE_SVC_CHG_ENABLE
         }
 #endif
     }
