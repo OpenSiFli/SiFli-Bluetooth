@@ -281,6 +281,12 @@ typedef struct
 
 typedef struct
 {
+    U16 type;
+    U8  res;
+} BTS2S_AV_DISB_CFM;
+
+typedef struct
+{
     U16              type;
     U8               res;
     U16              conn_id;
