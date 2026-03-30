@@ -255,7 +255,11 @@ menu "Bluetooth"
         config CFG_AVRCP
             bool "Enable AVRCP"
             depends on BT_PROFILE_CUSTOMIZE
-            default n     
+            default n  
+        config CFG_AVRCP_COVER_ART
+            bool "Enable AVRCP Cover Art Feature"
+            depends on BT_PROFILE_CUSTOMIZE && CFG_AVRCP
+            default n   
 
         config CFG_HID
             bool "Enable HID"

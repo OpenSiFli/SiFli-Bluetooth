@@ -399,7 +399,7 @@ void bt_avrcp_uids_changed_register_request(bts2_app_stru *bts2_app_data, BTS2S_
 
 void bt_avrcp_addressed_player_register_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
 
-void bt_avrcp_cover_art_get_linked_thumbnail(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
+bt_err_t bt_avrcp_cover_art_get_linked_thumbnail(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
 
 void bt_avrcp_cover_art_get_linked_thumbnail_test(BTS2S_BD_ADDR *bd);
 

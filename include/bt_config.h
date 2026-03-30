@@ -29,7 +29,6 @@
     #ifndef CFG_NO_L2C
         #ifdef CFG_AVRCP_LIB
             #define CFG_AVRCP
-            #define CFG_AVRCP_COVER_ART
         #endif
         #ifdef CFG_AV_LIB
             #define CFG_AV

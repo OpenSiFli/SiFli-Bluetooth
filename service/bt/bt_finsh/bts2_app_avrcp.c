@@ -50,12 +50,6 @@ uint8_t   bts2s_avrcp_openFlag;//0x00:dont open avrcp profile; 0x01:open avrcp p
 bt_avrcp_music_detail_t music_detail_info;
 
 
-#ifdef CFG_AVRCP_COVER_ART
-    static FILE *a2dp_sink_cover_art_file = NULL;
-    static FILE *a2dp_sink_cover_art_file1 = NULL;
-    static U16 write_idx = 0;
-#endif
-
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
@@ -91,6 +85,7 @@ void bt_avrcp_init(bts2_app_stru *bts2_app_data)
         bts2_app_data->avrcp_inst.conn[idx].need_reconnect = 0;
         bts2_app_data->avrcp_inst.conn[idx].has_image_hdl = 0;
         bts2_app_data->avrcp_inst.conn[idx].get_cover_art_pending = 0;
+        bts2_app_data->avrcp_inst.conn[idx].need_update_cover_art = 0;
 #endif
     }
 #ifdef CFG_OPEN_AVRCP
@@ -1273,11 +1268,6 @@ static void bt_avrcp_get_element_attributes_confirm(bts2_app_stru *bts2_app_data
                 value = (U8 *)(avrcmsg->data + 17);
 
                 bts2_app_data->avrcp_inst.conn[con_idx].has_image_hdl = 1;
-
-                if (bmemcmp((void *)bts2_app_data->avrcp_inst.conn[con_idx].avrcp_cover_art_image_handle, (void *) value, value_length) != 0)
-                {
-                    bt_avrcp_cover_art_get_linked_thumbnail(bts2g_app_p, &bts2_app_data->avrcp_inst.conn[con_idx].rmt_bd);
-                }
 
                 memcpy((void *)bts2_app_data->avrcp_inst.conn[con_idx].avrcp_cover_art_image_handle, (void *) value, value_length);
 
@@ -2676,6 +2666,7 @@ void bt_avrcp_msg_handler(bts2_app_stru *bts2_app_data)
             bts2_app_data->avrcp_inst.conn[idx].is_cover_connected = 1;
             bts2_app_data->avrcp_inst.conn[idx].need_reconnect = 0;
             bts2_app_data->avrcp_inst.conn[idx].get_cover_art_pending = 0;
+            bts2_app_data->avrcp_inst.conn[idx].need_update_cover_art = 0;
             bt_avrcp_get_element_attributes_request(bts2_app_data, &avrcmsg->bd, AVRCP_MEDIA_ATTRIBUTES_COVER_ART);
         }
         break;
@@ -2693,6 +2684,7 @@ void bt_avrcp_msg_handler(bts2_app_stru *bts2_app_data)
             bts2_app_data->avrcp_inst.conn[idx].is_cover_connected = 0;
             bts2_app_data->avrcp_inst.conn[idx].has_image_hdl = 0;
             bts2_app_data->avrcp_inst.conn[idx].get_cover_art_pending = 0;
+            bts2_app_data->avrcp_inst.conn[idx].need_update_cover_art = 0;
             if (bts2_app_data->avrcp_inst.conn[idx].need_reconnect == 1)
             {
                 bt_avrcp_cover_art_client_connect(&bts2_app_data->avrcp_inst.conn[idx].rmt_bd);
@@ -2714,83 +2706,27 @@ void bt_avrcp_msg_handler(bts2_app_stru *bts2_app_data)
 
         U8 idx = bt_avrcp_get_connection_by_addr(bts2_app_data, &my_msg->bd);
 
-        if (write_idx % 2 == 0)
+        if (CFG_MAX_AVRCP_CONN_NUM == idx)
         {
-            if (a2dp_sink_cover_art_file == NULL)
-            {
-                if ((a2dp_sink_cover_art_file = fopen("cover.JPEG", "wb")) == NULL)
-                {
-                    USER_TRACE(" -- avrcp open the file failed\n");
-                }
-                else
-                {
-                    fwrite(my_msg->body_data, sizeof(U8), my_msg->body_data_length, a2dp_sink_cover_art_file);
-                }
-            }
-            else
-            {
-                fwrite(my_msg->body_data, sizeof(U8), my_msg->body_data_length, a2dp_sink_cover_art_file);
-            }
-        }
-        else
-        {
-            if (a2dp_sink_cover_art_file1 == NULL)
-            {
-                if ((a2dp_sink_cover_art_file1 = fopen("cover1.JPEG", "wb")) == NULL)
-                {
-                    USER_TRACE(" -- avrcp open the file failed\n");
-                }
-                else
-                {
-                    fwrite(my_msg->body_data, sizeof(U8), my_msg->body_data_length, a2dp_sink_cover_art_file1);
-                }
-            }
-            else
-            {
-                fwrite(my_msg->body_data, sizeof(U8), my_msg->body_data_length, a2dp_sink_cover_art_file1);
-            }
+            INFO_TRACE(">> no more packet data\n");
+            break;
         }
 
         if (!my_msg->is_final_packet)
         {
-            if (CFG_MAX_AVRCP_CONN_NUM != idx)
-            {
-                avrcp_get_cover_art_req(bts2_app_data->phdl, &my_msg->bd, bts2_app_data->avrcp_inst.conn[idx].avrcp_cover_art_image_handle, 0);
-                INFO_TRACE(">> pull next packet\n");
-            }
-            else
-            {
-                INFO_TRACE(">> no more packet data\n");
-                bts2g_app_p->avrcp_inst.conn[idx].get_cover_art_pending = 0;
-
-                if (write_idx % 2 == 0)
-                {
-                    fclose(a2dp_sink_cover_art_file);
-                    a2dp_sink_cover_art_file = NULL;
-                }
-                else
-                {
-                    fclose(a2dp_sink_cover_art_file1);
-                    a2dp_sink_cover_art_file1 = NULL;
-                }
-                write_idx++;
-            }
+            avrcp_get_cover_art_req(bts2_app_data->phdl, &my_msg->bd, bts2_app_data->avrcp_inst.conn[idx].avrcp_cover_art_image_handle, 0);
+            INFO_TRACE(">> pull next packet\n");
         }
         else
         {
             INFO_TRACE(">> no more packet data\n");
             bts2g_app_p->avrcp_inst.conn[idx].get_cover_art_pending = 0;
-            if (write_idx % 2 == 0)
+
+            if (bts2g_app_p->avrcp_inst.conn[idx].need_update_cover_art == 1)
             {
-                fclose(a2dp_sink_cover_art_file);
-                a2dp_sink_cover_art_file = NULL;
+                bts2g_app_p->avrcp_inst.conn[idx].need_update_cover_art = 0;
+                bt_avrcp_cover_art_get_linked_thumbnail(bts2_app_data, &my_msg->bd);
             }
-            else
-            {
-                fclose(a2dp_sink_cover_art_file1);
-                a2dp_sink_cover_art_file1 = NULL;
-            }
-            write_idx++;
         }
         break;
     }
@@ -2801,34 +2737,18 @@ void bt_avrcp_msg_handler(bts2_app_stru *bts2_app_data)
 
         U8 idx = bt_avrcp_get_connection_by_addr(bts2_app_data, &my_msg->bd);
 
-        if (CFG_MAX_AVRCP_CONN_NUM != idx)
+        INFO_TRACE(">> no more packet data\n");
+        if (CFG_MAX_AVRCP_CONN_NUM == idx)
         {
-            if (write_idx % 2 == 0)
-            {
-                if (a2dp_sink_cover_art_file != NULL)
-                {
-                    INFO_TRACE(">> no more packet data\n");
-                    bts2g_app_p->avrcp_inst.conn[idx].get_cover_art_pending = 0;
+            break;
+        }
 
-                    fclose(a2dp_sink_cover_art_file);
-                    a2dp_sink_cover_art_file = NULL;
+        bts2g_app_p->avrcp_inst.conn[idx].get_cover_art_pending = 0;
 
-                    write_idx++;
-                }
-            }
-            else
-            {
-                if (a2dp_sink_cover_art_file1 != NULL)
-                {
-                    INFO_TRACE(">> no more packet data\n");
-                    bts2g_app_p->avrcp_inst.conn[idx].get_cover_art_pending = 0;
-
-                    fclose(a2dp_sink_cover_art_file1);
-                    a2dp_sink_cover_art_file1 = NULL;
-
-                    write_idx++;
-                }
-            }
+        if (bts2g_app_p->avrcp_inst.conn[idx].need_update_cover_art == 1)
+        {
+            bts2g_app_p->avrcp_inst.conn[idx].need_update_cover_art = 0;
+            bt_avrcp_cover_art_get_linked_thumbnail(bts2_app_data, &my_msg->bd);
         }
         break;
     }
@@ -3059,15 +2979,16 @@ void bt_avrcp_uids_changed_register_request(bts2_app_stru *bts2_app_data, BTS2S_
                            data);
 }
 
-void bt_avrcp_cover_art_get_linked_thumbnail(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
+bt_err_t bt_avrcp_cover_art_get_linked_thumbnail(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
 {
     U8 idx = 0xff;
     if (bt_avrcp_check_connection_by_addr(bts2_app_data, bd, &idx))
     {
         if (bts2g_app_p->avrcp_inst.conn[idx].get_cover_art_pending)
         {
-            USER_TRACE(" -- Avrcpget cover art in progress...\n");
-            return;
+            USER_TRACE(" -- Avrcp get cover art in progress...\n");
+            bts2g_app_p->avrcp_inst.conn[idx].need_update_cover_art = 1;
+            return BT_ERROR_IN_PROGRESS;
         }
 
         if (bts2_app_data->avrcp_inst.conn[idx].is_cover_connected)
@@ -3078,18 +2999,24 @@ void bt_avrcp_cover_art_get_linked_thumbnail(bts2_app_stru *bts2_app_data, BTS2S
                 bts2g_app_p->avrcp_inst.conn[idx].get_cover_art_pending = 1;
                 avrcp_get_cover_art_req(bts2_app_data->phdl, &bts2g_app_p->avrcp_inst.conn[idx].rmt_bd, bts2g_app_p->avrcp_inst.conn[idx].avrcp_cover_art_image_handle, 1);
                 USER_TRACE(" -- Avrcp get cover art...\n");
+                return BT_EOK;
             }
             else
+            {
                 USER_TRACE(" -- Avrcp does not have a valid image handle...\n");
+                return BT_ERROR_INPARAM;
+            }
         }
         else
         {
             USER_TRACE(" -- AVRCP Cover Art connection not exist...\n");
+            return BT_ERROR_UNSUPPORTED;
         }
     }
     else
     {
         USER_TRACE(" -- no avrcp connection with the opposite device\n");
+        return BT_ERROR_DISCONNECTED;
     }
 }
 

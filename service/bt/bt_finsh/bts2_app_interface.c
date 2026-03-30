@@ -1015,6 +1015,16 @@ uint8_t bt_interface_avrcp_get_playback_status(bt_notify_device_mac_t *mac)
 #endif
 }
 
+uint8_t bt_interface_avrcp_get_connection_by_addr(bt_notify_device_mac_t *mac)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    BTS2S_BD_ADDR     bd_addr;
+
+    bt_addr_convert_to_bts((bd_addr_t *)mac, &bd_addr);
+
+    return bt_avrcp_get_connection_by_addr(bts2_app_data, &bd_addr);
+}
+
 uint8_t bt_interface_check_avrcp_role_valid(uint8_t role)
 {
     if ((role == AVRCP_CT) || (role == AVRCP_TG))
@@ -1060,6 +1070,18 @@ bt_err_t bt_interface_set_avrcp_role_ext(bt_notify_device_mac_t *rmt_addr, uint8
     return BT_ERROR_UNSUPPORTED;
 #endif
 }
+
+#ifdef CFG_AVRCP_COVER_ART
+bt_err_t bt_interface_avrcp_get_cover_art(bt_notify_device_mac_t *rmt_addr)
+{
+    bt_err_t ret = BT_EOK;
+    BTS2S_BD_ADDR bd_addr;
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    bt_addr_convert_to_bts((bd_addr_t *)rmt_addr, &bd_addr);
+    ret = bt_avrcp_cover_art_get_linked_thumbnail(bts2_app_data, &bd_addr);
+    return ret;
+}
+#endif
 #endif
 
 /// @}  BT_AVRCP_SRV

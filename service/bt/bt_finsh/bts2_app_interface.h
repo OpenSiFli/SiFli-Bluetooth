@@ -574,6 +574,14 @@ void bt_interface_avrcp_get_play_status_request(bt_notify_device_mac_t *mac);
 void bt_interface_avrcp_set_playback_status(uint8_t playback_status, bt_notify_device_mac_t *mac);
 
 /**
+ * @brief            Check remote device is connected
+ * @param[in] mac    Remote device address
+ * @return           Is the remote device connected?
+ *
+ **/
+uint8_t bt_interface_avrcp_get_connection_by_addr(bt_notify_device_mac_t *mac);
+
+/**
  * @brief            Check the avrcp role valid
  * @param[in] role   Avrcp role
  * @return           Is the role valid?
@@ -607,6 +615,13 @@ bt_err_t bt_interface_set_avrcp_role_ext(bt_notify_device_mac_t *rmt_addr, uint8
  *
  **/
 uint8_t bt_interface_avrcp_get_playback_status(bt_notify_device_mac_t *mac);
+
+#ifdef CFG_AVRCP_COVER_ART
+/**
+ * @brief            Get the cover picture of the song being played by the mobile phone
+ **/
+bt_err_t bt_interface_avrcp_get_cover_art(bt_notify_device_mac_t *rmt_addr);
+#endif
 /// @}  BT_AVRCP_SRV
 
 /** @defgroup BT_HID_SRV  HID profile interfaces
