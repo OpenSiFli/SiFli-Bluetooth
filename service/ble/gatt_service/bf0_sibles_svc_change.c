@@ -285,6 +285,7 @@ int service_changed_ble_handler(uint16_t event_id, uint8_t *data, uint16_t len, 
     default:
         break;
     }
+    return 0;
 }
 
 BLE_EVENT_REGISTER(service_changed_ble_handler, NULL);
