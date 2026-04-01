@@ -14,7 +14,7 @@ extern "C" {
 
 #include "rtthread.h"
 #include "rtconfig.h"
-#include "config.h"
+#include "bt_config.h"
 #include "string.h"
 #include <stdint.h>
 #include "stdlib.h"
@@ -44,4 +44,3 @@ extern "C" {
 
 
 #endif
-

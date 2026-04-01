@@ -11,7 +11,7 @@
 #include <stdio.h>
 
 #ifdef BSP_BT_CONNECTION_MANAGER
-#include "config.h"
+#include "bt_config.h"
 #include "bts2_app_inc.h"
 #include "bf0_sibles_nvds.h"
 #include "bt_connection_manager.h"

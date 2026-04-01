@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-#include "config.h"
+#include "bt_config.h"
 #ifdef CFG_BT_DIS
 #include "bts2_app_demo.h"
 #include "bt_dis_api.h"
@@ -42,4 +42,3 @@ bt_err_t bt_dis_app_sdp_unreg();
 #ifdef __cplusplus
 }
 #endif
-

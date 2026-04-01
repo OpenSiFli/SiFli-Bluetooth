@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-#include "config.h"
+#include "bt_config.h"
 
 #define BTS2_TASK_MAX_NAME_LEN       (16)
 #define BTS2_MSG_MAX_NUM             (0xFF)
@@ -369,5 +369,4 @@ char *bts2_get_task_name(U16 id);
 #endif
 
 #endif
-
 

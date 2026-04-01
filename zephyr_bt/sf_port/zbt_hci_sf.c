@@ -1014,7 +1014,7 @@ __ROM_USED int zbt_config_mailbox(void)
 }
 
 #ifdef BSP_BLE_SIBLES
-#include "config.h"
+#include "bt_config.h"
 
 #ifndef CFG_MAX_SCO_CONN_NUM
     #define CFG_MAX_SCO_CONN_NUM 1
@@ -1197,5 +1197,4 @@ int ble_stack_filter(struct net_buf *buf)
 #endif
 
 INIT_DEVICE_EXPORT(zbt_config_mailbox);
-
 

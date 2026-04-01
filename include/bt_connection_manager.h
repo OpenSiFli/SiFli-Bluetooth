@@ -8,7 +8,7 @@
 #define _BT_CONNECTION_MANAGER_H_
 
 #ifdef BSP_BT_CONNECTION_MANAGER
-#include "config.h"
+#include "bt_config.h"
 #include "bts2_bt.h"
 #include "bts2_app_demo.h"
 #include "drivers/bt_device.h"

@@ -15,7 +15,7 @@
 #include "bts2_type.h"
 #include "bts2_bt.h"
 #include "gap_api.h"
-#include "config.h"
+#include "bt_config.h"
 #include "os_adaptor.h"
 
 
@@ -461,4 +461,3 @@ bts2_app_stru *getApp(void);
 #endif
 
 #endif
-
