@@ -16,6 +16,9 @@
     #define SVC_CHANGE_MAX_CONN_NUM 8
 #endif
 
+#define NOTIFY_ENABLE_VALUE 1
+#define INDICATION_ENABLE_VALUE 2
+
 typedef struct
 {
     uint8_t need_send_ind;
