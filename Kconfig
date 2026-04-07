@@ -182,7 +182,7 @@ menu "Bluetooth"
         
         config BLE_SVC_CHG_ENABLE
             bool "Enable service change"
-            depends on BSP_BLE_SIBLES
+            depends on BLE_GATT_CLIENT
             default y
     endmenu
 

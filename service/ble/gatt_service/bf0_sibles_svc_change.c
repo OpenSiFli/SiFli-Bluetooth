@@ -70,9 +70,9 @@ static void send_svc_changed_indication(uint8_t conn_idx)
         return;
     }
 
-    if ((env->svc_changed_ccc[conn_idx] == INDICATION_ENABLE_VALUE)
+    if (env->svc_changed_ccc[conn_idx] == INDICATION_ENABLE_VALUE
 #ifdef BSP_BLE_CONNECTION_MANAGER
-            && (connection_manager_get_enc_state(conn_idx) == ENC_STATE_ON)
+            && connection_manager_get_enc_state(conn_idx) == ENC_STATE_ON
 #endif
        )
     {
