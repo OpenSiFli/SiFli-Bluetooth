@@ -126,11 +126,20 @@ bt_err_t bt_interface_conn_to_source_ext(unsigned char *mac, bt_profile_t ext_pr
 bt_err_t bt_interface_disc_ext(unsigned char *mac, bt_profile_t ext_profile);
 
 /**
- * @brief                   Cancel with the specified device
+ * @brief                   Reject connection
  * @param[in] mac           Remote device address
+ * @param[in] reason        reason
  *
- * @return                  int8_t
+ * @return                  bt_err_t
  **/
+bt_err_t bt_interface_reject_connect_req(unsigned char *mac, uint8_t reason);
+
+/**
+* @brief                   Cancel with the specified device
+* @param[in] mac           Remote device address
+*
+* @return                  int8_t
+**/
 int8_t bt_interface_cancel_connect_req(unsigned char *mac);
 
 /**
@@ -269,7 +278,7 @@ uint8_t bt_addr_convert(BTS2S_BD_ADDR *src_addr, uint8_t *addr);
  * @param[in] mac    Device mac address(eg:char mac[6] = {11,22,33,44,55,66})
  * @return           BTS2S_BD_ADDR
  **/
-BTS2S_BD_ADDR *bt_interface_this_connect_addr(unsigned char *mac);
+uint8_t bt_interface_this_connect_addr(unsigned char *mac, BTS2S_BD_ADDR *bd_addr);
 
 /**
  * @brief            Set the local role when acl connection is received

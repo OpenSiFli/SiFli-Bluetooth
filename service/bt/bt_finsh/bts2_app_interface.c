@@ -266,9 +266,9 @@ bt_err_t bt_interface_conn_to_source_ext(unsigned char *mac, bt_profile_t ext_pr
 
 bt_err_t bt_interface_disc_ext(unsigned char *mac, bt_profile_t ext_profile)
 {
-    BTS2S_BD_ADDR     bd_addr;
+    BTS2S_BD_ADDR     bd_addr = {0};
 
-    bt_addr_convert_to_bts((bd_addr_t *)mac, &bd_addr);
+    bt_interface_this_connect_addr(mac, &bd_addr);
 
     if (bd_is_empty(&bd_addr))
     {
@@ -389,6 +389,14 @@ void bt_interface_rd_extend_feature(unsigned char *mac, uint8_t page_num)
     bt_addr_convert_to_bts((bd_addr_t *)mac, &bd_addr);
 
     gap_rd_rmt_ext_featr_req(bts2_app_data->phdl, page_num, bd_addr);
+}
+
+bt_err_t bt_interface_reject_connect_req(unsigned char *mac, uint8_t reason)
+{
+    BTS2S_BD_ADDR bd_addr;
+    bt_addr_convert_to_bts((bd_addr_t *)mac, &bd_addr);
+    hcia_send_rej_conn_request(&bd_addr, HCI_ERR_REJ_BY_RMT_NO_RES);
+    return BT_EOK;
 }
 
 int8_t bt_interface_cancel_connect_req(unsigned char *mac)
@@ -527,36 +535,36 @@ uint8_t bt_addr_convert(BTS2S_BD_ADDR *src_addr, uint8_t *addr)
     return 1;
 }
 
-BTS2S_BD_ADDR *bt_interface_this_connect_addr(unsigned char *mac)
+uint8_t bt_interface_this_connect_addr(unsigned char *mac, BTS2S_BD_ADDR *bd_addr)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
     BTS2S_BD_ADDR temp = {0xffffff, 0xff, 0xffff};
 
     if (mac && bt_check_mac_addresses_validity(mac))
     {
-        USER_TRACE(">> connect mac:%x:%x:%x:%x:%x:%x \n", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-        bts2_app_data->dev_idx = 0;
-        bt_addr_convert_to_bts((bd_addr_t *)mac, &bts2_app_data->bd_list[bts2_app_data->dev_idx]);
-        return &bts2_app_data->bd_list[bts2_app_data->dev_idx];
+        bt_addr_convert_to_bts((bd_addr_t *)mac, bd_addr);
+        return 0;
     }
     else
     {
         if (0 != memcmp(&(bts2_app_data->bd_list[bts2_app_data->dev_idx]), &temp, sizeof(BTS2S_BD_ADDR)))
         {
             USER_TRACE(">> bd_list address\n");
-            return &(bts2_app_data->bd_list[bts2_app_data->dev_idx]);
+            bd_copy(bd_addr, &bts2_app_data->bd_list[bts2_app_data->dev_idx]);
+            return 0;
         }
         else if (0 != memcmp(&(bts2_app_data->last_conn_bd), &temp, sizeof(BTS2S_BD_ADDR)))
         {
             USER_TRACE(">> last_conn_bd address\n");
-            return &(bts2_app_data->last_conn_bd);
+            bd_copy(bd_addr, &bts2_app_data->last_conn_bd);
+            return 0;
         }
         else
         {
             USER_TRACE(">> address invalid\n");
         }
     }
-    return NULL;
+    return 1;
 }
 
 void bt_interface_acl_accept_role_set(uint8_t role) //0；master 1:slave
@@ -1082,6 +1090,16 @@ bt_err_t bt_interface_avrcp_get_cover_art(bt_notify_device_mac_t *rmt_addr)
     return ret;
 }
 #endif
+#endif
+
+#ifdef CFG_AVRCP_COVER_ART
+bt_err_t bt_interface_avrcp_get_cover_art(BTS2S_BD_ADDR *addr)
+{
+    bt_err_t ret = BT_EOK;
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    ret = bt_avrcp_cover_art_get_linked_thumbnail(bts2_app_data, addr);
+    return ret;
+}
 #endif
 
 /// @}  BT_AVRCP_SRV
@@ -1822,19 +1840,16 @@ void bt_interface_make_call_res(uint16_t profile_channel, uint8_t res)
 
 bt_err_t bt_interface_ag_audio_switch(bt_hfp_audio_switch_t *audio)
 {
-    BTS2S_BD_ADDR *bd_addr;
-
-    // general_addr_convert_to_bt_addr((bd_addr_t *)&audio->peer_addr, &bd_addr);
-    bd_addr = bt_interface_this_connect_addr((unsigned char *)audio->peer_addr.addr);
-    if (bd_addr == NULL)
+    BTS2S_BD_ADDR bd_addr;
+    if (!bt_interface_this_connect_addr((unsigned char *)audio->peer_addr.addr, &bd_addr))
     {
         USER_TRACE(">> ag audio switch address invalid\n");
         return BT_ERROR_INPARAM;
     }
     if (audio->type)
-        bt_hfp_disconnect_audio(bd_addr);
+        bt_hfp_disconnect_audio(&bd_addr);
     else
-        bt_hfp_connect_audio(bd_addr);
+        bt_hfp_connect_audio(&bd_addr);
     return BT_EOK;
 }
 

@@ -38,22 +38,22 @@ void urc_func_ag_hangup_call_req(void)
     LOG_I("URC AG BT_EVENT_AG_HUNGUP_CALL_REQ");
 }
 
-void urc_func_ag_make_call_req(char *phone_number)
+void urc_func_ag_make_call_req(bt_notify_ag_at_arg_t *data)
 {
     bt_notify_t args;
     args.event = BT_EVENT_MAKE_CALL_REQ;
-    args.args = phone_number;
+    args.args = data->payload;
     rt_bt_event_notify(&args);
-    LOG_I("URC AG phone num:%s", phone_number);
+    LOG_I("URC AG phone num:%s", data->payload);
 }
 
-void urc_func_ag_dmtf_key_req(char val)
+static void urc_func_ag_dmtf_key_req(bt_notify_ag_at_arg_t *data)
 {
     bt_notify_t args;
     args.event = BT_EVENT_DTMF_KEY_REQ;
-    args.args = &val;
+    args.args = data->payload;
     rt_bt_event_notify(&args);
-    LOG_I("URC AG dmtf key:%c", val);
+    LOG_I("URC AG dmtf key:%c", data->payload[0]);
 }
 
 void urc_func_ag_get_local_phone_info_req(void)
@@ -83,16 +83,25 @@ void urc_func_ag_get_all_call_status_req(void)
     LOG_I("URC AG BT_EVENT_GET_ALL_REMOTE_CALL_INFO_REQ");
 }
 
-RT_WEAK void urc_func_bt_voice_volume_sifli(uint8_t volume)
+RT_WEAK void urc_func_bt_voice_volume_sifli(bt_notify_ag_at_arg_t *volume)
 {
     bt_notify_t args;
     bt_volume_set_t vol = {0};
     vol.mode = BT_VOLUME_CALL;
-    vol.volume.call_volume = volume;
+    vol.volume.call_volume = volume->payload[0];
     args.event = BT_EVENT_VOL_CHANGED;
     args.args = &vol;
     rt_bt_event_notify(&args);
-    LOG_I("URC BT hfp-volume ind:%d", volume);
+    LOG_I("URC BT hfp-volume ind:%d", volume->payload[0]);
+}
+
+void urc_func_bt_buttery_update_sifli(uint8_t *data)
+{
+    bt_notify_t args;
+    args.event = BT_EVENT_AG_BATTERY_UPDATE;
+    args.args = data;
+    rt_bt_event_notify(&args);
+    LOG_I("URC BT AG battery status:%d val:%d", ((hfp_battery_vaule_t *)data)->batt_status, ((hfp_battery_vaule_t *)data)->batt_val);
 }
 
 int bt_sifli_notify_hfp_ag_event_hdl(uint16_t event_id, uint8_t *data, uint16_t data_len)
@@ -113,7 +122,7 @@ int bt_sifli_notify_hfp_ag_event_hdl(uint16_t event_id, uint8_t *data, uint16_t 
     }
     case BT_NOTIFY_AG_MAKE_CALL_REQ:
     {
-        urc_func_ag_make_call_req((char *)data);
+        urc_func_ag_make_call_req((bt_notify_ag_at_arg_t *)data);
         break;
     }
     case BT_NOTIFY_AG_ANSWER_CALL_REQ:
@@ -128,12 +137,12 @@ int bt_sifli_notify_hfp_ag_event_hdl(uint16_t event_id, uint8_t *data, uint16_t 
     }
     case BT_NOTIFY_AG_RECV_DTMF_KEY:
     {
-        urc_func_ag_dmtf_key_req((char)data[0]);
+        urc_func_ag_dmtf_key_req((bt_notify_ag_at_arg_t *)data);
         break;
     }
     case BT_NOTIFY_AG_VOLUME_CHANGE:
     {
-        urc_func_bt_voice_volume_sifli(data[0]);
+        urc_func_bt_voice_volume_sifli((bt_notify_ag_at_arg_t *)data);
         break;
     }
     case BT_NOTIFY_AG_GET_INDICATOR_STATUS_REQ:
@@ -155,10 +164,14 @@ int bt_sifli_notify_hfp_ag_event_hdl(uint16_t event_id, uint8_t *data, uint16_t 
     {
         break;
     }
+    case BT_NOTIFY_AG_BATTERY_UPDATE:
+    {
+        urc_func_bt_buttery_update_sifli(data);
+        break;
+    }
     default:
         return -1;
     }
     return 0;
 }
-
 

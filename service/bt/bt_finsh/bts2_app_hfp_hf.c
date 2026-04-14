@@ -2167,7 +2167,6 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
 
     case BTS2MU_HF_BRSF_IND:
     {
-        U8 supp_voice_reg;
         BTS2S_HF_BRSF_IND *msg;
         msg = (BTS2S_HF_BRSF_IND *)bts2_app_data->recv_msg;
         bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(inst_data, msg->mux_id);
@@ -2183,8 +2182,12 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
         if (device_info)
         {
             device_info->peer_features = msg->supp_feature;
-            supp_voice_reg = bt_hfp_is_support_feature(device_info, HFP_AG_FEAT_VREC);
-            bt_interface_bt_event_notify(BT_NOTIFY_HFP_HF, BT_NOTIFY_HF_VOICE_RECOG_CAP_UPDATE, &supp_voice_reg, sizeof(uint8_t));
+            bt_notify_ag_at_arg_t *supp_voice_reg = (bt_notify_ag_at_arg_t *)bmalloc(sizeof(bt_notify_ag_at_arg_t));
+            supp_voice_reg->profile_channel = msg->mux_id;
+            supp_voice_reg->payload_len = 1;
+            supp_voice_reg->payload[0] = bt_hfp_is_support_feature(device_info, HFP_AG_FEAT_VREC);
+            bt_interface_bt_event_notify(BT_NOTIFY_HFP_HF, BT_NOTIFY_HF_VOICE_RECOG_STATUS_CHANGE, supp_voice_reg, sizeof(bt_notify_ag_at_arg_t));
+            bfree(supp_voice_reg);
         }
         break;
     }

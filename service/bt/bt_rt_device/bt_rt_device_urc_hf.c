@@ -24,16 +24,16 @@
 #ifdef BT_USING_SIRI
 extern rt_timer_t    siri_timer_hdl;
 
-void urc_func_bt_voice_recog_sifli(uint8_t status)
+static void urc_func_bt_voice_recog_sifli(bt_notify_ag_at_arg_t *data)
 {
     bt_notify_t args;
 
     args.event = BT_EVENT_SIRI_STATE_NOTIFY;
 
-    args.args = &status;//1:AG active complete;0:AG deactive complete;
+    args.args = data->payload; // 1:AG active complete;0:AG deactive complete;
 
     rt_bt_event_notify(&args);
-    LOG_I("URC BT voice recog ind %d", status);
+    LOG_I("URC BT voice recog ind %d", data->payload[0]);
     return;
 }
 
@@ -64,19 +64,19 @@ void urc_func_bt_hf_voice_recog_sifli(uint8_t res)
     return;
 }
 
-void urc_func_bt_voice_recog_cap_sifli(uint8_t status)
+static void urc_func_bt_voice_recog_cap_sifli(bt_notify_ag_at_arg_t *data)
 {
     bt_notify_t args;
     args.event = BT_EVENT_SIRI_CAPABILITY_NOTIFY;
-    args.args = &status;//1:AG active complete;0:AG deactive complete;
+    args.args = data->payload;//1:AG active complete;0:AG deactive complete;
 
     rt_bt_event_notify(&args);
-    LOG_I("URC BT voice recog cap ind %d", status);
+    LOG_I("URC BT voice recog cap ind %d", data->payload[0]);
     return;
 }
 #endif
 
-void urc_func_local_phone_number_sifli(char *data, int size)
+static void urc_func_local_phone_number_sifli(bt_notify_ag_at_arg_t *data)
 {
     bt_notify_t args;
     phone_number_t number = {0};
@@ -84,25 +84,22 @@ void urc_func_local_phone_number_sifli(char *data, int size)
     int  i;
 
     args.event = BT_EVENT_LOCAL_CALL_NUMBER;
-
-    if ((size < 3) || (size > 20))
+    LOG_I("input data len:%d", data->payload_len);
+    if ((data->payload_len < 3) || (data->payload_len > 20))
     {
         return;
     }
-    LOG_I("input data len:%d %s", size, data);
 
     numSize = 0;
-    for (i = 0; i < size; i++)
+    for (i = 0; i < data->payload_len; i++)
     {
-        if (data[i] != '"')
+        if (data->payload[i] != '"')
         {
-            number.number[numSize] = data[i];
+            number.number[numSize] = data->payload[i];
             numSize++;
         }
     }
-
     number.size = numSize;
-
     args.args = &number;
     rt_bt_event_notify(&args);
 
@@ -110,19 +107,19 @@ void urc_func_local_phone_number_sifli(char *data, int size)
     return;
 }
 
-void urc_func_bt_voice_volume_sifli(uint8_t volume)
+static void urc_func_bt_voice_volume_sifli(bt_notify_ag_at_arg_t *data)
 {
     bt_notify_t args;
     bt_volume_set_t vol = {0};
     vol.mode = BT_VOLUME_CALL;
-    vol.volume.call_volume = volume;
+    vol.volume.call_volume = data->payload[0];
     args.event = BT_EVENT_VOL_CHANGED;
     args.args = &vol;
     rt_bt_event_notify(&args);
-    LOG_I("URC BT hfp-volume ind:%d", volume);
+    LOG_I("URC BT hfp-volume ind:%d", vol.volume.call_volume);
 }
 
-void urc_func_bt_dial_complete_sifli(uint8_t res)
+static void urc_func_bt_dial_complete_sifli(uint8_t res)
 {
     bt_notify_t args;
     args.event = BT_EVENT_DIAL_COMPLETE;
@@ -137,7 +134,7 @@ void urc_func_bt_dial_complete_sifli(uint8_t res)
     return;
 }
 
-void urc_func_bt_cind_sifli(bt_cind_ind_t *ind)
+static void urc_func_bt_cind_sifli(bt_cind_ind_t *ind)
 {
     bt_notify_t args;
     args.event = BT_EVENT_CIND_IND;
@@ -146,7 +143,7 @@ void urc_func_bt_cind_sifli(bt_cind_ind_t *ind)
     return;
 }
 
-void urc_func_profile_cind_sifli(bts2_hfp_hf_cind *cind)
+static void urc_func_profile_cind_sifli(bts2_hfp_hf_cind *cind)
 {
     //callStatus is not 0,means exista active call at least ,when hfp profile is connected
     //callSetupStatus is not 0,means exist a setup call,when hfp profile is connected
@@ -163,7 +160,7 @@ void urc_func_profile_cind_sifli(bts2_hfp_hf_cind *cind)
     LOG_I("URC cind signal:%d batt_level:%d service:%d roam:%d", cind->signal, cind->batt_level, cind->service, cind->roam);
 }
 
-void urc_func_clcc_sifli(bt_clcc_ind_t *ind)
+static void urc_func_clcc_sifli(bt_clcc_ind_t *ind)
 {
     bt_notify_t args;
     args.event = BT_EVENT_CLCC_IND;
@@ -180,7 +177,7 @@ void urc_func_clcc_sifli(bt_clcc_ind_t *ind)
     return;
 }
 
-void urc_func_bt_clcc_complete_sifli(uint8_t res)
+static void urc_func_bt_clcc_complete_sifli(uint8_t res)
 {
     bt_notify_t args;
     args.event = BT_EVENT_CLCC_COMPLETE;
@@ -192,7 +189,7 @@ void urc_func_bt_clcc_complete_sifli(uint8_t res)
 }
 
 
-void urc_func_bt_call_vol_ind_sifli(uint8_t res)
+static void urc_func_bt_call_vol_ind_sifli(uint8_t res)
 {
     bt_notify_t args;
     args.event = BT_EVENT_VGS_IND;
@@ -206,7 +203,7 @@ void urc_func_bt_call_vol_ind_sifli(uint8_t res)
     return;
 }
 
-void urc_func_bt_call_dtmf_ind_sifli(uint8_t res)
+static void urc_func_bt_call_dtmf_ind_sifli(uint8_t res)
 {
     bt_notify_t args;
     args.event = BT_EVENT_DTMF_IND;
@@ -220,7 +217,7 @@ void urc_func_bt_call_dtmf_ind_sifli(uint8_t res)
     return;
 }
 
-void urc_func_hfp_at_cfm_status_notify(uint8_t cmd_id, uint8_t res)
+static void urc_func_hfp_at_cfm_status_notify(uint8_t cmd_id, uint8_t res)
 {
     bt_notify_t args;
     bt_at_cmd_cfm_t cmd;
@@ -298,18 +295,18 @@ int bt_sifli_notify_hfp_hf_event_hdl(uint16_t event_id, uint8_t *data, uint16_t 
 #ifdef BT_USING_SIRI
     case BT_NOTIFY_HF_VOICE_RECOG_CAP_UPDATE:
     {
-        urc_func_bt_voice_recog_cap_sifli(data[0]);
+        urc_func_bt_voice_recog_cap_sifli((bt_notify_ag_at_arg_t *)data);
         break;
     }
     case BT_NOTIFY_HF_VOICE_RECOG_STATUS_CHANGE:
     {
-        urc_func_bt_voice_recog_sifli(data[0]);
+        urc_func_bt_voice_recog_sifli((bt_notify_ag_at_arg_t *)data);
         break;
     }
 #endif
     case BT_NOTIFY_HF_LOCAL_PHONE_NUMBER:
     {
-        urc_func_local_phone_number_sifli((char *)data, data_len);
+        urc_func_local_phone_number_sifli((bt_notify_ag_at_arg_t *)data);
         break;
     }
     case BT_NOTIFY_HF_REMOTE_CALL_INFO_IND:
@@ -329,7 +326,7 @@ int bt_sifli_notify_hfp_hf_event_hdl(uint16_t event_id, uint8_t *data, uint16_t 
     }
     case BT_NOTIFY_HF_VOLUME_CHANGE:
     {
-        urc_func_bt_voice_volume_sifli(data[0]);
+        urc_func_bt_voice_volume_sifli((bt_notify_ag_at_arg_t *)data);
         break;
     }
     case BT_NOTIFY_HF_CALL_STATUS_UPDATE:
