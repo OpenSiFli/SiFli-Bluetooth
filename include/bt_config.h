@@ -92,6 +92,7 @@
 
 #ifdef CFG_HID
     #define CFG_OPEN_HID
+    #define CFG_MAX_HID_CONN_NUM   2
 #endif
 //#define CFG_OPNE_3WAY
 

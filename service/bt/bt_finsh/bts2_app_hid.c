@@ -21,26 +21,16 @@
 //#define DBG_LVL          LOG_LVL_INFO
 #include "log.h"
 
-#define DRAG_TIMES      4
-#define RESET_IOS_TIMES      2
-#define POWER_OFF_TIMES      5
-
-static const U16 DRAG_SPEED_Android = 50;
-static const U16 DRAG_SPEED_Ios = 50;
-
-static const U16 MOUSE_SPEED = 50;
-static const U16 MOUSE_SPEED_Ios = 30;
-static const U16 DRAG_DELAY = 40;
-static const U16 POWER_OFF_DELAY = 2;
+#define  POWER_OFF_TIMES      5
+#define  MOUSE_SPEED          50
+#define  POWER_OFF_DELAY      2
 
 extern bts2_app_stru *bts2g_app_p;
 uint8_t   bts2s_hid_openFlag;
+static U8 time_count_power_onoff = 0;
 
-static BOOL is_device_ios = FALSE;
-
-static BOOL is_hid_point_calibrated = FALSE;
-
-U8 bts2s_sds_hid_device_svc_record_mid_mouse[] =
+//*/************************************************hid descriptor***************************************************************/
+const U8 bts2s_sds_hid_device_svc_record_mid_mouse[] =
 {
     /* HIDDescriptorList */
     0x09, 0x02, 0x06, /* HIDDescriptorList */
@@ -85,7 +75,7 @@ U8 bts2s_sds_hid_device_svc_record_mid_mouse[] =
     0xC0,              // End Collection
 };
 
-U8 bts2s_sds_hid_device_svc_record_mid_keyboard[] =
+const U8 bts2s_sds_hid_device_svc_record_mid_keyboard[] =
 {
     /* HIDDescriptorList */
     0x09, 0x02, 0x06, /* HIDDescriptorList */
@@ -129,7 +119,7 @@ U8 bts2s_sds_hid_device_svc_record_mid_keyboard[] =
     0xc0             //# END_COLLECTION
 };
 
-U8 bts2s_sds_hid_device_svc_record_mid_controller[] =
+const U8 bts2s_sds_hid_device_svc_record_mid_controller[] =
 {
     /* HIDDescriptorList */
     0x09, 0x02, 0x06, /* HIDDescriptorList */
@@ -192,9 +182,7 @@ U8 bts2s_sds_hid_device_svc_record_mid_controller[] =
     0xc0,            //# END_COLLECTION
 };
 
-
-
-U8 bts2s_sds_hid_device_svc_record_mid_touch[] =
+const U8 bts2s_sds_hid_device_svc_record_mid_touch[] =
 {
     /* HIDDescriptorList */
     0x09, 0x02, 0x06, /* HIDDescriptorList */
@@ -242,8 +230,7 @@ U8 bts2s_sds_hid_device_svc_record_mid_touch[] =
     0xc0,           //              END_COLLECTION
 };
 
-
-U8 bts2s_sds_hid_device_svc_record_mid_consumer[] =
+const U8 bts2s_sds_hid_device_svc_record_mid_consumer[] =
 {
     // /* HIDDescriptorList */
     0x09, 0x02, 0x06, /* HIDDescriptorList */
@@ -281,7 +268,40 @@ U8 bts2s_sds_hid_device_svc_record_mid_consumer[] =
     0xC0              //End Collection
 };
 
+//*/************************************************static function declaration***************************************************************/
+static void bt_hid_send_report_req(bts2_app_stru *bts2_app_data, U8 conn_idx, U16 data_len, U8 *data, BOOL send_on_interrupt_channel);
+static void bt_hid_mouse_reset(bts2_app_stru *bts2_app_data, U8 conn_idx);
+static void bt_hid_mouse_reset_at_middle(bts2_app_stru *bts2_app_data, U8 con_idx);
+static void bt_hid_timeout_handler_reset_at_middle_ios(void *parameter);
+static void bt_hid_timeout_handler_reset_at_middle_ios1(void *parameter);
+static void bt_hid_mouse_move_without_reset(bts2_app_stru *bts2_app_data, S16 dx, S16 dy, U8 con_idx);
+static void bt_hid_timeout_handler_drag_up(void *parameter);
+static void bt_hid_timeout_handler_reset_at_middle1(void *parameter);
+static void bt_hid_timeout_handler_drag_down(void *parameter);
+static void bt_hid_timeout_handler_reset_at_middle2(void *parameter);
+static void bt_hid_receive_contro_handle(bts2_app_stru *bts2_app_data);
+static void hid_receive_get_report_handle(bts2_app_stru *bts2_app_data);
+static void hid_send_response_report(bts2_app_stru *bts2_app_data, U8 conn_idx, hid_report_type_enum_t report_type, struct hid_report_data_t *report_data, BOOL has_report_id);
+static void hid_receive_set_report_handle(bts2_app_stru *bts2_app_data);
+static void hid_receive_get_protocol_handle(bts2_app_stru *bts2_app_data);
+static void hid_receive_set_protocol_handle(bts2_app_stru *bts2_app_data);
+static void hid_receive_interrupt_report(bts2_app_stru *bts2_app_data);
+static BOOL bt_hid_check_is_ios_device(U8 idx);
+static void bt_hid_consumer_report_reset(bts2_app_stru *bts2_app_data, U8 conn_idx);
+static void bt_hid_timeout_handler_reset_report(void *parameter);
 
+//*/************************************************function definition***************************************************************/
+/*
+Description:
+    Combined hid descriptor
+Input:
+
+Time:2026/04/08 17:29:17
+
+Author:zhengyu
+
+Modify:
+*/
 //!Customers need to implement this weak function to add custom hid descriptors
 __WEAK void bt_hid_cmpose_hid_descriptor(void)
 {
@@ -294,6 +314,19 @@ __WEAK void bt_hid_cmpose_hid_descriptor(void)
 
 }
 
+
+/*
+Description:
+    Add new descriptor
+Input:
+    data:pointer of descriptor
+    len:length of descriptor
+Time:2026/04/08 17:30:02
+
+Author:zhengyu
+
+Modify:
+*/
 void bt_hid_add_descriptor(const U8 *data, U8 len)
 {
     BTS2S_HID_DESCRIPTOR_LIST *hid_descriptor_list = hid_get_descriptor_list();
@@ -323,6 +356,7 @@ void bt_hid_add_descriptor(const U8 *data, U8 len)
     }
 }
 
+
 /*
 Description:
     hid profile init
@@ -336,17 +370,14 @@ Modify:
 */
 void bt_hid_init(bts2_app_stru *bts2_app_data)
 {
-    bts2_app_data->hid_inst.is_hid_device_role = TRUE;
-    bts2_app_data->hid_inst.hid_time_handle = NULL;
-    bts2_app_data->hid_inst.hid_time_handle_drag_up = NULL;
-    bts2_app_data->hid_inst.hid_time_handle_drag_down = NULL;
-    bts2_app_data->hid_inst.hid_time_handle_reset_at_middle1 = NULL;
-    bts2_app_data->hid_inst.hid_time_handle_reset_at_middle2 = NULL;
-    bts2_app_data->hid_inst.hid_time_handle_reset_report = NULL;
-    bts2_app_data->hid_inst.hid_time_handle_reset_at_middle_ios = NULL;
-    bts2_app_data->hid_inst.hid_time_handle_reset_at_middle_ios1 = NULL;
-    bts2_app_data->hid_inst.st = hid_idle;
-    bts2_app_data->hid_inst.local_protocol_mode = HID_REPORT_PROTOCOL_MODE;
+    for (U8 i = 0; i < CFG_MAX_HID_CONN_NUM; i++)
+    {
+        bts2_app_data->hid_inst.conn[i].is_hid_device_role = TRUE;
+        bts2_app_data->hid_inst.conn[i].hid_time_handle = NULL;
+        bts2_app_data->hid_inst.conn[i].hid_time_handle_reset_report = NULL;
+        bts2_app_data->hid_inst.conn[i].hid_time_handle_reset_at_middle_ios = NULL;
+        bts2_app_data->hid_inst.conn[i].local_protocol_mode = HID_REPORT_PROTOCOL_MODE;
+    }
 #ifdef CFG_OPEN_HID
     bts2s_hid_openFlag = 1;
 #else
@@ -388,11 +419,9 @@ void bt_hid_open(void)
     }
     else
     {
-#ifdef CFG_HID
         bt_interface_bt_event_notify(BT_NOTIFY_HID, BT_NOTIFY_HID_OPEN_COMPLETE, NULL, 0);
 
         INFO_TRACE(">> URC HID open,alreay open\n");
-#endif
     }
 }
 
@@ -419,13 +448,12 @@ void bt_hid_close(void)
     }
     else
     {
-#ifdef CFG_HID
         bt_interface_bt_event_notify(BT_NOTIFY_HID, BT_NOTIFY_HID_CLOSE_COMPLETE, NULL, 0);
 
         INFO_TRACE(">> alreay close,urc HID close\n");
-#endif
     }
 }
+
 
 /*
 Description:
@@ -440,13 +468,32 @@ Modify:
 */
 void bt_hid_connect_requset(BTS2S_BD_ADDR *bd)
 {
-    bts2_app_stru *bts2_app_data = getApp();
+    U8 idx = CFG_MAX_HID_CONN_NUM;
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
     USER_TRACE(" -- address: %04X:%02X:%06lX\n",
                bd->nap,
                bd->uap,
                bd->lap);
-    USER_TRACE(" -- phdl=%x\n", bts2_app_data->phdl);
-    hid_conn_req(bts2_app_data->phdl, *bd, HID_Host, HID_Device);
+
+    if (bt_hid_check_connection_by_addr(bd, &idx))
+    {
+        USER_TRACE("This address already connected or connecting\n");
+        return;
+    }
+
+    idx = bt_hid_get_available_connection();
+
+    if (idx == CFG_MAX_HID_CONN_NUM)
+    {
+        USER_TRACE("hid connection is full\n");
+        return;
+    }
+    else
+    {
+        bd_copy(&bts2_app_data->hid_inst.conn[idx].rmt_bd, bd);
+        bts2_app_data->hid_inst.conn[idx].is_hid_device_role = TRUE;
+        hid_conn_req(bts2_app_data->phdl, *bd, HID_Host, HID_Device);
+    }
 }
 
 
@@ -463,8 +510,17 @@ Modify:
 */
 void bt_hid_disc_2_dev(BTS2S_BD_ADDR *bd_addr)
 {
-    USER_TRACE("[U-L] disconnect with remote hid...\n");
-    hid_disc_req();
+    U8 idx = CFG_MAX_HID_CONN_NUM;
+
+    if (bt_hid_check_connection_by_addr(bd_addr, &idx))
+    {
+        USER_TRACE("[U-L] disconnect with remote hid...\n");
+        hid_disc_req_ext(bd_addr);
+    }
+    else
+    {
+        USER_TRACE("[U-L] Please enter a valid address\n");
+    }
 }
 
 
@@ -481,49 +537,43 @@ Modify:
 */
 static void bt_hid_hdl_conn_cfm(bts2_app_stru *bts2_app_data)
 {
-    //to do
+    U8 idx = CFG_MAX_HID_CONN_NUM;
     BTS2S_HID_CONN_CFM *msg;
     msg = (BTS2S_HID_CONN_CFM *)bts2_app_data->recv_msg;
+
+    if (!bt_hid_check_connection_by_addr(&msg->bd, &idx))
+    {
+        USER_TRACE("[U-L]Why don't pre-alloction connection\n");
+        return;
+    }
+
     if (msg->res == BTS2_SUCC)
     {
-        if (msg->local_psm == BT_PSM_HID_CTRL)
+        if (msg->local_psm == BT_PSM_HID_INTR)
         {
-            USER_TRACE("[L-U]HID control channel connect success\n");
-            bt_hid_connect_requset(&msg->bd);
-        }
-        else if (msg->local_psm == BT_PSM_HID_INTR)
-        {
-            //todo:更新一些参数
-#ifdef CFG_HID
+            USER_TRACE("[L-U]HID connect success\n");
+
+            bd_copy(&bts2_app_data->hid_inst.conn[idx].rmt_bd, &msg->bd);
+
+            bt_hid_mouse_reset_at_middle(bts2_app_data, idx);
+
             bt_notify_profile_state_info_t profile_state;
             bt_addr_convert(&msg->bd, profile_state.mac.addr);
             profile_state.profile_type = BT_NOTIFY_HID;
             profile_state.res = BTS2_SUCC;
             bt_profile_update_connection_state(BT_NOTIFY_HID, BT_NOTIFY_HID_PROFILE_CONNECTED, &profile_state);
-
-            USER_TRACE("[L-U]HID interrupt channel connect success\n");
-#endif
-            bts2_app_data->hid_inst.rmt_bd.lap = msg->bd.lap;
-            bts2_app_data->hid_inst.rmt_bd.nap = msg->bd.nap;
-            bts2_app_data->hid_inst.rmt_bd.uap = msg->bd.uap;
-
-            bt_hid_mouse_reset_at_middle(bts2_app_data);
-        }
-        else
-        {
-            //todo:error handle
         }
     }
     else
     {
         USER_TRACE("[L-U] confirmation connect failed\n");
-#ifdef CFG_HID
+        bd_set_empty(&bts2_app_data->hid_inst.conn[idx].rmt_bd);
+
         bt_notify_profile_state_info_t profile_state;
         bt_addr_convert(&msg->bd, profile_state.mac.addr);
         profile_state.profile_type = BT_NOTIFY_HID;
         profile_state.res = msg->res;
         bt_profile_update_connection_state(BT_NOTIFY_HID, BT_NOTIFY_HID_PROFILE_DISCONNECTED, &profile_state);
-#endif
     }
 }
 
@@ -541,73 +591,102 @@ Modify:
 */
 static void bt_hid_hdl_disconn_cfm(bts2_app_stru *bts2_app_data)
 {
-    //to do
+    U8 idx = CFG_MAX_HID_CONN_NUM;
     BTS2S_HID_DISC_CFM *msg;
     msg = (BTS2S_HID_DISC_CFM *)bts2_app_data->recv_msg;
 
+    if (!bt_hid_check_connection_by_addr(&msg->bd, &idx))
+    {
+        USER_TRACE("[U-L]Why receive un-connected disconnect confirm\n");
+        return;
+    }
+
     if (msg->local_psm == BT_PSM_HID_CTRL)
     {
-        //todo:复位一些状态
-#ifdef CFG_HID
+        USER_TRACE("[L-U]HID control channel disconnect success\n");
+        bts2_app_data->hid_inst.conn[idx].is_hid_point_calibrated = false;
+        bts2_app_data->hid_inst.conn[idx].is_hid_device_role = false;
+        bts2_app_data->hid_inst.conn[idx].is_device_ios = false;
+        bd_set_empty(&bts2_app_data->hid_inst.conn[idx].rmt_bd);
+
         bt_notify_profile_state_info_t profile_state;
         bt_addr_convert(&msg->bd, profile_state.mac.addr);
         profile_state.profile_type = BT_NOTIFY_HID;
         profile_state.res = msg->res;
         bt_profile_update_connection_state(BT_NOTIFY_HID, BT_NOTIFY_HID_PROFILE_DISCONNECTED, &profile_state);
-
-        USER_TRACE("[L-U]HID control channel disconnect success\n");
-#endif
-        bts2_app_data->hid_inst.rmt_bd.lap = 0xffffff;
-        bts2_app_data->hid_inst.rmt_bd.nap = 0xffff;
-        bts2_app_data->hid_inst.rmt_bd.uap = 0xff;
     }
-    else if (msg->local_psm == BT_PSM_HID_INTR)
-    {
-        USER_TRACE("[L-U]HID interrupt channel disconnect success\n");
-        bt_hid_disc_2_dev(&msg->bd);
-    }
-    else
-    {
-        //todo:error handle
-    }
-
 }
 
 
+/*
+Description:
+    handle hid profile disconnect indication
+Input:
+    global app bt instance
+Time:2023/04/25 14:47:27
+
+Author:zhengyu
+
+Modify:
+*/
 static void bt_hid_hdl_disconn_ind(bts2_app_stru *bts2_app_data)
 {
-    //to do
+    U8 idx = CFG_MAX_HID_CONN_NUM;
     BTS2S_HID_DISC_IND *msg;
     msg = (BTS2S_HID_DISC_IND *)bts2_app_data->recv_msg;
 
+    if (!bt_hid_check_connection_by_addr(&msg->bd, &idx))
+    {
+        USER_TRACE("[U-L]Why receive un-connected disconnect indication\n");
+        return;
+    }
+
     if (msg->local_psm == BT_PSM_HID_CTRL)
     {
-        //todo:复位一些状态
-#ifdef CFG_HID
+        USER_TRACE("[L-U]receive remote disconnect control channel...\n\n");
+        bts2_app_data->hid_inst.conn[idx].is_hid_point_calibrated = false;
+        bts2_app_data->hid_inst.conn[idx].is_hid_device_role = false;
+        bts2_app_data->hid_inst.conn[idx].is_device_ios = false;
+        bd_set_empty(&bts2_app_data->hid_inst.conn[idx].rmt_bd);
+
         bt_notify_profile_state_info_t profile_state;
         bt_addr_convert(&msg->bd, profile_state.mac.addr);
         profile_state.profile_type = BT_NOTIFY_HID;
         profile_state.res = msg->res;
         bt_profile_update_connection_state(BT_NOTIFY_HID, BT_NOTIFY_HID_PROFILE_DISCONNECTED, &profile_state);
-
-        USER_TRACE("[L-U]receive remote disconnect control channel...\n\n");
-#endif
-        bts2_app_data->hid_inst.rmt_bd.lap = 0xffffff;
-        bts2_app_data->hid_inst.rmt_bd.nap = 0xffff;
-        bts2_app_data->hid_inst.rmt_bd.uap = 0xff;
     }
-    else if (msg->local_psm == BT_PSM_HID_INTR)
-    {
-        USER_TRACE("[L-U]receive remote disconnect interrupt channel...\n");
-    }
-    else
-    {
-        //todo:error handle
-    }
-
 }
 
 
+/*
+Description:
+    send hid report data
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+    data_len:data length
+    data:pointer of data
+    send_on_interrupt_channel:wheather send report on interrupt channel
+Time:2026/04/08 17:46:59
+
+Author:zhengyu
+
+Modify:
+*/
+static void bt_hid_send_report_req(bts2_app_stru *bts2_app_data, U8 conn_idx, U16 data_len, U8 *data, BOOL send_on_interrupt_channel)
+{
+    //!exit sniff mode before send data
+    if (bts2_app_data->hid_inst.conn[conn_idx].mode == SNIFF_MODE)
+    {
+        USER_TRACE("[U-L]hid exit sniff mode before send report\n");
+        hcia_exit_sniff_mode(&bts2_app_data->hid_inst.conn[conn_idx].rmt_bd, NULL);
+    }
+
+    hid_send_report_req_ext(bts2_app_data->phdl, &bts2_app_data->hid_inst.conn[conn_idx].rmt_bd, data_len, data, send_on_interrupt_channel);
+}
+
+
+//*/************************************************mouse descriptor function***************************************************************/
 /*
 Description:
     reset hid mouse operation
@@ -619,12 +698,12 @@ Author:zhengyu
 
 Modify:
 */
-void bt_hid_mouse_reset(bts2_app_stru *bts2_app_data)
+static void bt_hid_mouse_reset(bts2_app_stru *bts2_app_data, U8 conn_idx)
 {
     hid_msg_mouse_t mouse_msg = {0};
     mouse_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
     mouse_msg.report_id = HID_MOUSE_REPORT_ID;
-    hid_send_report_req(bts2_app_data->phdl, sizeof(mouse_msg), (U8 *)&mouse_msg, TRUE);
+    bt_hid_send_report_req(bts2_app_data, conn_idx, sizeof(mouse_msg), (U8 *)&mouse_msg, TRUE);
 }
 
 
@@ -639,79 +718,65 @@ Author:zhengyu
 
 Modify:
 */
-void bt_hid_mouse_reset_at_middle(bts2_app_stru *bts2_app_data)
+//? 还要在调一下
+static void bt_hid_mouse_reset_at_middle(bts2_app_stru *bts2_app_data, U8 con_idx)
 {
-    if (!bt_hid_check_is_ios_device())
+    if (!bt_hid_check_is_ios_device(con_idx))
     {
-        bt_hid_mouse_move_without_reset(bts2_app_data, -2047, -2047);
-        bt_hid_mouse_move_without_reset(bts2_app_data, 180, 300);
-        is_hid_point_calibrated = true;
+        bt_hid_mouse_move_without_reset(bts2_app_data, -2047, -2047, con_idx);
+        bt_hid_mouse_move_without_reset(bts2_app_data, 180, 300, con_idx);
+        bts2_app_data->hid_inst.conn[con_idx].is_hid_point_calibrated = true;
     }
     else
     {
-        bt_hid_mouse_move_without_reset(bts2_app_data, -100, -100);
-        if (!bts2_app_data->hid_inst.hid_time_handle_reset_at_middle_ios)
+        bt_hid_mouse_move_without_reset(bts2_app_data, -2047, 2047, con_idx);
+        bt_hid_mouse_move_without_reset(bts2_app_data, -2047, 2047, con_idx);
+        bt_hid_mouse_move(bts2_app_data, -2047, 2047, con_idx);
+        // bt_hid_mouse_move(bts2_app_data, -1024, 1024, con_idx);
+
+        if (!bts2_app_data->hid_inst.conn[con_idx].hid_time_handle_reset_at_middle_ios)
         {
-            bts2_app_data->hid_inst.hid_time_handle_reset_at_middle_ios = rt_timer_create("hid_ti_ios", bt_hid_timeout_handler_reset_at_middle_ios, (void *)bts2_app_data,
-                    rt_tick_from_millisecond(150), RT_TIMER_FLAG_SOFT_TIMER);
+            bts2_app_data->hid_inst.conn[con_idx].hid_time_handle_reset_at_middle_ios = rt_timer_create("hid_ti_ios", bt_hid_timeout_handler_reset_at_middle_ios, (void *)&bts2_app_data->hid_inst.conn[con_idx].rmt_bd,
+                    rt_tick_from_millisecond(1000), RT_TIMER_FLAG_SOFT_TIMER);
         }
         else
         {
-            rt_timer_stop(bts2_app_data->hid_inst.hid_time_handle_reset_at_middle_ios);
+            rt_timer_stop(bts2_app_data->hid_inst.conn[con_idx].hid_time_handle_reset_at_middle_ios);
         }
-        rt_timer_start(bts2_app_data->hid_inst.hid_time_handle_reset_at_middle_ios);
+        rt_timer_start(bts2_app_data->hid_inst.conn[con_idx].hid_time_handle_reset_at_middle_ios);
     }
 }
 
 
-static U8 time_count_reset_at_middle_ios = 0;
-void bt_hid_timeout_handler_reset_at_middle_ios(void *parameter)
+/*
+Description:
+    reset hid mouse operation at middle
+Input:
+    bd address pointer
+Time:2023/05/05 14:02:48
+
+Author:zhengyu
+
+Modify:
+*/
+static void bt_hid_timeout_handler_reset_at_middle_ios(void *parameter)
 {
-    bts2_app_stru *bts2_app_data = (bts2_app_stru *)parameter;
+    BTS2S_BD_ADDR *bd_addr = (BTS2S_BD_ADDR *)parameter;
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
 
-    if (time_count_reset_at_middle_ios < RESET_IOS_TIMES)
+    U8 con_idx = CFG_MAX_HID_CONN_NUM;
+
+    if (!bt_hid_check_connection_by_addr(bd_addr, &con_idx))
     {
-        time_count_reset_at_middle_ios++;
-        bt_hid_mouse_move(bts2_app_data, -100, -100);
+        USER_TRACE("[U-L]Why don't pre-alloction connection\n");
+        return;
     }
 
-    if (time_count_reset_at_middle_ios < RESET_IOS_TIMES)
-    {
-        if (!bts2_app_data->hid_inst.hid_time_handle_reset_at_middle_ios)
-        {
-            bts2_app_data->hid_inst.hid_time_handle_reset_at_middle_ios = rt_timer_create("hid_ti_ios", bt_hid_timeout_handler_reset_at_middle_ios, (void *)bts2_app_data,
-                    rt_tick_from_millisecond(200), RT_TIMER_FLAG_SOFT_TIMER);
-        }
-        else
-        {
-            rt_timer_stop(bts2_app_data->hid_inst.hid_time_handle_reset_at_middle_ios);
-        }
-        rt_timer_start(bts2_app_data->hid_inst.hid_time_handle_reset_at_middle_ios);
-    }
-    else
-    {
-        time_count_reset_at_middle_ios = 0;
-        if (!bts2_app_data->hid_inst.hid_time_handle_reset_at_middle_ios1)
-        {
-            bts2_app_data->hid_inst.hid_time_handle_reset_at_middle_ios1 = rt_timer_create("hid_ti_ios", bt_hid_timeout_handler_reset_at_middle_ios1, (void *)bts2_app_data,
-                    rt_tick_from_millisecond(300), RT_TIMER_FLAG_SOFT_TIMER);
-        }
-        else
-        {
-            rt_timer_stop(bts2_app_data->hid_inst.hid_time_handle_reset_at_middle_ios1);
-        }
-        rt_timer_start(bts2_app_data->hid_inst.hid_time_handle_reset_at_middle_ios1);
-    }
+    bt_hid_mouse_move(bts2_app_data, 800, -1000, con_idx);
+    // bt_hid_mouse_move(bts2_app_data, 100, -200, con_idx);
+    bts2_app_data->hid_inst.conn[con_idx].is_hid_point_calibrated = true;
 }
 
-
-void bt_hid_timeout_handler_reset_at_middle_ios1(void *parameter)
-{
-    bts2_app_stru *bts2_app_data = (bts2_app_stru *)parameter;
-
-    bt_hid_mouse_move(bts2_app_data, 75, 135);
-    is_hid_point_calibrated = true;
-}
 
 /*
 Description:
@@ -726,7 +791,7 @@ Author:zhengyu
 
 Modify:
 */
-void bt_hid_mouse_move(bts2_app_stru *bts2_app_data, S16 dx, S16 dy)
+void bt_hid_mouse_move(bts2_app_stru *bts2_app_data, S16 dx, S16 dy, U8 conn_idx)
 {
     hid_msg_mouse_t mouse_msg = {0};
 
@@ -734,11 +799,12 @@ void bt_hid_mouse_move(bts2_app_stru *bts2_app_data, S16 dx, S16 dy)
     mouse_msg.report_id = HID_MOUSE_REPORT_ID;
     mouse_msg.dx = (dx & 0x0FFF);
     mouse_msg.dy = (dy & 0x0FFF);
-    hid_send_report_req(bts2_app_data->phdl, sizeof(mouse_msg), (U8 *)&mouse_msg, TRUE);
-    bt_hid_mouse_reset(bts2_app_data);
+    bt_hid_send_report_req(bts2_app_data, conn_idx, sizeof(mouse_msg), (U8 *)&mouse_msg, TRUE);
+    bt_hid_mouse_reset(bts2_app_data, conn_idx);
 }
 
-void bt_hid_mouse_move_without_reset(bts2_app_stru *bts2_app_data, S16 dx, S16 dy)
+
+static void bt_hid_mouse_move_without_reset(bts2_app_stru *bts2_app_data, S16 dx, S16 dy, U8 con_idx)
 {
     hid_msg_mouse_t mouse_msg = {0};
 
@@ -746,7 +812,7 @@ void bt_hid_mouse_move_without_reset(bts2_app_stru *bts2_app_data, S16 dx, S16 d
     mouse_msg.report_id = HID_MOUSE_REPORT_ID;
     mouse_msg.dx = (dx & 0x0FFF);
     mouse_msg.dy = (dy & 0x0FFF);
-    hid_send_report_req(bts2_app_data->phdl, sizeof(mouse_msg), (U8 *)&mouse_msg, TRUE);
+    bt_hid_send_report_req(bts2_app_data, con_idx, sizeof(mouse_msg), (U8 *)&mouse_msg, TRUE);
 }
 
 
@@ -755,29 +821,27 @@ Description:
     hid device control the mobile click
 Input:
     bts2_app_data:global app bt instance
+    conn_idx:connection index
 Time:2023/04/25 15:07:58
 
 Author:zhengyu
 
 Modify:
 */
-void bt_hid_mouse_left_click(bts2_app_stru *bts2_app_data)
+void bt_hid_mouse_left_click(bts2_app_stru *bts2_app_data, U8 conn_idx)
 {
-    if (!is_hid_point_calibrated)
+    if (!bts2_app_data->hid_inst.conn[conn_idx].is_hid_point_calibrated)
     {
-        // USER_TRACE("%s wait calibrated.", __func__);
         return;
     }
-
-    rt_thread_t current_thread = rt_thread_self();
 
     hid_msg_mouse_t mouse_msg = {0};
 
     mouse_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
     mouse_msg.report_id = HID_MOUSE_REPORT_ID;
     mouse_msg.buttons |= 0x01;
-    hid_send_report_req(bts2_app_data->phdl, sizeof(mouse_msg), (U8 *)&mouse_msg, TRUE);
-    bt_hid_mouse_reset(bts2_app_data);
+    bt_hid_send_report_req(bts2_app_data, conn_idx, sizeof(mouse_msg), (U8 *)&mouse_msg, TRUE);
+    bt_hid_mouse_reset(bts2_app_data, conn_idx);
 }
 
 
@@ -786,21 +850,22 @@ Description:
     hid device control the mobile bakeup
 Input:
     bts2_app_data:global app bt instance
+    conn_idx:connection index
 Time:2023/04/25 15:07:58
 
 Author:zhengyu
 
 Modify:
 */
-void bt_hid_mouse_right_click(bts2_app_stru *bts2_app_data)
+void bt_hid_mouse_right_click(bts2_app_stru *bts2_app_data, U8 conn_idx)
 {
     hid_msg_mouse_t mouse_msg = {0};
 
     mouse_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
     mouse_msg.report_id = HID_MOUSE_REPORT_ID;
     mouse_msg.buttons |= 0x02;
-    hid_send_report_req(bts2_app_data->phdl, sizeof(mouse_msg), (U8 *)&mouse_msg, TRUE);
-    bt_hid_mouse_reset(bts2_app_data);
+    bt_hid_send_report_req(bts2_app_data, conn_idx, sizeof(mouse_msg), (U8 *)&mouse_msg, TRUE);
+    bt_hid_mouse_reset(bts2_app_data, conn_idx);
 }
 
 
@@ -809,71 +874,55 @@ Description:
     hid device control the mobile left double click
 Input:
     bts2_app_data:global app bt instance
+    conn_idx:connection index
 Time:2023/04/25 15:07:58
 
 Author:zhengyu
 
 Modify:
 */
-static U8 time_count = 0;
-void bt_hid_mouse_left_double_click(bts2_app_stru *bts2_app_data)
+void bt_hid_mouse_left_double_click(bts2_app_stru *bts2_app_data, U8 conn_idx)
 {
-    if (bts2_app_data->hid_inst.mode == SNIFF_MODE)
-    {
-        USER_TRACE("[U-L]hid exit sniff mode before send report\n");
-        hcia_exit_sniff_mode(&bts2_app_data->hid_inst.rmt_bd, NULL);
-    }
+    bt_hid_mouse_left_click(bts2_app_data, conn_idx);
 
-    bt_hid_mouse_left_click(bts2_app_data);
-
-    if (!bts2_app_data->hid_inst.hid_time_handle)
+    if (!bts2_app_data->hid_inst.conn[conn_idx].hid_time_handle)
     {
-        if (!bt_hid_check_is_ios_device())
-        {
-            bts2_app_data->hid_inst.hid_time_handle = rt_timer_create("hid_ti_double_click", bt_hid_timeout_handler, (void *)bts2_app_data,
-                    rt_tick_from_millisecond(100), RT_TIMER_FLAG_SOFT_TIMER);
-        }
-        else
-        {
-            bts2_app_data->hid_inst.hid_time_handle = rt_timer_create("hid_ti_double_click", bt_hid_timeout_handler, (void *)bts2_app_data,
-                    rt_tick_from_millisecond(100), RT_TIMER_FLAG_SOFT_TIMER);
-        }
+        bts2_app_data->hid_inst.conn[conn_idx].hid_time_handle = rt_timer_create("hid_ti_double_click", bt_hid_timeout_handler, (void *)&bts2_app_data->hid_inst.conn[conn_idx].rmt_bd,
+                rt_tick_from_millisecond(100), RT_TIMER_FLAG_SOFT_TIMER);
     }
     else
     {
-        rt_timer_stop(bts2_app_data->hid_inst.hid_time_handle);
+        rt_timer_stop(bts2_app_data->hid_inst.conn[conn_idx].hid_time_handle);
     }
-    rt_timer_start(bts2_app_data->hid_inst.hid_time_handle);
+    rt_timer_start(bts2_app_data->hid_inst.conn[conn_idx].hid_time_handle);
 }
 
 
+/*
+Description:
+    hid device control the mobile left double click
+Input:
+    parameter:bd address pointer
+Time:2023/04/25 15:07:58
+
+Author:zhengyu
+
+Modify:
+*/
 void bt_hid_timeout_handler(void *parameter)
 {
-    bts2_app_stru *bts2_app_data = (bts2_app_stru *)parameter;
+    BTS2S_BD_ADDR *bd_addr = (BTS2S_BD_ADDR *)parameter;
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
 
-    if (time_count < 1)
+    U8 conn_idx = CFG_MAX_HID_CONN_NUM;
+
+    if (!bt_hid_check_connection_by_addr(bd_addr, &conn_idx))
     {
-        time_count++;
-        bt_hid_mouse_left_click(bts2_app_data);
+        USER_TRACE("[U-L]Why don't pre-alloction connection\n");
+        return;
     }
 
-    if (time_count < 1)
-    {
-        if (!bts2_app_data->hid_inst.hid_time_handle)
-        {
-            bts2_app_data->hid_inst.hid_time_handle = rt_timer_create("hid_ti", bt_hid_timeout_handler, (void *)bts2_app_data,
-                    rt_tick_from_millisecond(80), RT_TIMER_FLAG_SOFT_TIMER);
-        }
-        else
-        {
-            rt_timer_stop(bts2_app_data->hid_inst.hid_time_handle);
-        }
-        rt_timer_start(bts2_app_data->hid_inst.hid_time_handle);
-    }
-    else
-    {
-        time_count = 0;
-    }
+    bt_hid_mouse_left_click(bts2_app_data, conn_idx);
 }
 
 
@@ -882,17 +931,18 @@ Description:
     hid device control the mobile right double click
 Input:
     bts2_app_data:global app bt instance
+    conn_idx:connection index
 Time:2023/04/26 09:23:13
 
 Author:zhengyu
 
 Modify:
 */
-void bt_hid_mouse_right_double_click(bts2_app_stru *bts2_app_data)
+void bt_hid_mouse_right_double_click(bts2_app_stru *bts2_app_data, U8 conn_idx)
 {
-    bt_hid_mouse_right_click(bts2_app_data);
+    bt_hid_mouse_right_click(bts2_app_data, conn_idx);
     rt_thread_mdelay(50);
-    bt_hid_mouse_right_click(bts2_app_data);
+    bt_hid_mouse_right_click(bts2_app_data, conn_idx);
 }
 
 
@@ -901,34 +951,22 @@ Description:
     hid device control the mobile bakeup home
 Input:
     bts2_app_data:global app bt instance
+    conn_idx:connection index
 Time:2023/04/25 15:07:58
 
 Author:zhengyu
 
 Modify:
 */
-void bt_hid_mouse_middle_button_click(bts2_app_stru *bts2_app_data)
+void bt_hid_mouse_middle_button_click(bts2_app_stru *bts2_app_data, U8 conn_idx)
 {
     hid_msg_mouse_t mouse_msg = {0};
 
     mouse_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
     mouse_msg.report_id = HID_MOUSE_REPORT_ID;
     mouse_msg.buttons |= 0x04;
-    hid_send_report_req(bts2_app_data->phdl, sizeof(mouse_msg), (U8 *)&mouse_msg, TRUE);
-    bt_hid_mouse_reset(bts2_app_data);
-}
-
-
-static const U16 bt_hid_mouse_get_drag_speed(void)
-{
-    if (!bt_hid_check_is_ios_device())
-    {
-        return DRAG_SPEED_Android;
-    }
-    else
-    {
-        return DRAG_SPEED_Ios;
-    }
+    bt_hid_send_report_req(bts2_app_data, conn_idx, sizeof(mouse_msg), (U8 *)&mouse_msg, TRUE);
+    bt_hid_mouse_reset(bts2_app_data, conn_idx);
 }
 
 
@@ -937,6 +975,7 @@ Description:
     hid device control the mobile drag once
 Input:
     bts2_app_data:global app bt instance
+    conn_idx:connection index
     dx:X-direction move
     dy:Y-direction move
     wheel_offset:mouse wheel movement
@@ -946,7 +985,7 @@ Author:zhengyu
 
 Modify:
 */
-void bt_hid_mouse_drag_page(bts2_app_stru *bts2_app_data, U8 buttons, S16 dx, S16 dy, S8 wheel_offset)
+void bt_hid_mouse_drag_page(bts2_app_stru *bts2_app_data, U8 conn_idx, U8 buttons, S16 dx, S16 dy, S8 wheel_offset)
 {
     hid_msg_mouse_t mouse_msg = {0};
 
@@ -956,20 +995,8 @@ void bt_hid_mouse_drag_page(bts2_app_stru *bts2_app_data, U8 buttons, S16 dx, S1
     mouse_msg.dx = dx;
     mouse_msg.dy = dy;
     mouse_msg.wheel = wheel_offset;
-    hid_send_report_req(bts2_app_data->phdl, sizeof(mouse_msg), (U8 *)&mouse_msg, TRUE);
+    bt_hid_send_report_req(bts2_app_data, conn_idx, sizeof(mouse_msg), (U8 *)&mouse_msg, TRUE);
 }
-
-
-static U8 time_count_drag_up = 0;
-static U8 time_count_drag_down = 0;
-static U8 time_count_power_onoff = 0;
-// static U8 num_count_drag_down = 0;
-
-
-// void bt_hid_reset_num_count_drag_down(void)
-// {
-//     num_count_drag_down = 0;
-// }
 
 
 /*
@@ -977,101 +1004,31 @@ Description:
     hid device control the mobile drag up once
 Input:
     bts2_app_data:global app bt instance
+    conn_idx:connection index
 Time:2023/05/05 14:07:00
 
 Author:zhengyu
 
 Modify:
 */
-void bt_hid_mouse_drag_page_up(bts2_app_stru *bts2_app_data)
+void bt_hid_mouse_drag_page_up(bts2_app_stru *bts2_app_data, U8 conn_idx)
 {
-    if (!is_hid_point_calibrated)
+    if (!bts2_app_data->hid_inst.conn[conn_idx].is_hid_point_calibrated)
     {
         USER_TRACE("%s wait calibrated.", __func__);
         return;
     }
 
-    if (!bt_hid_check_is_ios_device())
+    if (!bt_hid_check_is_ios_device(conn_idx))
     {
-        bt_hid_mouse_reset(bts2_app_data);
-        bt_hid_mouse_drag_page(bts2_app_data, 0, 0, 0, 20);
-        // num_count_drag_down--;
+        bt_hid_mouse_drag_page(bts2_app_data, conn_idx, 0, 0, 0, 127);
+        bt_hid_mouse_drag_page(bts2_app_data, conn_idx, 0, 0, 0, 127);
     }
     else
     {
-        if (bts2_app_data->hid_inst.mode == SNIFF_MODE)
-        {
-            USER_TRACE("[U-L]hid exit sniff mode before send report\n");
-            hcia_exit_sniff_mode(&bts2_app_data->hid_inst.rmt_bd, NULL);
-        }
-
-        bt_hid_mouse_drag_page(bts2_app_data, 1, 0, DRAG_SPEED_Ios, 0);
-        // bt_hid_mouse_move(bts2_app_data, 0, MOUSE_SPEED);
-
-        if (!bts2_app_data->hid_inst.hid_time_handle_drag_up)
-        {
-            bts2_app_data->hid_inst.hid_time_handle_drag_up = rt_timer_create("hid_ti", bt_hid_timeout_handler_drag_up, (void *)bts2_app_data,
-                    rt_tick_from_millisecond(DRAG_DELAY), RT_TIMER_FLAG_SOFT_TIMER);
-        }
-        else
-        {
-            rt_timer_stop(bts2_app_data->hid_inst.hid_time_handle_drag_up);
-        }
-        rt_timer_start(bts2_app_data->hid_inst.hid_time_handle_drag_up);
+        bt_hid_mouse_drag_page(bts2_app_data, conn_idx, 0, 0, 0, -127);
+        bt_hid_mouse_drag_page(bts2_app_data, conn_idx, 0, 0, 0, -127);
     }
-    // LOG_D("bt_hid_mouse_drag_page_up,num_count_drag_down = %d\n", num_count_drag_down);
-}
-
-
-void bt_hid_timeout_handler_drag_up(void *parameter)
-{
-    bts2_app_stru *bts2_app_data = (bts2_app_stru *)parameter;
-
-    if (time_count_drag_up < DRAG_TIMES)
-    {
-        time_count_drag_up++;
-        bt_hid_mouse_drag_page(bts2_app_data, 1, 0, DRAG_SPEED_Ios, 0);
-    }
-
-    if (time_count_drag_up < DRAG_TIMES)
-    {
-        if (!bts2_app_data->hid_inst.hid_time_handle_drag_up)
-        {
-            bts2_app_data->hid_inst.hid_time_handle_drag_up = rt_timer_create("hid_ti", bt_hid_timeout_handler_drag_up, (void *)bts2_app_data,
-                    rt_tick_from_millisecond(DRAG_DELAY), RT_TIMER_FLAG_SOFT_TIMER);
-        }
-        else
-        {
-            rt_timer_stop(bts2_app_data->hid_inst.hid_time_handle_drag_up);
-        }
-        rt_timer_start(bts2_app_data->hid_inst.hid_time_handle_drag_up);
-    }
-    else
-    {
-        time_count_drag_up = 0;
-        bt_hid_mouse_reset(bts2_app_data);
-        if (!bts2_app_data->hid_inst.hid_time_handle_reset_at_middle1)
-        {
-            bts2_app_data->hid_inst.hid_time_handle_reset_at_middle1 = rt_timer_create("hid_ti1", bt_hid_timeout_handler_reset_at_middle1, (void *)bts2_app_data,
-                    rt_tick_from_millisecond(100), RT_TIMER_FLAG_SOFT_TIMER);
-        }
-        else
-        {
-            rt_timer_stop(bts2_app_data->hid_inst.hid_time_handle_reset_at_middle1);
-        }
-        rt_timer_start(bts2_app_data->hid_inst.hid_time_handle_reset_at_middle1);
-    }
-}
-
-
-void bt_hid_timeout_handler_reset_at_middle1(void *parameter)
-{
-    bts2_app_stru *bts2_app_data = (bts2_app_stru *)parameter;
-    // LOG_D("bt_hid_timeout_handler_reset_at_middle1\n");
-    bt_hid_mouse_move_without_reset(bts2_app_data, 0, -DRAG_SPEED_Ios);
-    bt_hid_mouse_move_without_reset(bts2_app_data, 0, -DRAG_SPEED_Ios);
-    bt_hid_mouse_move_without_reset(bts2_app_data, 0, -DRAG_SPEED_Ios);
-    bt_hid_mouse_move_without_reset(bts2_app_data, 0, -DRAG_SPEED_Ios);
 }
 
 
@@ -1080,105 +1037,471 @@ Description:
     hid device control the mobile drag down once
 Input:
     bts2_app_data:global app bt instance
+    conn_idx:connection index
 Time:2023/05/05 14:07:00
 
 Author:zhengyu
 
 Modify:
 */
-void bt_hid_mouse_drag_page_down(bts2_app_stru *bts2_app_data)
+void bt_hid_mouse_drag_page_down(bts2_app_stru *bts2_app_data, U8 conn_idx)
 {
-    if (!is_hid_point_calibrated)
+    if (!bts2_app_data->hid_inst.conn[conn_idx].is_hid_point_calibrated)
     {
         USER_TRACE("%s wait calibrated.", __func__);
         return;
     }
 
-    if (!bt_hid_check_is_ios_device())
+    if (!bt_hid_check_is_ios_device(conn_idx))
     {
-        bt_hid_mouse_reset(bts2_app_data);
-        bt_hid_mouse_drag_page(bts2_app_data, 0, 0, 0, -20);
+        bt_hid_mouse_drag_page(bts2_app_data, conn_idx, 0, 0, 0, -127);
+        bt_hid_mouse_drag_page(bts2_app_data, conn_idx, 0, 0, 0, -127);
     }
     else
     {
-        if (bts2_app_data->hid_inst.mode == SNIFF_MODE)
-        {
-            USER_TRACE("[U-L]hid exit sniff mode before send report\n");
-            hcia_exit_sniff_mode(&bts2_app_data->hid_inst.rmt_bd, NULL);
-        }
-
-        bt_hid_mouse_drag_page(bts2_app_data, 1, 0, -DRAG_SPEED_Ios, 0);
-        if (!bts2_app_data->hid_inst.hid_time_handle_drag_down)
-        {
-            bts2_app_data->hid_inst.hid_time_handle_drag_down = rt_timer_create("hid_ti", bt_hid_timeout_handler_drag_down, (void *)bts2_app_data,
-                    rt_tick_from_millisecond(DRAG_DELAY), RT_TIMER_FLAG_SOFT_TIMER);
-        }
-        else
-        {
-            rt_timer_stop(bts2_app_data->hid_inst.hid_time_handle_drag_down);
-        }
-        rt_timer_start(bts2_app_data->hid_inst.hid_time_handle_drag_down);
+        bt_hid_mouse_drag_page(bts2_app_data, conn_idx, 0, 0, 0, 127);
+        bt_hid_mouse_drag_page(bts2_app_data, conn_idx, 0, 0, 0, 127);
     }
 }
 
 
-void bt_hid_timeout_handler_drag_down(void *parameter)
+/*
+Description:
+    Set whether the peer device is an ios device
+Input:
+    bd_addr:bd address pointer
+    is_ios:whether the peer device is an ios device
+Time:2026/04/14 13:36:02
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_set_ios_device(BTS2S_BD_ADDR *bd_addr, U8 is_ios)
 {
-    bts2_app_stru *bts2_app_data = (bts2_app_stru *)parameter;
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    U8 conn_idx = CFG_MAX_HID_CONN_NUM;
 
-    if (time_count_drag_down < DRAG_TIMES)
+    if (!bt_hid_check_connection_by_addr(bd_addr, &conn_idx))
     {
-        time_count_drag_down++;
-        bt_hid_mouse_drag_page(bts2_app_data, 1, 0, -DRAG_SPEED_Ios, 0);
+        USER_TRACE("[U-L]Why don't pre-alloction connection\n");
+        return;
     }
+    bts2_app_data->hid_inst.conn[conn_idx].is_device_ios = is_ios;
+    bt_hid_mouse_reset_at_middle(bts2_app_data, conn_idx);
+}
 
-    if (time_count_drag_down < DRAG_TIMES)
+
+/*
+Description:
+    Check whether the peer is an ios device
+Input:
+    idx:connection index
+Time:2023/04/26 09:24:42
+
+Author:zhengyu
+
+Modify:
+*/
+static BOOL bt_hid_check_is_ios_device(U8 idx)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    return bts2_app_data->hid_inst.conn[idx].is_device_ios;
+}
+
+
+//*/************************************************consumer descriptor function***************************************************************/
+/*
+Description:
+    send consumer reset data report
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+static void bt_hid_consumer_report_reset(bts2_app_stru *bts2_app_data, U8 conn_idx)
+{
+    hid_msg_consumer_t consumer_msg = {0};
+
+    consumer_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
+    consumer_msg.report_id = HID_CONSUMER_REPORT_ID;
+    consumer_msg.consumer = 0x00;
+    bt_hid_send_report_req(bts2_app_data, conn_idx, sizeof(consumer_msg), (U8 *)&consumer_msg, TRUE);
+}
+
+
+/*
+Description:
+    send play status change report
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_consumer_report_play_status(bts2_app_stru *bts2_app_data, U8 conn_idx)
+{
+    hid_msg_consumer_t consumer_msg = {0};
+
+    consumer_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
+    consumer_msg.report_id = HID_CONSUMER_REPORT_ID;
+    consumer_msg.consumer = 0x01;
+    bt_hid_send_report_req(bts2_app_data, conn_idx, sizeof(consumer_msg), (U8 *)&consumer_msg, TRUE);
+}
+
+
+/*
+Description:
+    send sos call report
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_consumer_report_power_onoff(bts2_app_stru *bts2_app_data, U8 conn_idx)
+{
+    time_count_power_onoff = 0;
+    hid_msg_consumer_t consumer_msg = {0};
+    consumer_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
+    consumer_msg.report_id = HID_CONSUMER_REPORT_ID;
+    consumer_msg.consumer = 0x01;
+    bt_hid_send_report_req(bts2_app_data, conn_idx, sizeof(consumer_msg), (U8 *)&consumer_msg, TRUE);
+    bt_hid_consumer_report_reset(bts2_app_data, conn_idx);
+    if (!bts2_app_data->hid_inst.conn[conn_idx].hid_time_handle_reset_report)
     {
-        if (!bts2_app_data->hid_inst.hid_time_handle_drag_down)
-        {
-            bts2_app_data->hid_inst.hid_time_handle_drag_down = rt_timer_create("hid_ti", bt_hid_timeout_handler_drag_down, (void *)bts2_app_data,
-                    rt_tick_from_millisecond(DRAG_DELAY), RT_TIMER_FLAG_SOFT_TIMER);
-        }
-        else
-        {
-            rt_timer_stop(bts2_app_data->hid_inst.hid_time_handle_drag_down);
-        }
-        rt_timer_start(bts2_app_data->hid_inst.hid_time_handle_drag_down);
+        bts2_app_data->hid_inst.conn[conn_idx].hid_time_handle_reset_report = rt_timer_create("hid_timer_power", bt_hid_timeout_handler_reset_report, (void *)&bts2_app_data->hid_inst.conn[conn_idx].rmt_bd,
+                rt_tick_from_millisecond(POWER_OFF_DELAY + time_count_power_onoff), RT_TIMER_FLAG_SOFT_TIMER);
     }
     else
     {
-        time_count_drag_down = 0;
-        bt_hid_mouse_reset(bts2_app_data);
-        if (!bts2_app_data->hid_inst.hid_time_handle_reset_at_middle2)
+        rt_timer_stop(bts2_app_data->hid_inst.conn[conn_idx].hid_time_handle_reset_report);
+    }
+    rt_timer_start(bts2_app_data->hid_inst.conn[conn_idx].hid_time_handle_reset_report);
+}
+
+
+/*
+Description:
+    send sos call report
+Input:
+    parameter:bd address pointer
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+static void bt_hid_timeout_handler_reset_report(void *parameter)
+{
+    BTS2S_BD_ADDR *bd_addr = (BTS2S_BD_ADDR *)parameter;
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+
+    U8 conn_idx = CFG_MAX_HID_CONN_NUM;
+
+    if (!bt_hid_check_connection_by_addr(bd_addr, &conn_idx))
+    {
+        USER_TRACE("[U-L]Why don't pre-alloction connection\n");
+        return;
+    }
+
+    if (time_count_power_onoff < POWER_OFF_TIMES)
+    {
+        hid_msg_consumer_t consumer_msg = {0};
+
+        consumer_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
+        consumer_msg.report_id = HID_CONSUMER_REPORT_ID;
+        consumer_msg.consumer = 0x01;
+
+        time_count_power_onoff++;
+        bt_hid_send_report_req(bts2_app_data, conn_idx, sizeof(consumer_msg), (U8 *)&consumer_msg, TRUE);
+        bt_hid_consumer_report_reset(bts2_app_data, conn_idx);
+    }
+
+    if (time_count_power_onoff < POWER_OFF_TIMES)
+    {
+        if (!bts2_app_data->hid_inst.conn[conn_idx].hid_time_handle_reset_report)
         {
-            bts2_app_data->hid_inst.hid_time_handle_reset_at_middle2 = rt_timer_create("hid_ti1", bt_hid_timeout_handler_reset_at_middle2, (void *)bts2_app_data,
-                    rt_tick_from_millisecond(100), RT_TIMER_FLAG_SOFT_TIMER);
+            bts2_app_data->hid_inst.conn[conn_idx].hid_time_handle_reset_report = rt_timer_create("hid_timer_power", bt_hid_timeout_handler_reset_report, (void *)bts2_app_data,
+                    rt_tick_from_millisecond(POWER_OFF_DELAY + time_count_power_onoff), RT_TIMER_FLAG_SOFT_TIMER);
         }
         else
         {
-            rt_timer_stop(bts2_app_data->hid_inst.hid_time_handle_reset_at_middle2);
+            rt_timer_stop(bts2_app_data->hid_inst.conn[conn_idx].hid_time_handle_reset_report);
         }
-        rt_timer_start(bts2_app_data->hid_inst.hid_time_handle_reset_at_middle2);
+        rt_timer_start(bts2_app_data->hid_inst.conn[conn_idx].hid_time_handle_reset_report);
     }
-}
-
-
-void bt_hid_timeout_handler_reset_at_middle2(void *parameter)
-{
-    bts2_app_stru *bts2_app_data = (bts2_app_stru *)parameter;
-    // LOG_D("bt_hid_timeout_handler_reset_at_middle2\n");
-    if (bts2_app_data->hid_inst.mode == SNIFF_MODE)
+    else
     {
-        USER_TRACE("[U-L]hid exit sniff mode before send report\n");
-        hcia_exit_sniff_mode(&bts2_app_data->hid_inst.rmt_bd, NULL);
+        time_count_power_onoff = 0;
     }
-
-    // bt_hid_mouse_reset_at_middle(bts2_app_data);
-    bt_hid_mouse_move_without_reset(bts2_app_data, 0, DRAG_SPEED_Ios);
-    bt_hid_mouse_move_without_reset(bts2_app_data, 0, DRAG_SPEED_Ios);
-    bt_hid_mouse_move_without_reset(bts2_app_data, 0, DRAG_SPEED_Ios);
-    bt_hid_mouse_move_without_reset(bts2_app_data, 0, DRAG_SPEED_Ios);
 }
+
+
+/*
+Description:
+    send next song change report
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_consumer_report_next_track(bts2_app_stru *bts2_app_data, U8 conn_idx)
+{
+    hid_msg_consumer_t consumer_msg = {0};
+
+    consumer_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
+    consumer_msg.report_id = HID_CONSUMER_REPORT_ID;
+    consumer_msg.consumer = 0x04;
+    bt_hid_send_report_req(bts2_app_data, conn_idx, sizeof(consumer_msg), (U8 *)&consumer_msg, TRUE);
+}
+
+
+/*
+Description:
+    send previous song change report
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_consumer_report_back_track(bts2_app_stru *bts2_app_data, U8 conn_idx)
+{
+    hid_msg_consumer_t consumer_msg = {0};
+
+    consumer_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
+    consumer_msg.report_id = HID_CONSUMER_REPORT_ID;
+    consumer_msg.consumer = 0x08;
+    bt_hid_send_report_req(bts2_app_data, conn_idx, sizeof(consumer_msg), (U8 *)&consumer_msg, TRUE);
+}
+
+
+/*
+Description:
+    send volume down report
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_consumer_report_volume_down(bts2_app_stru *bts2_app_data, U8 conn_idx)
+{
+    hid_msg_consumer_t consumer_msg = {0};
+
+    consumer_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
+    consumer_msg.report_id = HID_CONSUMER_REPORT_ID;
+    consumer_msg.consumer = 0x10;
+    bt_hid_send_report_req(bts2_app_data, conn_idx, sizeof(consumer_msg), (U8 *)&consumer_msg, TRUE);
+    bt_hid_consumer_report_reset(bts2_app_data, conn_idx);
+}
+
+
+/*
+Description:
+    send volume up report
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_consumer_report_volume_up(bts2_app_stru *bts2_app_data, U8 conn_idx)
+{
+    hid_msg_consumer_t consumer_msg = {0};
+
+    consumer_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
+    consumer_msg.report_id = HID_CONSUMER_REPORT_ID;
+    consumer_msg.consumer = 0x20;
+    bt_hid_send_report_req(bts2_app_data, conn_idx, sizeof(consumer_msg), (U8 *)&consumer_msg, TRUE);
+    bt_hid_consumer_report_reset(bts2_app_data, conn_idx);
+}
+
+
+/*
+Description:
+    send forward report
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_consumer_report_forward(bts2_app_stru *bts2_app_data, U8 conn_idx)
+{
+    hid_msg_consumer_t consumer_msg = {0};
+
+    consumer_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
+    consumer_msg.report_id = HID_CONSUMER_REPORT_ID;
+    consumer_msg.consumer = 0x40;
+    bt_hid_send_report_req(bts2_app_data, conn_idx, sizeof(consumer_msg), (U8 *)&consumer_msg, TRUE);
+}
+
+
+/*
+Description:
+    send go back report
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_consumer_report_go_back(bts2_app_stru *bts2_app_data, U8 conn_idx)
+{
+    hid_msg_consumer_t consumer_msg = {0};
+
+    consumer_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
+    consumer_msg.report_id = HID_CONSUMER_REPORT_ID;
+    consumer_msg.consumer = 0x80;
+    bt_hid_send_report_req(bts2_app_data, conn_idx, sizeof(consumer_msg), (U8 *)&consumer_msg, TRUE);
+}
+
+
+//*/************************************************controller descriptor function***************************************************************/
+/*
+Description:
+    send right control key report
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_controller_report_right_arrow(bts2_app_stru *bts2_app_data, U8 conn_idx)
+{
+    hid_msg_controller_t controller_msg = {0};
+
+    controller_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
+    controller_msg.report_id = HID_CONTROLLER_REPORT_ID;
+    controller_msg.standardkey1 = 0x4f;
+    bt_hid_send_report_req(bts2_app_data, conn_idx, sizeof(controller_msg), (U8 *)&controller_msg, TRUE);
+}
+
+
+/*
+Description:
+    send left control key report
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_controller_report_left_arrow(bts2_app_stru *bts2_app_data, U8 conn_idx)
+{
+    hid_msg_controller_t controller_msg = {0};
+
+    controller_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
+    controller_msg.report_id = HID_CONTROLLER_REPORT_ID;
+    controller_msg.standardkey1 = 0x50;
+    bt_hid_send_report_req(bts2_app_data, conn_idx, sizeof(controller_msg), (U8 *)&controller_msg, TRUE);
+}
+
+
+/*
+Description:
+    send up control key report
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_controller_report_up_arrow(bts2_app_stru *bts2_app_data, U8 conn_idx)
+{
+    hid_msg_controller_t controller_msg = {0};
+
+    controller_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
+    controller_msg.report_id = HID_CONTROLLER_REPORT_ID;
+    controller_msg.standardkey1 = 0x52;
+    bt_hid_send_report_req(bts2_app_data, conn_idx, sizeof(controller_msg), (U8 *)&controller_msg, TRUE);
+}
+
+
+/*
+Description:
+    send down control key report
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_controller_report_down_arrow(bts2_app_stru *bts2_app_data, U8 conn_idx)
+{
+    hid_msg_controller_t controller_msg = {0};
+
+    controller_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
+    controller_msg.report_id = HID_CONTROLLER_REPORT_ID;
+    controller_msg.standardkey1 = 0x51;
+    bt_hid_send_report_req(bts2_app_data, conn_idx, sizeof(controller_msg), (U8 *)&controller_msg, TRUE);
+}
+
+
+/*
+Description:
+    send controller reset report
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_controller_report_reset(bts2_app_stru *bts2_app_data, U8 conn_idx)
+{
+    hid_msg_controller_t controller_msg = {0};
+
+    controller_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
+    controller_msg.report_id = HID_CONTROLLER_REPORT_ID;
+    bt_hid_send_report_req(bts2_app_data, conn_idx, sizeof(controller_msg), (U8 *)&controller_msg, TRUE);
+}
+
 
 /*
 Description:
@@ -1191,13 +1514,21 @@ Author:zhengyu
 
 Modify:
 */
-void bt_hid_receive_contro_handle(bts2_app_stru *bts2_app_data)
+static void bt_hid_receive_contro_handle(bts2_app_stru *bts2_app_data)
 {
     //to do
     BTS2S_HID_CONTROL_IND *msg;
     msg = (BTS2S_HID_CONTROL_IND *)bts2_app_data->recv_msg;
 
-    if (!bts2_app_data->hid_inst.is_hid_device_role)
+    U8 conn_idx = CFG_MAX_HID_CONN_NUM;
+
+    if (!bt_hid_check_connection_by_addr(msg->bd, &conn_idx))
+    {
+        USER_TRACE("[U-L]Why don't pre-alloction connection\n");
+        return;
+    }
+
+    if (!bts2_app_data->hid_inst.conn[conn_idx].is_hid_device_role)
     {
         USER_TRACE("%s only hid device support this msg\n", __func__);
         return;
@@ -1205,7 +1536,7 @@ void bt_hid_receive_contro_handle(bts2_app_stru *bts2_app_data)
 
     if (msg->param == HID_CONTROL_PARAM_SUSPEND)
     {
-        if (bts2_app_data->hid_inst.is_hid_device_role)
+        if (bts2_app_data->hid_inst.conn[conn_idx].is_hid_device_role)
         {
             USER_TRACE("%s enter suspend mode\n", __func__);
         }
@@ -1216,7 +1547,7 @@ void bt_hid_receive_contro_handle(bts2_app_stru *bts2_app_data)
     }
     else if (msg->param == HID_CONTROL_PARAM_EXIT_SUSPEND)
     {
-        if (bts2_app_data->hid_inst.is_hid_device_role)
+        if (bts2_app_data->hid_inst.conn[conn_idx].is_hid_device_role)
         {
             USER_TRACE("%s exit suspend mode\n", __func__);
         }
@@ -1227,7 +1558,7 @@ void bt_hid_receive_contro_handle(bts2_app_stru *bts2_app_data)
     }
     else if (msg->param == HID_CONTROL_PARAM_VIRTUAL_CABLE_UNPLUG)
     {
-        bt_hid_disc_2_dev(&bts2_app_data->hid_inst.rmt_bd);
+        bt_hid_disc_2_dev(&bts2_app_data->hid_inst.conn[conn_idx].rmt_bd);
     }
     else
     {
@@ -1247,7 +1578,7 @@ Author:zhengyu
 
 Modify:
 */
-void hid_receive_get_report_handle(bts2_app_stru *bts2_app_data)
+static void hid_receive_get_report_handle(bts2_app_stru *bts2_app_data)
 {
 
     BTS2S_HID_GET_REPORT_IND *msg;
@@ -1259,7 +1590,15 @@ void hid_receive_get_report_handle(bts2_app_stru *bts2_app_data)
     U16 portion_buffer_size = 0;
     struct hid_report_data_t *report_data;
 
-    if (!bts2_app_data->hid_inst.is_hid_device_role)
+    U8 conn_idx = CFG_MAX_HID_CONN_NUM;
+
+    if (!bt_hid_check_connection_by_addr(msg->bd, &conn_idx))
+    {
+        USER_TRACE("[U-L]Why don't pre-alloction connection\n");
+        return;
+    }
+
+    if (!bts2_app_data->hid_inst.conn[conn_idx].is_hid_device_role)
     {
         USER_TRACE("%s only hid device support this msg\n", __func__);
         return;
@@ -1281,7 +1620,7 @@ void hid_receive_get_report_handle(bts2_app_stru *bts2_app_data)
         else
         {
             USER_TRACE("%s receive invalid data length (%d)\n", __func__, msg->data_len);
-            hid_send_handshake(bts2_app_data, HID_HANDSHAKE_PARAM_TYPE_ERR_INVALID_PARAMETER);
+            hid_send_handshake(bts2_app_data, conn_idx, HID_HANDSHAKE_PARAM_TYPE_ERR_INVALID_PARAMETER);
             return;
         }
     }
@@ -1294,14 +1633,14 @@ void hid_receive_get_report_handle(bts2_app_stru *bts2_app_data)
             if (report_id == 0xff)
             {
                 USER_TRACE("%s receive invalid report id %d\n", __func__, report_id);
-                hid_send_handshake(bts2_app_data, HID_HANDSHAKE_PARAM_TYPE_ERR_INVALID_REPORT_ID);
+                hid_send_handshake(bts2_app_data, conn_idx,  HID_HANDSHAKE_PARAM_TYPE_ERR_INVALID_REPORT_ID);
                 return;
             }
         }
         else
         {
             USER_TRACE("%s receive invalid data length <%d>\n", __func__, msg->data_len);
-            hid_send_handshake(bts2_app_data, HID_HANDSHAKE_PARAM_TYPE_ERR_INVALID_PARAMETER);
+            hid_send_handshake(bts2_app_data, conn_idx,  HID_HANDSHAKE_PARAM_TYPE_ERR_INVALID_PARAMETER);
             return;
         }
     }
@@ -1319,7 +1658,7 @@ void hid_receive_get_report_handle(bts2_app_stru *bts2_app_data)
         break;
     default:
         USER_TRACE("%s receive invalid report type %d\n", __func__, report_type);
-        hid_send_handshake(bts2_app_data, HID_HANDSHAKE_PARAM_TYPE_ERR_INVALID_PARAMETER);
+        hid_send_handshake(bts2_app_data, conn_idx,  HID_HANDSHAKE_PARAM_TYPE_ERR_INVALID_PARAMETER);
         return;
     }
 
@@ -1339,7 +1678,7 @@ void hid_receive_get_report_handle(bts2_app_stru *bts2_app_data)
         report_data->data_len = portion_buffer_size;
     }
 
-    hid_send_response_report(bts2_app_data, report_type, report_data, has_report_id);
+    hid_send_response_report(bts2_app_data, conn_idx, report_type, report_data, has_report_id);
 }
 
 
@@ -1348,6 +1687,7 @@ Description:
     hid device response get report request from hid host
 Input:
     bts2_app_data:global app bt instance
+    conn_idx:connection index
     report_type:input/output/feature
     report_data:report buffer
     has_report_id:check report_id
@@ -1357,14 +1697,14 @@ Author:zhengyu
 
 Modify:
 */
-void hid_send_response_report(bts2_app_stru *bts2_app_data, hid_report_type_enum_t report_type, struct hid_report_data_t *report_data, BOOL has_report_id)
+static void hid_send_response_report(bts2_app_stru *bts2_app_data, U8 conn_idx, hid_report_type_enum_t report_type, struct hid_report_data_t *report_data, BOOL has_report_id)
 {
     struct hid_frame_t data_frame;
     data_frame.header = (HID_MSG_TYPE_DATA << 4) | (report_type & 0x3);
 
-    if (bts2_app_data->hid_inst.is_hid_device_role)
+    if (bts2_app_data->hid_inst.conn[conn_idx].is_hid_device_role)
     {
-        if (bts2_app_data->hid_inst.local_protocol_mode == HID_REPORT_PROTOCOL_MODE)
+        if (bts2_app_data->hid_inst.conn[conn_idx].local_protocol_mode == HID_REPORT_PROTOCOL_MODE)
         {
             if (has_report_id)
             {
@@ -1409,7 +1749,7 @@ void hid_send_response_report(bts2_app_stru *bts2_app_data, hid_report_type_enum
                 return;
             }
         }
-        hid_send_report_req(bts2_app_data->phdl, data_frame.data_len + 1, (U8 *)&data_frame, FALSE);
+        bt_hid_send_report_req(bts2_app_data, conn_idx, data_frame.data_len + 1, (U8 *)&data_frame, FALSE);
     }
     bfree(report_data);
 }
@@ -1426,9 +1766,8 @@ Author:zhengyu
 
 Modify:
 */
-void hid_receive_set_report_handle(bts2_app_stru *bts2_app_data)
+static void hid_receive_set_report_handle(bts2_app_stru *bts2_app_data)
 {
-
     BTS2S_HID_SET_REPORT_IND *msg;
     msg = (BTS2S_HID_SET_REPORT_IND *)bts2_app_data->recv_msg;
 
@@ -1440,14 +1779,22 @@ void hid_receive_set_report_handle(bts2_app_stru *bts2_app_data)
     struct hid_report_data_t *local_report_data = NULL;
     U8 *rx_report_data = NULL;
 
+    U8 conn_idx = CFG_MAX_HID_CONN_NUM;
 
-    if (!bts2_app_data->hid_inst.is_hid_device_role)
+    if (!bt_hid_check_connection_by_addr(msg->bd, &conn_idx))
+    {
+        USER_TRACE("[U-L]Why don't pre-alloction connection\n");
+        return;
+    }
+
+
+    if (!bts2_app_data->hid_inst.conn[conn_idx].is_hid_device_role)
     {
         USER_TRACE("%s only hid device support this msg\n", __func__);
         return;
     }
 
-    if (bts2_app_data->hid_inst.local_protocol_mode == HID_REPORT_PROTOCOL_MODE)
+    if (bts2_app_data->hid_inst.conn[conn_idx].local_protocol_mode == HID_REPORT_PROTOCOL_MODE)
     {
         if (local_report_descriptor_has_report_id)
         {
@@ -1469,7 +1816,7 @@ void hid_receive_set_report_handle(bts2_app_stru *bts2_app_data)
         else
         {
             USER_TRACE("%s unsupported boot protocol report id %d\n", __func__, report_id);
-            hid_send_handshake(bts2_app_data, HID_HANDSHAKE_PARAM_TYPE_ERR_INVALID_REPORT_ID);
+            hid_send_handshake(bts2_app_data, conn_idx,  HID_HANDSHAKE_PARAM_TYPE_ERR_INVALID_REPORT_ID);
             return;
         }
     }
@@ -1477,7 +1824,7 @@ void hid_receive_set_report_handle(bts2_app_stru *bts2_app_data)
     if (report_data_len > HID_FRAME_DATA_MAX_LEN)
     {
         USER_TRACE("%s report data len too long\n", __func__);
-        hid_send_handshake(bts2_app_data, HID_HANDSHAKE_PARAM_TYPE_ERR_INVALID_PARAMETER);
+        hid_send_handshake(bts2_app_data, conn_idx,  HID_HANDSHAKE_PARAM_TYPE_ERR_INVALID_PARAMETER);
         return;
     }
 
@@ -1485,19 +1832,19 @@ void hid_receive_set_report_handle(bts2_app_stru *bts2_app_data)
     {
     case HID_REPORT_TYPE_INPUT:
         local_report_data = (struct hid_report_data_t *)bcalloc(1, sizeof(struct hid_report_data_t));
-        bts2_app_data->hid_inst.device_input_data = (void *)local_report_data;
+        bts2_app_data->hid_inst.conn[conn_idx].device_input_data = (void *)local_report_data;
         break;
     case HID_REPORT_TYPE_OUTPUT:
         local_report_data = (struct hid_report_data_t *)bcalloc(1, sizeof(struct hid_report_data_t));
-        bts2_app_data->hid_inst.device_output_data = (void *)local_report_data;
+        bts2_app_data->hid_inst.conn[conn_idx].device_output_data = (void *)local_report_data;
         break;
     case HID_REPORT_TYPE_FEATURE:
         local_report_data = (struct hid_report_data_t *)bcalloc(1, sizeof(struct hid_report_data_t));
-        bts2_app_data->hid_inst.device_feature_data = (void *)local_report_data;
+        bts2_app_data->hid_inst.conn[conn_idx].device_feature_data = (void *)local_report_data;
         break;
     default:
         USER_TRACE("%s receive invalid report type %d\n", __func__, report_type);
-        hid_send_handshake(bts2_app_data, HID_HANDSHAKE_PARAM_TYPE_ERR_INVALID_PARAMETER);
+        hid_send_handshake(bts2_app_data, conn_idx,  HID_HANDSHAKE_PARAM_TYPE_ERR_INVALID_PARAMETER);
         return;
     }
 
@@ -1515,7 +1862,7 @@ void hid_receive_set_report_handle(bts2_app_stru *bts2_app_data)
     memcpy(local_report_data->data, rx_report_data, report_data_len);
     local_report_data->data_len = report_data_len;
 
-    hid_send_handshake(bts2_app_data, HID_HANDSHAKE_PARAM_TYPE_SUCCESSFUL);
+    hid_send_handshake(bts2_app_data, conn_idx,  HID_HANDSHAKE_PARAM_TYPE_SUCCESSFUL);
 }
 
 
@@ -1530,24 +1877,32 @@ Author:zhengyu
 
 Modify:
 */
-void hid_receive_get_protocol_handle(bts2_app_stru *bts2_app_data)
+static void hid_receive_get_protocol_handle(bts2_app_stru *bts2_app_data)
 {
     BTS2S_GET_PROTOCOL_IND *msg;
     msg = (BTS2S_GET_PROTOCOL_IND *)bts2_app_data->recv_msg;
 
+    U8 conn_idx = CFG_MAX_HID_CONN_NUM;
+
+    if (!bt_hid_check_connection_by_addr(msg->bd, &conn_idx))
+    {
+        USER_TRACE("[U-L]Why don't pre-alloction connection\n");
+        return;
+    }
+
     struct hid_frame_t data_frame;
 
-    if (!bts2_app_data->hid_inst.is_hid_device_role)
+    if (!bts2_app_data->hid_inst.conn[conn_idx].is_hid_device_role)
     {
         USER_TRACE("%s only hid device support this msg\n", __func__);
         return;
     }
 
     data_frame.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_RESERVED & 0x3);
-    data_frame.data[0] = (bts2_app_data->hid_inst.local_protocol_mode & 0x3);
+    data_frame.data[0] = (bts2_app_data->hid_inst.conn[conn_idx].local_protocol_mode & 0x3);
     data_frame.data_len = 1;
 
-    hid_send_report_req(bts2_app_data->phdl, data_frame.data_len + 1, (U8 *)&data_frame, FALSE);
+    bt_hid_send_report_req(bts2_app_data, conn_idx, data_frame.data_len + 1, (U8 *)&data_frame, FALSE);
 }
 
 
@@ -1562,14 +1917,22 @@ Author:zhengyu
 
 Modify:
 */
-void hid_receive_set_protocol_handle(bts2_app_stru *bts2_app_data)
+static void hid_receive_set_protocol_handle(bts2_app_stru *bts2_app_data)
 {
     BTS2S_SET_PROTOCOL_IND *msg;
     msg = (BTS2S_SET_PROTOCOL_IND *)bts2_app_data->recv_msg;
 
+    U8 conn_idx = CFG_MAX_HID_CONN_NUM;
+
+    if (!bt_hid_check_connection_by_addr(msg->bd, &conn_idx))
+    {
+        USER_TRACE("[U-L]Why don't pre-alloction connection\n");
+        return;
+    }
+
     U8 protocol_mode = (msg->param & 0x3);
 
-    if (!bts2_app_data->hid_inst.is_hid_device_role)
+    if (!bts2_app_data->hid_inst.conn[conn_idx].is_hid_device_role)
     {
         USER_TRACE("%s only hid device support this msg\n", __func__);
         return;
@@ -1578,13 +1941,13 @@ void hid_receive_set_protocol_handle(bts2_app_stru *bts2_app_data)
     if (protocol_mode == HID_REPORT_PROTOCOL_MODE || protocol_mode == HID_BOOT_PROTOCOL_MODE)
     {
         USER_TRACE("%s set protocol mode %d\n", __func__, protocol_mode);
-        bts2_app_data->hid_inst.local_protocol_mode = protocol_mode;
-        hid_send_handshake(bts2_app_data, HID_HANDSHAKE_PARAM_TYPE_SUCCESSFUL);
+        bts2_app_data->hid_inst.conn[conn_idx].local_protocol_mode = protocol_mode;
+        hid_send_handshake(bts2_app_data, conn_idx,  HID_HANDSHAKE_PARAM_TYPE_SUCCESSFUL);
     }
     else
     {
         USER_TRACE("%s invalid protocol mode %d\n", __func__, protocol_mode);
-        hid_send_handshake(bts2_app_data, HID_HANDSHAKE_PARAM_TYPE_ERR_INVALID_PARAMETER);
+        hid_send_handshake(bts2_app_data, conn_idx,  HID_HANDSHAKE_PARAM_TYPE_ERR_INVALID_PARAMETER);
     }
 }
 
@@ -1600,10 +1963,18 @@ Author:zhengyu
 
 Modify:
 */
-void hid_receive_interrupt_report(bts2_app_stru *bts2_app_data)
+static void hid_receive_interrupt_report(bts2_app_stru *bts2_app_data)
 {
     BTS2S_HID_DATA_IND *msg;
     msg = (BTS2S_HID_DATA_IND *)bts2_app_data->recv_msg;
+
+    U8 conn_idx = CFG_MAX_HID_CONN_NUM;
+
+    if (!bt_hid_check_connection_by_addr(msg->bd, &conn_idx))
+    {
+        USER_TRACE("[U-L]Why don't pre-alloction connection\n");
+        return;
+    }
 
     BOOL local_report_descriptor_has_report_id = TRUE;
     U8 report_type = (msg->param & 0x3);
@@ -1613,24 +1984,24 @@ void hid_receive_interrupt_report(bts2_app_stru *bts2_app_data)
     struct hid_report_data_t *local_report_data = NULL;
     U8 *rx_report_data = NULL;
 
-    if (bts2_app_data->hid_inst.is_hid_device_role)
+    if (bts2_app_data->hid_inst.conn[conn_idx].is_hid_device_role)
     {
         switch ((hid_report_type_enum_t)report_type)
         {
         case HID_REPORT_TYPE_OUTPUT:
             local_report_data = (struct hid_report_data_t *)bcalloc(1, sizeof(struct hid_report_data_t));
-            bts2_app_data->hid_inst.device_output_data = (void *)local_report_data;
+            bts2_app_data->hid_inst.conn[conn_idx].device_output_data = (void *)local_report_data;
             break;
         case HID_REPORT_TYPE_FEATURE:
             local_report_data = (struct hid_report_data_t *)bcalloc(1, sizeof(struct hid_report_data_t));
-            bts2_app_data->hid_inst.device_feature_data = (void *)local_report_data;
+            bts2_app_data->hid_inst.conn[conn_idx].device_feature_data = (void *)local_report_data;
             break;
         default:
             USER_TRACE("%s invalid report_type %d for hid device\n", __func__, report_type);
             return;
         }
 
-        if (bts2_app_data->hid_inst.local_protocol_mode == HID_REPORT_PROTOCOL_MODE)
+        if (bts2_app_data->hid_inst.conn[conn_idx].local_protocol_mode == HID_REPORT_PROTOCOL_MODE)
         {
             if (local_report_descriptor_has_report_id)
             {
@@ -1683,7 +2054,8 @@ void hid_receive_interrupt_report(bts2_app_stru *bts2_app_data)
 Description:
     hid device send handshake packet to hid host
 Input:
-    clt_data:global hid instance struct pointer
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
     code:results code
 Time:2023/04/23 20:09:03
 
@@ -1691,22 +2063,20 @@ Author:zhengyu
 
 Modify:
 */
-void hid_send_handshake(bts2_app_stru *bts2_app_data, hid_handshake_param_type_enum_t code)
+void hid_send_handshake(bts2_app_stru *bts2_app_data, U8 conn_idx, hid_handshake_param_type_enum_t code)
 {
     struct hid_frame_t data_frame;
 
-    if (!bts2_app_data->hid_inst.is_hid_device_role)
+    if (!bts2_app_data->hid_inst.conn[conn_idx].is_hid_device_role)
     {
         USER_TRACE("%s only hid device support this msg\n", __func__);
         return;
     }
 
-
     data_frame.header = (HID_MSG_TYPE_HANDSHAKE << 4) | (code & 0xf);
     data_frame.data_len = 0;
 
-
-    hid_send_report_req(bts2_app_data->phdl, data_frame.data_len + 1, (U8 *)&data_frame, FALSE);
+    bt_hid_send_report_req(bts2_app_data, conn_idx, data_frame.data_len + 1, (U8 *)&data_frame, FALSE);
 }
 
 
@@ -1735,10 +2105,8 @@ void bt_hid_msg_handler(bts2_app_stru *bts2_app_data)
         if (msg->res == BTS2_SUCC)
         {
             USER_TRACE(">> HID enabled\n");
-#ifdef CFG_HID
             bt_interface_bt_event_notify(BT_NOTIFY_HID, BT_NOTIFY_HID_OPEN_COMPLETE, NULL, 0);
             INFO_TRACE(">> URC hid open\n");
-#endif
         }
         break;
     }
@@ -1768,31 +2136,50 @@ void bt_hid_msg_handler(bts2_app_stru *bts2_app_data)
         }
         else if (msg->local_psm == BT_PSM_HID_INTR)
         {
-#ifdef CFG_HID
-            bt_notify_profile_state_info_t profile_state;
-            bt_addr_convert(&msg->bd, profile_state.mac.addr);
-            profile_state.profile_type = BT_NOTIFY_HID;
-            profile_state.res = BTS2_SUCC;
-            bt_profile_update_connection_state(BT_NOTIFY_HID, BT_NOTIFY_HID_PROFILE_CONNECTED, &profile_state);
 
-            USER_TRACE("[L-U]remote connect HID interrupt channel success\n");
-#endif
-            bts2_app_data->hid_inst.rmt_bd.lap = msg->bd.lap;
-            bts2_app_data->hid_inst.rmt_bd.nap = msg->bd.nap;
-            bts2_app_data->hid_inst.rmt_bd.uap = msg->bd.uap;
-            bt_hid_mouse_reset_at_middle(bts2_app_data);
+            U8 idx = CFG_MAX_HID_CONN_NUM;
+
+            if (bt_hid_check_connection_by_addr(&msg->bd, &idx))
+            {
+                USER_TRACE("[U-L] why receive repeated connection...\n");
+                hid_disc_req_ext(&msg->bd);
+                break;
+            }
+            else
+            {
+                idx = bt_hid_get_available_connection();
+
+                if (idx == CFG_MAX_HID_CONN_NUM)
+                {
+                    USER_TRACE("The connection is full\n");
+                    hid_disc_req_ext(&msg->bd);
+                    break;
+                }
+                else
+                {
+                    bd_copy(&bts2_app_data->hid_inst.conn[idx].rmt_bd, &msg->bd);
+                    bts2_app_data->hid_inst.conn[idx].is_hid_device_role = TRUE;
+                }
+
+                USER_TRACE("[L-U]remote connect HID interrupt channel success\n");
+                bt_notify_profile_state_info_t profile_state;
+                bt_addr_convert(&msg->bd, profile_state.mac.addr);
+                profile_state.profile_type = BT_NOTIFY_HID;
+                profile_state.res = BTS2_SUCC;
+                bt_profile_update_connection_state(BT_NOTIFY_HID, BT_NOTIFY_HID_PROFILE_CONNECTED, &profile_state);
+
+                bt_hid_mouse_reset_at_middle(bts2_app_data, idx);
+            }
         }
         break;
     }
     case BTS2MU_HID_DISC_CFM:
     {
-        is_hid_point_calibrated = false;
         bt_hid_hdl_disconn_cfm(bts2_app_data);
         break;
     }
     case BTS2MU_HID_DISC_IND:
     {
-        is_hid_point_calibrated = false;
         bt_hid_hdl_disconn_ind(bts2_app_data);
         break;
     }
@@ -1800,8 +2187,14 @@ void bt_hid_msg_handler(bts2_app_stru *bts2_app_data)
     {
         BTS2S_HID_MODE_CHANGE_IND *msg;
         msg = (BTS2S_HID_MODE_CHANGE_IND *)bts2_app_data->recv_msg;
-        bts2_app_data->hid_inst.mode = msg->mode;
-        USER_TRACE("[L-U]hid mode change to %d\n", bts2_app_data->hid_inst.mode);
+
+        U8 idx = CFG_MAX_HID_CONN_NUM;
+
+        if (bt_hid_check_connection_by_addr(msg->bd, &idx))
+        {
+            bts2_app_data->hid_inst.conn[idx].mode = msg->mode;
+            USER_TRACE("[L-U]hid mode change to %d\n", bts2_app_data->hid_inst.conn[idx].mode);
+        }
         break;
     }
     case BTS2MU_HID_CONTROL_IND:
@@ -1836,255 +2229,23 @@ void bt_hid_msg_handler(bts2_app_stru *bts2_app_data)
     }
     case BTS2MD_HID_UNKNOWN:
     {
-        hid_send_handshake(bts2_app_data, HID_HANDSHAKE_PARAM_TYPE_ERR_UNSUPPORTED_REQUEST);
+        BTS2S_HID_DATA_IND *msg;
+        msg = (BTS2S_HID_DATA_IND *)bts2_app_data->recv_msg;
+
+        U8 conn_idx = CFG_MAX_HID_CONN_NUM;
+
+        if (!bt_hid_check_connection_by_addr(msg->bd, &conn_idx))
+        {
+            USER_TRACE("[U-L]Why don't pre-alloction connection\n");
+            return;
+        }
+        hid_send_handshake(bts2_app_data, conn_idx,  HID_HANDSHAKE_PARAM_TYPE_ERR_UNSUPPORTED_REQUEST);
         break;
     }
     default:
         break;
     }
 
-}
-
-
-BOOL bt_hid_check_is_ios_device(void)
-{
-    return is_device_ios;
-}
-
-void bt_hid_set_ios_device(U8 is_ios)
-{
-    is_device_ios = is_ios;
-}
-
-
-void bt_hid_consumer_report_reset(bts2_app_stru *bts2_app_data)
-{
-    hid_msg_consumer_t consumer_msg = {0};
-
-    consumer_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
-    consumer_msg.report_id = HID_CONSUMER_REPORT_ID;
-    consumer_msg.consumer = 0x00;
-    hid_send_report_req(bts2_app_data->phdl, sizeof(consumer_msg), (U8 *)&consumer_msg, TRUE);
-}
-
-void bt_hid_consumer_report_play_status(bts2_app_stru *bts2_app_data)
-{
-    //todo
-    hid_msg_consumer_t consumer_msg = {0};
-
-    consumer_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
-    consumer_msg.report_id = HID_CONSUMER_REPORT_ID;
-    consumer_msg.consumer = 0x01;
-    hid_send_report_req(bts2_app_data->phdl, sizeof(consumer_msg), (U8 *)&consumer_msg, TRUE);
-}
-
-
-void bt_hid_consumer_report_power_onoff(bts2_app_stru *bts2_app_data)
-{
-    hid_msg_consumer_t consumer_msg = {0};
-
-    if (bts2_app_data->hid_inst.mode == SNIFF_MODE)
-    {
-        USER_TRACE("[U-L]hid exit sniff mode before send report\n");
-        hcia_exit_sniff_mode(&bts2_app_data->hid_inst.rmt_bd, NULL);
-    }
-
-    consumer_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
-    consumer_msg.report_id = HID_CONSUMER_REPORT_ID;
-    consumer_msg.consumer = 0x01;
-    hid_send_report_req(bts2_app_data->phdl, sizeof(consumer_msg), (U8 *)&consumer_msg, TRUE);
-    bt_hid_consumer_report_reset(bts2_app_data);
-    if (!bts2_app_data->hid_inst.hid_time_handle_reset_report)
-    {
-        bts2_app_data->hid_inst.hid_time_handle_reset_report = rt_timer_create("hid_timer_power", bt_hid_timeout_handler_reset_report, (void *)bts2_app_data,
-                rt_tick_from_millisecond(POWER_OFF_DELAY + time_count_power_onoff), RT_TIMER_FLAG_SOFT_TIMER);
-    }
-    else
-    {
-        rt_timer_stop(bts2_app_data->hid_inst.hid_time_handle_reset_report);
-    }
-    rt_timer_start(bts2_app_data->hid_inst.hid_time_handle_reset_report);
-}
-
-
-void bt_hid_timeout_handler_reset_report(void *parameter)
-{
-    bts2_app_stru *bts2_app_data = (bts2_app_stru *)parameter;
-    // LOG_D("bt_hid_timeout_handler_reset_report\n");
-
-    if (time_count_power_onoff < POWER_OFF_TIMES)
-    {
-        hid_msg_consumer_t consumer_msg = {0};
-
-        consumer_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
-        consumer_msg.report_id = HID_CONSUMER_REPORT_ID;
-        consumer_msg.consumer = 0x01;
-        // hid_send_report_req(bts2_app_data->phdl, sizeof(consumer_msg), (U8 *)&consumer_msg, TRUE);
-
-        time_count_power_onoff++;
-        hid_send_report_req(bts2_app_data->phdl, sizeof(consumer_msg), (U8 *)&consumer_msg, TRUE);
-        bt_hid_consumer_report_reset(bts2_app_data);
-    }
-
-    if (time_count_power_onoff < POWER_OFF_TIMES)
-    {
-        if (!bts2_app_data->hid_inst.hid_time_handle_reset_report)
-        {
-            bts2_app_data->hid_inst.hid_time_handle_reset_report = rt_timer_create("hid_timer_power", bt_hid_timeout_handler_reset_report, (void *)bts2_app_data,
-                    rt_tick_from_millisecond(POWER_OFF_DELAY + time_count_power_onoff), RT_TIMER_FLAG_SOFT_TIMER);
-        }
-        else
-        {
-            rt_timer_stop(bts2_app_data->hid_inst.hid_time_handle_reset_report);
-        }
-        rt_timer_start(bts2_app_data->hid_inst.hid_time_handle_reset_report);
-    }
-    else
-    {
-        time_count_power_onoff = 0;
-    }
-}
-
-
-void bt_hid_consumer_report_next_track(bts2_app_stru *bts2_app_data)
-{
-    hid_msg_consumer_t consumer_msg = {0};
-
-    consumer_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
-    consumer_msg.report_id = HID_CONSUMER_REPORT_ID;
-    consumer_msg.consumer = 0x04;
-    hid_send_report_req(bts2_app_data->phdl, sizeof(consumer_msg), (U8 *)&consumer_msg, TRUE);
-}
-
-
-void bt_hid_consumer_report_back_track(bts2_app_stru *bts2_app_data)
-{
-    hid_msg_consumer_t consumer_msg = {0};
-
-    consumer_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
-    consumer_msg.report_id = HID_CONSUMER_REPORT_ID;
-    consumer_msg.consumer = 0x08;
-    hid_send_report_req(bts2_app_data->phdl, sizeof(consumer_msg), (U8 *)&consumer_msg, TRUE);
-}
-
-void bt_hid_controller_report_right_arrow(bts2_app_stru *bts2_app_data)
-{
-    if (bts2_app_data->hid_inst.mode == SNIFF_MODE)
-    {
-        USER_TRACE("[U-L]hid exit sniff mode before send report\n");
-        hcia_exit_sniff_mode(&bts2_app_data->hid_inst.rmt_bd, NULL);
-    }
-
-    hid_msg_controller_t controller_msg = {0};
-
-    controller_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
-    controller_msg.report_id = HID_CONTROLLER_REPORT_ID;
-    controller_msg.standardkey1 = 0x4f;
-    hid_send_report_req(bts2_app_data->phdl, sizeof(controller_msg), (U8 *)&controller_msg, TRUE);
-}
-
-void bt_hid_controller_report_left_arrow(bts2_app_stru *bts2_app_data)
-{
-    if (bts2_app_data->hid_inst.mode == SNIFF_MODE)
-    {
-        USER_TRACE("[U-L]hid exit sniff mode before send report\n");
-        hcia_exit_sniff_mode(&bts2_app_data->hid_inst.rmt_bd, NULL);
-    }
-
-    hid_msg_controller_t controller_msg = {0};
-
-    controller_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
-    controller_msg.report_id = HID_CONTROLLER_REPORT_ID;
-    controller_msg.standardkey1 = 0x50;
-    hid_send_report_req(bts2_app_data->phdl, sizeof(controller_msg), (U8 *)&controller_msg, TRUE);
-}
-
-void bt_hid_controller_report_up_arrow(bts2_app_stru *bts2_app_data)
-{
-    if (bts2_app_data->hid_inst.mode == SNIFF_MODE)
-    {
-        USER_TRACE("[U-L]hid exit sniff mode before send report\n");
-        hcia_exit_sniff_mode(&bts2_app_data->hid_inst.rmt_bd, NULL);
-    }
-
-    hid_msg_controller_t controller_msg = {0};
-
-    controller_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
-    controller_msg.report_id = HID_CONTROLLER_REPORT_ID;
-    controller_msg.standardkey1 = 0x52;
-    hid_send_report_req(bts2_app_data->phdl, sizeof(controller_msg), (U8 *)&controller_msg, TRUE);
-}
-
-void bt_hid_controller_report_down_arrow(bts2_app_stru *bts2_app_data)
-{
-    if (bts2_app_data->hid_inst.mode == SNIFF_MODE)
-    {
-        USER_TRACE("[U-L]hid exit sniff mode before send report\n");
-        hcia_exit_sniff_mode(&bts2_app_data->hid_inst.rmt_bd, NULL);
-    }
-
-    hid_msg_controller_t controller_msg = {0};
-
-    controller_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
-    controller_msg.report_id = HID_CONTROLLER_REPORT_ID;
-    controller_msg.standardkey1 = 0x51;
-    hid_send_report_req(bts2_app_data->phdl, sizeof(controller_msg), (U8 *)&controller_msg, TRUE);
-}
-
-
-void bt_hid_controller_report_reset(bts2_app_stru *bts2_app_data)
-{
-    hid_msg_controller_t controller_msg = {0};
-
-    controller_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
-    controller_msg.report_id = HID_CONTROLLER_REPORT_ID;
-    hid_send_report_req(bts2_app_data->phdl, sizeof(controller_msg), (U8 *)&controller_msg, TRUE);
-}
-
-
-void bt_hid_consumer_report_volume_down(bts2_app_stru *bts2_app_data)
-{
-    hid_msg_consumer_t consumer_msg = {0};
-
-    consumer_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
-    consumer_msg.report_id = HID_CONSUMER_REPORT_ID;
-    consumer_msg.consumer = 0x10;
-    hid_send_report_req(bts2_app_data->phdl, sizeof(consumer_msg), (U8 *)&consumer_msg, TRUE);
-    bt_hid_consumer_report_reset(bts2_app_data);
-}
-
-
-void bt_hid_consumer_report_volume_up(bts2_app_stru *bts2_app_data)
-{
-    hid_msg_consumer_t consumer_msg = {0};
-
-    consumer_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
-    consumer_msg.report_id = HID_CONSUMER_REPORT_ID;
-    consumer_msg.consumer = 0x20;
-    hid_send_report_req(bts2_app_data->phdl, sizeof(consumer_msg), (U8 *)&consumer_msg, TRUE);
-    bt_hid_consumer_report_reset(bts2_app_data);
-}
-
-
-void bt_hid_consumer_report_forward(bts2_app_stru *bts2_app_data)
-{
-    hid_msg_consumer_t consumer_msg = {0};
-
-    consumer_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
-    consumer_msg.report_id = HID_CONSUMER_REPORT_ID;
-    consumer_msg.consumer = 0x40;
-    hid_send_report_req(bts2_app_data->phdl, sizeof(consumer_msg), (U8 *)&consumer_msg, TRUE);
-}
-
-
-void bt_hid_consumer_report_go_back(bts2_app_stru *bts2_app_data)
-{
-    hid_msg_consumer_t consumer_msg = {0};
-
-    consumer_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
-    consumer_msg.report_id = HID_CONSUMER_REPORT_ID;
-    consumer_msg.consumer = 0x80;
-    hid_send_report_req(bts2_app_data->phdl, sizeof(consumer_msg), (U8 *)&consumer_msg, TRUE);
 }
 
 
@@ -2096,7 +2257,7 @@ static U16 buttons;
 
 /*
 Description:
-    test hid mouse move and click once
+    test hid function
 Input:
     global app bt instance
 Time:2023/04/25 15:51:12
@@ -2105,34 +2266,34 @@ Author:zhengyu
 
 Modify:
 */
-void bt_hid_mouse_test1(bts2_app_stru *bts2_app_data)
+void bt_hid_mouse_test1(bts2_app_stru *bts2_app_data, U8 con_idx)
 {
     switch (bts2_app_data->input_str[0])
     {
     case 'w':
         dy -= MOUSE_SPEED;
-        bt_hid_mouse_move(bts2_app_data, 0, dy);
+        bt_hid_mouse_move(bts2_app_data, 0, dy, con_idx);
         break;
     case 'a':
         dx -= MOUSE_SPEED;
-        bt_hid_mouse_move(bts2_app_data, dx, 0);
+        bt_hid_mouse_move(bts2_app_data, dx, 0, con_idx);
         break;
     case 's':
         dy += MOUSE_SPEED;
-        bt_hid_mouse_move(bts2_app_data, 0, dy);
+        bt_hid_mouse_move(bts2_app_data, 0, dy, con_idx);
         break;
     case 'd':
         dx += MOUSE_SPEED;
-        bt_hid_mouse_move(bts2_app_data, dx, 0);
+        bt_hid_mouse_move(bts2_app_data, dx, 0, con_idx);
         break;
     case 'L':
-        bt_hid_mouse_left_click(bts2_app_data);
+        bt_hid_mouse_left_click(bts2_app_data, con_idx);
         break;
     case 'R':
-        bt_hid_mouse_right_click(bts2_app_data);
+        bt_hid_mouse_right_click(bts2_app_data, con_idx);
         break;
     case 'O':
-        bt_hid_mouse_middle_button_click(bts2_app_data);
+        bt_hid_mouse_middle_button_click(bts2_app_data, con_idx);
         break;
 
     default:
@@ -2144,92 +2305,133 @@ void bt_hid_mouse_test1(bts2_app_stru *bts2_app_data)
 }
 
 
-/*
-Description:
-    test hid mouse control the mobile drag page
-Input:
-    global app bt instance
-Time:2023/04/25 15:51:12
-
-Author:zhengyu
-
-Modify:
-*/
-void bt_hid_mouse_test2(bts2_app_stru *bts2_app_data)
+void bt_hid_mouse_test2(bts2_app_stru *bts2_app_data, U8 con_idx)
 {
-    bt_hid_mouse_drag_page_up(bts2_app_data);
-}
-
-void bt_hid_mouse_test3(bts2_app_stru *bts2_app_data)
-{
-    bt_hid_mouse_drag_page_down(bts2_app_data);
+    bt_hid_mouse_drag_page_up(bts2_app_data, con_idx);
 }
 
 
-/*
-Description:
-    test hid mouse control the mobile double click
-Input:
-    global app bt instance
-Time:2023/04/25 15:51:12
-
-Author:zhengyu
-
-Modify:
-*/
-void bt_hid_mouse_test4(bts2_app_stru *bts2_app_data)
+void bt_hid_mouse_test3(bts2_app_stru *bts2_app_data, U8 con_idx)
 {
-    bt_hid_mouse_left_double_click(bts2_app_data);
+    bt_hid_mouse_drag_page_down(bts2_app_data, con_idx);
 }
 
 
-void bt_hid_mouse_test5(bts2_app_stru *bts2_app_data)
+void bt_hid_mouse_test4(bts2_app_stru *bts2_app_data, U8 con_idx)
 {
-    bt_hid_mouse_right_double_click(bts2_app_data);
+    bt_hid_mouse_left_double_click(bts2_app_data, con_idx);
 }
 
-void bt_hid_mouse_test6(bts2_app_stru *bts2_app_data)
+
+void bt_hid_mouse_test5(bts2_app_stru *bts2_app_data, U8 con_idx)
 {
-    bt_hid_mouse_reset_at_middle(bts2_app_data);
+    bt_hid_mouse_right_double_click(bts2_app_data, con_idx);
 }
 
-void bt_hid_mouse_test7(bts2_app_stru *bts2_app_data)
+
+void bt_hid_mouse_test6(bts2_app_stru *bts2_app_data, U8 con_idx)
 {
-    is_device_ios = TRUE;
-    bt_hid_mouse_reset_at_middle(bts2_app_data);
-    LOG_D("is_device_ios = %d\n", is_device_ios);
+    bt_hid_mouse_reset_at_middle(bts2_app_data, con_idx);
 }
 
-void bt_hid_mouse_test8(bts2_app_stru *bts2_app_data)
+
+void bt_hid_mouse_test7(bts2_app_stru *bts2_app_data, U8 con_idx)
 {
-    is_device_ios = FALSE;
-    bt_hid_mouse_reset_at_middle(bts2_app_data);
-    LOG_I("is_device_ios = %d\n", is_device_ios);
+    bts2g_app_p->hid_inst.conn[con_idx].is_device_ios = TRUE;
+    bt_hid_mouse_reset_at_middle(bts2_app_data, con_idx);
+    LOG_D("is_device_ios = %d\n", bts2g_app_p->hid_inst.conn[con_idx].is_device_ios);
 }
 
-void bt_hid_mouse_test9(bts2_app_stru *bts2_app_data)
+
+void bt_hid_mouse_test8(bts2_app_stru *bts2_app_data, U8 con_idx)
+{
+    bts2g_app_p->hid_inst.conn[con_idx].is_device_ios = FALSE;
+    bt_hid_mouse_reset_at_middle(bts2_app_data, con_idx);
+    LOG_I("is_device_ios = %d\n", bts2g_app_p->hid_inst.conn[con_idx].is_device_ios);
+}
+
+
+void bt_hid_mouse_test9(bts2_app_stru *bts2_app_data, U8 con_idx)
 {
     switch (bts2_app_data->input_str[0])
     {
     case '7':
-        bt_hid_consumer_report_play_status(bts2_app_data);
+        bt_hid_consumer_report_play_status(bts2_app_data, con_idx);
         break;
     case '8':
-        bt_hid_consumer_report_next_track(bts2_app_data);
+        bt_hid_consumer_report_next_track(bts2_app_data, con_idx);
         break;
     case '9':
-        bt_hid_consumer_report_back_track(bts2_app_data);
+        bt_hid_consumer_report_back_track(bts2_app_data, con_idx);
         break;
     case '+':
-        bt_hid_consumer_report_volume_up(bts2_app_data);
+        bt_hid_consumer_report_volume_up(bts2_app_data, con_idx);
         break;
     case '-':
-        bt_hid_consumer_report_volume_down(bts2_app_data);
+        bt_hid_consumer_report_volume_down(bts2_app_data, con_idx);
         break;
 
     default:
         break;
     }
+}
+
+
+//*/************************************************public api***************************************************************/
+/*
+Description:
+    check connection exist by addr
+Input:
+    bd:bd address pointer
+    idx:connection index
+Time:2026/04/14 14:00:42
+
+Author:zhengyu
+
+Modify:
+*/
+BOOL bt_hid_check_connection_by_addr(BTS2S_BD_ADDR *bd, U8 *idx)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+
+    for (U8 i = 0; i < CFG_MAX_HID_CONN_NUM; i++)
+    {
+        if (bd_eq(&bts2_app_data->hid_inst.conn[i].rmt_bd, bd))
+        {
+            *idx = i;
+            return TRUE;
+        }
+    }
+
+    return FALSE;
+}
+
+
+/*
+Description:
+    get available connection
+Input:
+
+Time:2026/04/14 14:02:17
+
+Author:zhengyu
+
+Modify:
+*/
+U8 bt_hid_get_available_connection(void)
+{
+    U8 idx;
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+
+    for (idx = 0; idx < CFG_MAX_HID_CONN_NUM; idx++)
+    {
+        if (bd_is_empty(&bts2_app_data->hid_inst.conn[idx].rmt_bd))
+        {
+            break;
+        }
+    }
+
+    return idx;
 }
 
 #endif

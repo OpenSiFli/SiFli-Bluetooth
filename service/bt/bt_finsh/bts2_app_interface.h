@@ -648,6 +648,15 @@ void bt_interface_close_hid(void);
 void bt_interface_set_hid_device(uint8_t is_ios);
 
 /**
+ * @deprecated - please use bt_interface_set_hid_device_ext
+ * @brief            Set whether the peer device is an ios device
+ * @param[in] bd_addr    Device mac address(eg:char mac[6] = {11,22,33,44,55,66})
+ * @param[in] is_ios IOS device flag
+ *
+ **/
+void bt_interface_set_hid_device_ext(BTS2S_BD_ADDR *bd_addr, uint8_t is_ios);
+
+/**
  * @brief            hid mouse move once
  * @param[in] dx     X direction offset
  * @param[in] dx     y direction offset
@@ -655,11 +664,15 @@ void bt_interface_set_hid_device(uint8_t is_ios);
  **/
 void bt_interface_hid_mouse_move(int16_t dx, int16_t dy);
 
+void bt_interface_hid_mouse_move_ext(BTS2S_BD_ADDR *bd_addr, int16_t dx, int16_t dy);
+
 /**
  * @brief            Control the mobile phone to page up
  *
  **/
 void bt_interface_hid_mouse_drag_up(void);
+
+void bt_interface_hid_mouse_drag_up_ext(BTS2S_BD_ADDR *bd_addr);
 
 /**
  * @brief            Control the mobile phone to page down
@@ -667,11 +680,16 @@ void bt_interface_hid_mouse_drag_up(void);
  **/
 void bt_interface_hid_mouse_drag_down(void);
 
+void bt_interface_hid_mouse_drag_down_ext(BTS2S_BD_ADDR *bd_addr);
+
 /**
  * @brief            Control mobile phone click once
  *
  **/
 void bt_interface_hid_mouse_once_left_click(void);
+
+
+void bt_interface_hid_mouse_once_left_click_ext(BTS2S_BD_ADDR *bd_addr);
 
 /**
  * @brief            Control mobile phone click twice
@@ -679,11 +697,15 @@ void bt_interface_hid_mouse_once_left_click(void);
  **/
 void bt_interface_hid_mouse_double_left_click(void);
 
+void bt_interface_hid_mouse_double_left_click_ext(BTS2S_BD_ADDR *bd_addr);
+
 /**
  * @brief            Control mobile phone take a picture
  *
  **/
 void bt_interface_hid_consumer_take_picture(void);
+
+void bt_interface_hid_consumer_take_picture_ext(BTS2S_BD_ADDR *bd_addr);
 
 /**
  * @brief            Control the phone to increase the volume
@@ -691,11 +713,15 @@ void bt_interface_hid_consumer_take_picture(void);
  **/
 void bt_interface_hid_consumer_volume_up(void);
 
+void bt_interface_hid_consumer_volume_up_ext(BTS2S_BD_ADDR *bd_addr);
+
 /**
  * @brief            Control the phone to lower the volume
  *
  **/
 void bt_interface_hid_consumer_volume_down(void);
+
+void bt_interface_hid_consumer_volume_down_ext(BTS2S_BD_ADDR *bd_addr);
 
 /**
  * @brief            Control the phone to change the play status
@@ -703,11 +729,15 @@ void bt_interface_hid_consumer_volume_down(void);
  **/
 void bt_interface_hid_consumer_play_status_change(void);
 
+void bt_interface_hid_consumer_play_status_change_ext(BTS2S_BD_ADDR *bd_addr);
+
 /**
  * @brief            Control the phone to switch to next track
  *
  **/
 void bt_interface_hid_consumer_next_track(void);
+
+void bt_interface_hid_consumer_next_track_ext(BTS2S_BD_ADDR *bd_addr);
 
 /**
  * @brief            Control the phone to switch to previous track
@@ -715,11 +745,15 @@ void bt_interface_hid_consumer_next_track(void);
  **/
 void bt_interface_hid_consumer_prev_track(void);
 
+void bt_interface_hid_consumer_prev_track_ext(BTS2S_BD_ADDR *bd_addr);
+
 /**
  * @brief            Control the cursor to move right once
  *
  **/
 void bt_interface_controller_report_right_arrow(void);
+
+void bt_interface_controller_report_right_arrow_ext(BTS2S_BD_ADDR *bd_addr);
 
 /**
  * @brief            Control the cursor to move left once
@@ -727,17 +761,23 @@ void bt_interface_controller_report_right_arrow(void);
  **/
 void bt_interface_controller_report_left_arrow(void);
 
+void bt_interface_controller_report_left_arrow_ext(BTS2S_BD_ADDR *bd_addr);
+
 /**
  * @brief            Control the cursor to move up once
  *
  **/
 void bt_interface_controller_report_up_arrow(void);
 
+void bt_interface_controller_report_up_arrow_ext(BTS2S_BD_ADDR *bd_addr);
+
 /**
  * @brief            Control the cursor to move down once
  *
  **/
 void bt_interface_controller_report_down_arrow(void);
+
+void bt_interface_controller_report_down_arrow_ext(BTS2S_BD_ADDR *bd_addr);
 
 /**
  * @brief            Add hid descriptor

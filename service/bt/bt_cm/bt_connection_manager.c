@@ -1060,7 +1060,7 @@ static void bt_cm_hci_acl_disconnect_complete_event_hdl(BTS2S_DM_ACL_DISC_IND *i
     bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_ACL_DISCONNECTED, &device_info, sizeof(bt_notify_device_base_info_t));
 
 #ifdef CFG_HID
-    hid_reset_req();
+    hid_reset_req_ext(&ind->cur_bd);
 #endif
 
 #ifdef CFG_AV

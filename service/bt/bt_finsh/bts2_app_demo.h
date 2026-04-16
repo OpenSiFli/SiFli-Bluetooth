@@ -275,22 +275,23 @@ typedef enum
 
 typedef struct
 {
-    bts2_hid_st  st;
     BTS2S_BD_ADDR  rmt_bd;
     BOOL is_hid_device_role;
     rt_timer_t     hid_time_handle;
-    rt_timer_t     hid_time_handle_drag_up;
-    rt_timer_t     hid_time_handle_drag_down;
-    rt_timer_t     hid_time_handle_reset_at_middle1;
-    rt_timer_t     hid_time_handle_reset_at_middle2;
     rt_timer_t     hid_time_handle_reset_at_middle_ios;
-    rt_timer_t     hid_time_handle_reset_at_middle_ios1;
     rt_timer_t     hid_time_handle_reset_report;
     U8        local_protocol_mode;
     U8        mode;
+    BOOL      is_device_ios;
+    BOOL      is_hid_point_calibrated;
     void     *device_input_data;
     void     *device_output_data;
     void     *device_feature_data;
+} bts2_hid_conn;
+
+typedef struct
+{
+    bts2_hid_conn conn[CFG_MAX_HID_CONN_NUM];
 } bts2_hid_inst_data;
 #endif
 #ifdef CFG_BT_L2CAP_PROFILE

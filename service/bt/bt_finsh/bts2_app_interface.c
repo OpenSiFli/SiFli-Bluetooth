@@ -1104,101 +1104,306 @@ void bt_interface_close_hid(void)
 
 void bt_interface_set_hid_device(uint8_t is_ios)
 {
-    bt_hid_set_ios_device(is_ios);
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    LOG_E("deprecated - please use bt_interface_spp_send_data_ext");
+    bt_interface_set_hid_device_ext(&bts2_app_data->hid_inst.conn[0].rmt_bd, is_ios);
+}
+
+void bt_interface_set_hid_device_ext(BTS2S_BD_ADDR *bd_addr, uint8_t is_ios)
+{
+    bt_hid_set_ios_device(bd_addr, is_ios);
 }
 
 void bt_interface_hid_mouse_move(int16_t dx, int16_t dy)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
-    bt_hid_mouse_move(bts2_app_data, dx, dy);
+    LOG_E("deprecated - please use bt_interface_hid_mouse_move_ext");
+    bt_interface_hid_mouse_move_ext(&bts2_app_data->hid_inst.conn[0].rmt_bd, dx, dy);
+}
+
+void bt_interface_hid_mouse_move_ext(BTS2S_BD_ADDR *bd_addr, int16_t dx, int16_t dy)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    uint8_t conn_idx = CFG_MAX_HID_CONN_NUM;
+
+    if (!bt_hid_check_connection_by_addr(bd_addr, &conn_idx))
+    {
+        return;
+    }
+
+    bt_hid_mouse_move(bts2_app_data, dx, dy, conn_idx);
 }
 
 void bt_interface_hid_mouse_drag_up(void)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
-    bt_hid_mouse_drag_page_up(bts2_app_data);
+    LOG_E("deprecated - please use bt_interface_hid_mouse_drag_up_ext");
+    bt_interface_hid_mouse_drag_up_ext(&bts2_app_data->hid_inst.conn[0].rmt_bd);
+}
+
+void bt_interface_hid_mouse_drag_up_ext(BTS2S_BD_ADDR *bd_addr)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    uint8_t conn_idx = CFG_MAX_HID_CONN_NUM;
+
+    if (!bt_hid_check_connection_by_addr(bd_addr, &conn_idx))
+    {
+        return;
+    }
+
+    bt_hid_mouse_drag_page_up(bts2_app_data, conn_idx);
 }
 
 void bt_interface_hid_mouse_drag_down(void)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
-    bt_hid_mouse_drag_page_down(bts2_app_data);
+    LOG_E("deprecated - please use bt_interface_hid_mouse_drag_down_ext");
+    bt_interface_hid_mouse_drag_down_ext(&bts2_app_data->hid_inst.conn[0].rmt_bd);
+}
+
+void bt_interface_hid_mouse_drag_down_ext(BTS2S_BD_ADDR *bd_addr)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    uint8_t conn_idx = CFG_MAX_HID_CONN_NUM;
+
+    if (!bt_hid_check_connection_by_addr(bd_addr, &conn_idx))
+    {
+        return;
+    }
+
+    bt_hid_mouse_drag_page_down(bts2_app_data, conn_idx);
 }
 
 void bt_interface_hid_mouse_once_left_click(void)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
-    bt_hid_mouse_left_click(bts2_app_data);
+    LOG_E("deprecated - please use bt_interface_hid_mouse_once_left_click_ext");
+    bt_interface_hid_mouse_once_left_click_ext(&bts2_app_data->hid_inst.conn[0].rmt_bd);
+}
+
+void bt_interface_hid_mouse_once_left_click_ext(BTS2S_BD_ADDR *bd_addr)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    uint8_t conn_idx = CFG_MAX_HID_CONN_NUM;
+
+    if (!bt_hid_check_connection_by_addr(bd_addr, &conn_idx))
+    {
+        return;
+    }
+    bt_hid_mouse_left_click(bts2_app_data, conn_idx);
 }
 
 void bt_interface_hid_mouse_double_left_click(void)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
-    bt_hid_mouse_left_double_click(bts2_app_data);
+    LOG_E("deprecated - please use bt_interface_hid_mouse_double_left_click_ext");
+    bt_interface_hid_mouse_double_left_click_ext(&bts2_app_data->hid_inst.conn[0].rmt_bd);
+}
+
+void bt_interface_hid_mouse_double_left_click_ext(BTS2S_BD_ADDR *bd_addr)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    uint8_t conn_idx = CFG_MAX_HID_CONN_NUM;
+
+    if (!bt_hid_check_connection_by_addr(bd_addr, &conn_idx))
+    {
+        return;
+    }
+    bt_hid_mouse_left_double_click(bts2_app_data, conn_idx);
 }
 
 void bt_interface_hid_consumer_take_picture(void)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
-    bt_hid_consumer_report_volume_up(bts2_app_data);
+    LOG_E("deprecated - please use bt_interface_hid_consumer_take_picture_ext");
+    bt_interface_hid_consumer_take_picture_ext(&bts2_app_data->hid_inst.conn[0].rmt_bd);
+}
+
+void bt_interface_hid_consumer_take_picture_ext(BTS2S_BD_ADDR *bd_addr)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    uint8_t conn_idx = CFG_MAX_HID_CONN_NUM;
+
+    if (!bt_hid_check_connection_by_addr(bd_addr, &conn_idx))
+    {
+        return;
+    }
+    bt_hid_consumer_report_volume_up(bts2_app_data, conn_idx);
 }
 
 void bt_interface_hid_consumer_volume_up(void)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
-    bt_hid_consumer_report_volume_up(bts2_app_data);
+    LOG_E("deprecated - please use bt_interface_hid_consumer_volume_up_ext");
+    bt_interface_hid_consumer_volume_up_ext(&bts2_app_data->hid_inst.conn[0].rmt_bd);
+}
+
+void bt_interface_hid_consumer_volume_up_ext(BTS2S_BD_ADDR *bd_addr)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    uint8_t conn_idx = CFG_MAX_HID_CONN_NUM;
+
+    if (!bt_hid_check_connection_by_addr(bd_addr, &conn_idx))
+    {
+        return;
+    }
+    bt_hid_consumer_report_volume_up(bts2_app_data, conn_idx);
 }
 
 void bt_interface_hid_consumer_volume_down(void)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
-    bt_hid_consumer_report_volume_down(bts2_app_data);
+    LOG_E("deprecated - please use bt_interface_hid_consumer_volume_down_ext");
+    bt_interface_hid_consumer_volume_down_ext(&bts2_app_data->hid_inst.conn[0].rmt_bd);
+}
+
+void bt_interface_hid_consumer_volume_down_ext(BTS2S_BD_ADDR *bd_addr)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    uint8_t conn_idx = CFG_MAX_HID_CONN_NUM;
+
+    if (!bt_hid_check_connection_by_addr(bd_addr, &conn_idx))
+    {
+        return;
+    }
+    bt_hid_consumer_report_volume_down(bts2_app_data, conn_idx);
 }
 
 void bt_interface_hid_consumer_play_status_change(void)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
-    bt_hid_consumer_report_play_status(bts2_app_data);
+    LOG_E("deprecated - please use bt_interface_hid_consumer_play_status_change_ext");
+    bt_interface_hid_consumer_play_status_change_ext(&bts2_app_data->hid_inst.conn[0].rmt_bd);
+}
+
+void bt_interface_hid_consumer_play_status_change_ext(BTS2S_BD_ADDR *bd_addr)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    uint8_t conn_idx = CFG_MAX_HID_CONN_NUM;
+
+    if (!bt_hid_check_connection_by_addr(bd_addr, &conn_idx))
+    {
+        return;
+    }
+    bt_hid_consumer_report_play_status(bts2_app_data, conn_idx);
 }
 
 void bt_interface_hid_consumer_next_track(void)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
-    bt_hid_consumer_report_next_track(bts2_app_data);
+    LOG_E("deprecated - please use bt_interface_hid_consumer_next_track_ext");
+    bt_interface_hid_consumer_next_track_ext(&bts2_app_data->hid_inst.conn[0].rmt_bd);
+}
+
+void bt_interface_hid_consumer_next_track_ext(BTS2S_BD_ADDR *bd_addr)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    uint8_t conn_idx = CFG_MAX_HID_CONN_NUM;
+
+    if (!bt_hid_check_connection_by_addr(bd_addr, &conn_idx))
+    {
+        return;
+    }
+    bt_hid_consumer_report_next_track(bts2_app_data, conn_idx);
 }
 
 void bt_interface_hid_consumer_prev_track(void)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
-    bt_hid_consumer_report_back_track(bts2_app_data);
+    LOG_E("deprecated - please use bt_interface_hid_consumer_prev_track_ext");
+    bt_interface_hid_consumer_prev_track_ext(&bts2_app_data->hid_inst.conn[0].rmt_bd);
+}
+
+void bt_interface_hid_consumer_prev_track_ext(BTS2S_BD_ADDR *bd_addr)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    uint8_t conn_idx = CFG_MAX_HID_CONN_NUM;
+
+    if (!bt_hid_check_connection_by_addr(bd_addr, &conn_idx))
+    {
+        return;
+    }
+    bt_hid_consumer_report_back_track(bts2_app_data, conn_idx);
 }
 
 void bt_interface_controller_report_right_arrow(void)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
-    bt_hid_controller_report_right_arrow(bts2_app_data);
-    bt_hid_controller_report_reset(bts2_app_data);
+    LOG_E("deprecated - please use bt_interface_controller_report_right_arrow_ext");
+    bt_interface_controller_report_right_arrow_ext(&bts2_app_data->hid_inst.conn[0].rmt_bd);
+}
+
+void bt_interface_controller_report_right_arrow_ext(BTS2S_BD_ADDR *bd_addr)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    uint8_t conn_idx = CFG_MAX_HID_CONN_NUM;
+
+    if (!bt_hid_check_connection_by_addr(bd_addr, &conn_idx))
+    {
+        return;
+    }
+    bt_hid_controller_report_right_arrow(bts2_app_data, conn_idx);
+    bt_hid_controller_report_reset(bts2_app_data, conn_idx);
 }
 
 void bt_interface_controller_report_left_arrow(void)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
-    bt_hid_controller_report_left_arrow(bts2_app_data);
-    bt_hid_controller_report_reset(bts2_app_data);
+    LOG_E("deprecated - please use bt_interface_controller_report_left_arrow_ext");
+    bt_interface_controller_report_left_arrow_ext(&bts2_app_data->hid_inst.conn[0].rmt_bd);
+}
+
+void bt_interface_controller_report_left_arrow_ext(BTS2S_BD_ADDR *bd_addr)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    uint8_t conn_idx = CFG_MAX_HID_CONN_NUM;
+
+    if (!bt_hid_check_connection_by_addr(bd_addr, &conn_idx))
+    {
+        return;
+    }
+    bt_hid_controller_report_left_arrow(bts2_app_data, conn_idx);
+    bt_hid_controller_report_reset(bts2_app_data, conn_idx);
 }
 
 void bt_interface_controller_report_up_arrow(void)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
-    bt_hid_controller_report_up_arrow(bts2_app_data);
-    bt_hid_controller_report_reset(bts2_app_data);
+    LOG_E("deprecated - please use bt_interface_controller_report_up_arrow_ext");
+    bt_interface_controller_report_up_arrow_ext(&bts2_app_data->hid_inst.conn[0].rmt_bd);
+}
+
+void bt_interface_controller_report_up_arrow_ext(BTS2S_BD_ADDR *bd_addr)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    uint8_t conn_idx = CFG_MAX_HID_CONN_NUM;
+
+    if (!bt_hid_check_connection_by_addr(bd_addr, &conn_idx))
+    {
+        return;
+    }
+    bt_hid_controller_report_up_arrow(bts2_app_data, conn_idx);
+    bt_hid_controller_report_reset(bts2_app_data, conn_idx);
 }
 
 void bt_interface_controller_report_down_arrow(void)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
-    bt_hid_controller_report_down_arrow(bts2_app_data);
-    bt_hid_controller_report_reset(bts2_app_data);
+    LOG_E("deprecated - please use bt_interface_controller_report_down_arrow_ext");
+    bt_interface_controller_report_down_arrow_ext(&bts2_app_data->hid_inst.conn[0].rmt_bd);
+}
+
+void bt_interface_controller_report_down_arrow_ext(BTS2S_BD_ADDR *bd_addr)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    uint8_t conn_idx = CFG_MAX_HID_CONN_NUM;
+
+    if (!bt_hid_check_connection_by_addr(bd_addr, &conn_idx))
+    {
+        return;
+    }
+    bt_hid_controller_report_down_arrow(bts2_app_data, conn_idx);
+    bt_hid_controller_report_reset(bts2_app_data, conn_idx);
 }
 
 void bt_interface_add_hid_descriptor(uint8_t *data, uint8_t len)

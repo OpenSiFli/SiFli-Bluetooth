@@ -3874,16 +3874,44 @@ static void bt_disply_menu_hid(void)
     printf("\n");
 }
 
+int dx;
+int dy;
 static void bt_hdl_menu_hid(bts2_app_stru *bts2_app_data)
 {
     switch (bts2_app_data->input_str[0])
     {
     case 'c':
-        bt_hid_connect_requset(&(bts2_app_data->last_conn_bd));
+    {
+        BTS2S_BD_ADDR bd;
+        int reuslt = 0;
+        uint32_t mac[6];
+        reuslt = sscanf((const char *)bts2_app_data->input_str + 1, "%02X%02X%02X%02X%02X%02X", \
+                        &mac[0], &mac[1], \
+                        &mac[2], &mac[3], \
+                        &mac[4], &mac[5]);
+        bd.lap = (mac[3] << 16) | (mac[4] << 8) | mac[5];
+        bd.uap = (U8)mac[2];
+        bd.nap = (U16)((mac[0] << 8) | mac[1]);
+
+        bt_hid_connect_requset(&bd);
         break;
+    }
     case 'D':
-        bt_hid_disc_2_dev(&(bts2_app_data->last_conn_bd));
+    {
+        BTS2S_BD_ADDR bd;
+        int reuslt = 0;
+        uint32_t mac[6];
+        reuslt = sscanf((const char *)bts2_app_data->input_str + 1, "%02X%02X%02X%02X%02X%02X", \
+                        &mac[0], &mac[1], \
+                        &mac[2], &mac[3], \
+                        &mac[4], &mac[5]);
+        bd.lap = (mac[3] << 16) | (mac[4] << 8) | mac[5];
+        bd.uap = (U8)mac[2];
+        bd.nap = (U16)((mac[0] << 8) | mac[1]);
+
+        bt_hid_disc_2_dev(&bd);
         break;
+    }
     case 'g':
         hid_enb_req(bts2_app_data->phdl, HID_Device);
         break;
@@ -3897,23 +3925,41 @@ static void bt_hdl_menu_hid(bts2_app_stru *bts2_app_data)
     case 'L':
     case 'R':
     case 'O':
-        bt_hid_mouse_test1(bts2_app_data);
+    {
+        U8 idx = bts2_app_data->input_str[1] - '0';
+        bt_hid_mouse_test1(bts2_app_data, idx);
         break;
+    }
     case '2':
-        bt_hid_mouse_test2(bts2_app_data);
+    {
+        U8 idx = bts2_app_data->input_str[1] - '0';
+        bt_hid_mouse_test2(bts2_app_data, idx);
         break;
+    }
     case '3':
-        bt_hid_mouse_test3(bts2_app_data);
+    {
+        U8 idx = bts2_app_data->input_str[1] - '0';
+        bt_hid_mouse_test3(bts2_app_data, idx);
         break;
+    }
     case '4':
-        bt_hid_mouse_test4(bts2_app_data);
+    {
+        U8 idx = bts2_app_data->input_str[1] - '0';
+        bt_hid_mouse_test4(bts2_app_data, idx);
         break;
+    }
     case '5':
-        bt_hid_mouse_test5(bts2_app_data);
+    {
+        U8 idx = bts2_app_data->input_str[1] - '0';
+        bt_hid_mouse_test5(bts2_app_data, idx);
         break;
+    }
     case '6':
-        bt_hid_mouse_test6(bts2_app_data);
+    {
+        U8 idx = bts2_app_data->input_str[1] - '0';
+        bt_hid_mouse_test6(bts2_app_data, idx);
         break;
+    }
     case 'S':
         bt_disply_menu(bts2_app_data);
         break;
@@ -3922,24 +3968,39 @@ static void bt_hdl_menu_hid(bts2_app_stru *bts2_app_data)
         bt_disply_menu(bts2_app_data);
         break;
     case 'm':
-        bt_hid_mouse_test7(bts2_app_data);
+    {
+        U8 idx = bts2_app_data->input_str[1] - '0';
+        bt_hid_mouse_test7(bts2_app_data, idx);
         break;
+    }
     case 'n':
-        bt_hid_mouse_test8(bts2_app_data);
+    {
+        U8 idx = bts2_app_data->input_str[1] - '0';
+        bt_hid_mouse_test8(bts2_app_data, idx);
         break;
+    }
     case '7':
     case '8':
     case '9':
     case '-':
     case '+':
-        bt_hid_mouse_test9(bts2_app_data);
+    {
+        U8 idx = bts2_app_data->input_str[1] - '0';
+        bt_hid_mouse_test9(bts2_app_data, idx);
         break;
+    }
     case 'e':
-        bt_exit_sniff_mode(&bts2_app_data->last_conn_bd);
+    {
+        U8 idx = bts2_app_data->input_str[1] - '0';
+        bt_exit_sniff_mode(&bts2_app_data->hid_inst.conn[idx].rmt_bd);
         break;
+    }
     case 'b':
-        bt_etner_sniff_mode(&bts2_app_data->last_conn_bd, 400, 5);
+    {
+        U8 idx = bts2_app_data->input_str[1] - '0';
+        bt_etner_sniff_mode(&bts2_app_data->hid_inst.conn[idx].rmt_bd, 400, 5);
         break;
+    }
     default:
         break;
     }

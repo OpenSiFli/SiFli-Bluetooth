@@ -30,112 +30,6 @@ extern "C" {
 #define HID_CONTROLLER_REPORT_ID 0x04
 #define HID_SYSTEM_CONTROL_REPORT_ID 0x05
 
-
-typedef struct
-{
-    void *next_struct;
-    U8   *payload;
-    U16  data_len;
-} BTS2S_HID_DESCRIPTOR_LIST;
-
-typedef struct
-{
-    U16 type;
-} BTS2S_HID_RESET;
-
-typedef struct
-{
-    U16 type;
-    U16 tid;
-    U16 local_role;
-} BTS2S_HID_ENB_REQ;
-
-typedef struct
-{
-    U16 type;
-    U16 tid;
-    U16 data_len;
-    U8  *data_ptr;
-    BOOL send_on_interrupt;
-} BTS2S_HID_SEND_REPORT_REQ;
-
-
-typedef struct
-{
-    U16 type;
-    U8  res;
-} BTS2S_HID_ENB_CFM;
-
-typedef struct
-{
-    U16 type;
-    U8  res;
-} BTS2S_HID_DISB_CFM;
-
-
-typedef struct
-{
-    U16 type;
-    BTS2S_BD_ADDR bd;
-    U16          local_psm;
-    U8  res;
-} BTS2S_HID_DISC_IND;
-
-typedef struct
-{
-    U16 type;
-    BTS2S_BD_ADDR bd;
-    U16          local_psm;
-    U8  res;
-} BTS2S_HID_DISC_CFM;
-
-typedef struct
-{
-    U16 type;
-    U8  mode;
-    U16  cid;
-} BTS2S_HID_MODE_CHANGE_IND;
-
-typedef struct
-{
-    U16 type;
-} BTS2S_HID_DISB_REQ;
-
-
-typedef struct
-{
-    U16          type;
-    U16          tid;
-    BTS2S_BD_ADDR bd;
-    U16          rmt_role;
-    U16          local_role;
-} BTS2S_HID_CONN_REQ;
-
-
-typedef struct
-{
-    U16 type;
-} BTS2S_HID_DISC_REQ;
-
-
-typedef struct
-{
-    U16          type;
-    U8           res;
-    BTS2S_BD_ADDR bd;
-    U16          mfs;
-    U16          local_psm;
-} BTS2S_HID_CONN_CFM;
-
-
-typedef struct
-{
-    U16          type;
-    BTS2S_BD_ADDR bd;
-    U16          local_psm;
-} BTS2S_HID_CONN_IND;
-
-
 typedef enum BTS2E_HID_MSG_TAG
 {
     BTS2MD_HID_ENB_REQ = BTS2MD_START,
@@ -148,6 +42,13 @@ typedef enum BTS2E_HID_MSG_TAG
     BTS2MD_HID_DATA_RSP,
     BTS2MD_HID_RESET_REQ,
     BTS2MD_HID_HANDSHAKE_RSP,
+
+    BTS2MD_HID_DATA_REQ_EXT,
+    BTS2MD_HID_DISC_REQ_EXT,
+    BTS2MD_HID_RESET_REQ_EXT,
+
+    //New messages must be added before this
+    BTS2M_HID_APP_MAX_MSG_NUM,
 
     BTS2MU_HID_CONN_IND = BTS2MU_START,
     BTS2MU_HID_DISC_IND,
@@ -163,9 +64,10 @@ typedef enum BTS2E_HID_MSG_TAG
     BTS2MU_HID_SET_PROTOCOL_IND,
     BTS2MD_HID_DATA_IND,
     BTS2MD_HID_UNKNOWN,
+
+    //New messages must be added before this
+    BTS2M_HID_MAX_MSG_NUM,
 } HIDMSG;
-
-
 
 typedef enum
 {
@@ -213,17 +115,125 @@ typedef enum
 
 typedef struct
 {
+    void *next_struct;
+    U8   *payload;
+    U16  data_len;
+} BTS2S_HID_DESCRIPTOR_LIST;
+
+typedef struct
+{
+    U16 type;
+} BTS2S_HID_RESET;
+
+typedef struct
+{
+    U16 type;
+    U16 tid;
+    U16 local_role;
+} BTS2S_HID_ENB_REQ;
+
+typedef struct
+{
+    U16 type;
+    U16 tid;
+    U16 data_len;
+    U8  *data_ptr;
+    BOOL send_on_interrupt;
+    BTS2S_BD_ADDR *bd;
+} BTS2S_HID_SEND_REPORT_REQ;
+
+
+typedef struct
+{
+    U16 type;
+    U8  res;
+} BTS2S_HID_ENB_CFM;
+
+typedef struct
+{
+    U16 type;
+    U8  res;
+} BTS2S_HID_DISB_CFM;
+
+
+typedef struct
+{
+    U16 type;
+    BTS2S_BD_ADDR bd;
+    U16          local_psm;
+    U8  res;
+} BTS2S_HID_DISC_IND;
+
+typedef struct
+{
+    U16 type;
+    BTS2S_BD_ADDR bd;
+    U16          local_psm;
+    U8  res;
+} BTS2S_HID_DISC_CFM;
+
+typedef struct
+{
+    U16 type;
+    U8  mode;
+    U16  cid;
+    BTS2S_BD_ADDR *bd;
+} BTS2S_HID_MODE_CHANGE_IND;
+
+typedef struct
+{
+    U16 type;
+} BTS2S_HID_DISB_REQ;
+
+
+typedef struct
+{
+    U16          type;
+    U16          tid;
+    BTS2S_BD_ADDR bd;
+    U16          rmt_role;
+    U16          local_role;
+} BTS2S_HID_CONN_REQ;
+
+
+typedef struct
+{
+    U16 type;
+    BTS2S_BD_ADDR *bd;
+} BTS2S_HID_DISC_REQ;
+
+
+typedef struct
+{
+    U16          type;
+    U8           res;
+    BTS2S_BD_ADDR bd;
+    U16          mfs;
+    U16          local_psm;
+} BTS2S_HID_CONN_CFM;
+
+
+typedef struct
+{
+    U16          type;
+    BTS2S_BD_ADDR bd;
+    U16          local_psm;
+} BTS2S_HID_CONN_IND;
+
+typedef struct
+{
     U16 type;
     U8 param;
     U8 data_len;
     U8 *data;
+    BTS2S_BD_ADDR *bd;
 } BTS2S_HID_CMD_IND;
 
 typedef struct
 {
     U16 type;
+    BTS2S_BD_ADDR *bd;
 } BTS2S_HID_RESET_REQ;
-
 
 typedef BTS2S_HID_CMD_IND BTS2S_HID_CONTROL_IND;
 typedef BTS2S_HID_CMD_IND BTS2S_HID_GET_REPORT_IND;
@@ -231,7 +241,6 @@ typedef BTS2S_HID_CMD_IND BTS2S_HID_SET_REPORT_IND;
 typedef BTS2S_HID_CMD_IND BTS2S_GET_PROTOCOL_IND;
 typedef BTS2S_HID_CMD_IND BTS2S_SET_PROTOCOL_IND;
 typedef BTS2S_HID_CMD_IND BTS2S_HID_DATA_IND;
-
 
 
 /*
@@ -283,6 +292,24 @@ void hid_send_report_req(U16 tid, U16 data_len, U8 *data, BOOL send_on_interrupt
 
 /*
 Description:
+    upper layer send hid report
+Input:
+    U16 tid: task id.
+    BTS2S_BD_ADDR bd: address of device to send report.
+    data_len:data length
+    data:report data
+    send_on_interrupt_channel:send at interrupt channel
+Time:2026/04/01 16:34:53
+
+Author:zhengyu
+
+Modify:
+*/
+void hid_send_report_req_ext(U16 tid, BTS2S_BD_ADDR *bd, U16 data_len, U8 *data, BOOL send_on_interrupt_channel);
+
+
+/*
+Description:
     This signal is used to disable a service and make it accessible from
     a remote device.
 Input:
@@ -330,10 +357,47 @@ Modify:
 */
 void hid_disc_req(void);
 
+
+/*
+Description:
+    upper layer disconnect hid
+Input:
+    BTS2S_BD_ADDR bd: address of device to disconnect to.
+Time:2026/04/01 16:33:46
+
+Author:zhengyu
+
+Modify:
+*/
+void hid_disc_req_ext(BTS2S_BD_ADDR *bd);
+
+
+/*
+Description:
+    reset hid state when hid disconnect
+Input:
+    NULL
+Time:2024/01/19 20:49:23
+
+Author:zhengyu
+
+Modify:
+*/
 void hid_reset_req(void);
 
 
+/*
+Description:
+    reset hid state when hid disconnect
+Input:
+    BTS2S_BD_ADDR bd: address of device to reset.
+Time:2026/04/01 16:37:44
 
+Author:zhengyu
+
+Modify:
+*/
+void hid_reset_req_ext(BTS2S_BD_ADDR *bd);
 
 #ifdef __cplusplus
 }

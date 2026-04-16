@@ -75,76 +75,520 @@ struct hid_frame_t
     U8 data_len;
 };
 
+/*
+Description:
+    handle the message from hid stack
+Input:
+    bts2_app_data:global app bt instance
+Time:2026/04/20 09:24:42
+
+Author:zhengyu
+
+Modify:
+*/
 extern void bt_hid_msg_handler(bts2_app_stru *bts2_app_data);
+
+/*
+Description:
+    hid profile init
+Input:
+    global app bt instance
+Time:2026/04/20 14:10:33
+
+Author:zhengyu
+
+Modify:
+*/
 void bt_hid_init(bts2_app_stru *bts2_app_data);
+
+/*
+Description:
+    open the hid
+Input:
+    null
+Time:2026/04/20 10:15:42
+
+Author:zhengyu
+
+Modify:
+*/
 void bt_hid_open(void);
+
+/*
+Description:
+    Combined hid descriptor
+Input:
+
+Time:2026/04/08 17:29:17
+
+Author:zhengyu
+
+Modify:
+*/
 void bt_hid_cmpose_hid_descriptor(void);
+
+/*
+Description:
+    Add new descriptor
+Input:
+    data:pointer of descriptor
+    len:length of descriptor
+Time:2026/04/08 17:30:02
+
+Author:zhengyu
+
+Modify:
+*/
 void bt_hid_add_descriptor(const U8 *data, U8 len);
+
+/*
+Description:
+    close the hid
+Input:
+    null
+Time:2026/04/20 10:15:42
+
+Author:zhengyu
+
+Modify:
+*/
 void bt_hid_close(void);
+
+/*
+Description:
+    connect remote device hid profile
+Input:
+    global app bt instance
+Time:2026/04/20 14:12:35
+
+Author:zhengyu
+
+Modify:
+*/
 void bt_hid_connect_requset(BTS2S_BD_ADDR *bd);
+
+/*
+Description:
+    disconnect remote device hid profile
+Input:
+    global app bt instance
+Time:2026/04/20 14:13:53
+
+Author:zhengyu
+
+Modify:
+*/
 void bt_hid_disc_2_dev(BTS2S_BD_ADDR *bd_addr);
 
-void bt_hid_mouse_reset(bts2_app_stru *bts2_app_data);
-void bt_hid_mouse_reset_at_middle(bts2_app_stru *bts2_app_data);
-void bt_hid_timeout_handler_reset_at_middle_ios(void *parameter);
-void bt_hid_timeout_handler_reset_at_middle_ios1(void *parameter);
-static const U16 bt_hid_mouse_get_drag_speed(void);
-void bt_hid_mouse_move(bts2_app_stru *bts2_app_data, S16 dx, S16 dy);
-void bt_hid_mouse_move_without_reset(bts2_app_stru *bts2_app_data, S16 dx, S16 dy);
-void bt_hid_mouse_left_click(bts2_app_stru *bts2_app_data);
-void bt_hid_mouse_right_click(bts2_app_stru *bts2_app_data);
-void bt_hid_mouse_middle_button_click(bts2_app_stru *bts2_app_data);
-void bt_hid_mouse_left_double_click(bts2_app_stru *bts2_app_data);
+/*
+Description:
+    hid device control the mobile drag down once
+Input:
+    bts2_app_data:global app bt instance
+    dx:X-direction offset
+    dy:Y-direction offset
+Time:2026/04/20 15:07:58
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_mouse_move(bts2_app_stru *bts2_app_data, S16 dx, S16 dy, U8 conn_idx);
+
+/*
+Description:
+    hid device control the mobile click
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/2015:07:58
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_mouse_left_click(bts2_app_stru *bts2_app_data, U8 conn_idx);
+
+/*
+Description:
+    hid device control the mobile bakeup
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/20 15:07:58
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_mouse_right_click(bts2_app_stru *bts2_app_data, U8 conn_idx);
+
+/*
+Description:
+    hid device control the mobile bakeup home
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/20 15:07:58
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_mouse_middle_button_click(bts2_app_stru *bts2_app_data, U8 conn_idx);
+
+/*
+Description:
+    hid device control the mobile left double click
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/20 15:07:58
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_mouse_left_double_click(bts2_app_stru *bts2_app_data, U8 conn_idx);
+
+/*
+Description:
+    hid device control the mobile left double click
+Input:
+    parameter:bd address pointer
+Time:2026/04/20 15:07:58
+
+Author:zhengyu
+
+Modify:
+*/
 void bt_hid_timeout_handler(void *parameter);
-void bt_hid_mouse_right_double_click(bts2_app_stru *bts2_app_data);
-void bt_hid_mouse_drag_page(bts2_app_stru *bts2_app_data, U8 buttons, S16 dx, S16 dy, S8 wheel_offset);
-// void bt_hid_reset_num_count_drag_down(void);
-void bt_hid_mouse_drag_page_up(bts2_app_stru *bts2_app_data);
-void bt_hid_mouse_drag_page_down(bts2_app_stru *bts2_app_data);
-void bt_hid_timeout_handler_drag_up(void *parameter);
-void bt_hid_timeout_handler_drag_down(void *parameter);
-void bt_hid_timeout_handler_reset_at_middle1(void *parameter);
-void bt_hid_timeout_handler_reset_at_middle2(void *parameter);
-void bt_hid_timeout_handler_reset_report(void *parameter);
-BOOL bt_hid_check_is_ios_device(void);
-void bt_hid_set_ios_device(U8 is_ios);
-void bt_hid_consumer_report_reset(bts2_app_stru *bts2_app_data);
-void bt_hid_consumer_report_power_onoff(bts2_app_stru *bts2_app_data);
-void bt_hid_consumer_report_play_status(bts2_app_stru *bts2_app_data);
-void bt_hid_consumer_report_next_track(bts2_app_stru *bts2_app_data);
-void bt_hid_consumer_report_back_track(bts2_app_stru *bts2_app_data);
-void bt_hid_consumer_report_volume_down(bts2_app_stru *bts2_app_data);
-void bt_hid_consumer_report_volume_up(bts2_app_stru *bts2_app_data);
-void bt_hid_consumer_report_forward(bts2_app_stru *bts2_app_data);
-void bt_hid_consumer_report_go_back(bts2_app_stru *bts2_app_data);
-void bt_hid_controller_report_right_arrow(bts2_app_stru *bts2_app_data);
-void bt_hid_controller_report_left_arrow(bts2_app_stru *bts2_app_data);
-void bt_hid_controller_report_up_arrow(bts2_app_stru *bts2_app_data);
-void bt_hid_controller_report_down_arrow(bts2_app_stru *bts2_app_data);
-void bt_hid_controller_report_reset(bts2_app_stru *bts2_app_data);
 
+/*
+Description:
+    hid device control the mobile right double click
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/20 09:23:13
 
-void bt_hid_receive_contro_handle(bts2_app_stru *bts2_app_data);
-void hid_send_handshake(bts2_app_stru *bts2_app_data, hid_handshake_param_type_enum_t code);
-void hid_receive_get_report_handle(bts2_app_stru *bts2_app_data);
-void hid_receive_set_report_handle(bts2_app_stru *bts2_app_data);
-void hid_receive_get_protocol_handle(bts2_app_stru *bts2_app_data);
-void hid_receive_set_protocol_handle(bts2_app_stru *bts2_app_data);
-void hid_receive_interrupt_report(bts2_app_stru *bts2_app_data);
-void hid_send_response_report(bts2_app_stru *bts2_app_data, hid_report_type_enum_t report_type, struct hid_report_data_t *report_data, BOOL has_report_id);
+Author:zhengyu
 
+Modify:
+*/
+void bt_hid_mouse_right_double_click(bts2_app_stru *bts2_app_data, U8 conn_idx);
 
-void bt_hid_mouse_test1(bts2_app_stru *bts2_app_data);
-void bt_hid_mouse_test2(bts2_app_stru *bts2_app_data);
-void bt_hid_mouse_test3(bts2_app_stru *bts2_app_data);
-void bt_hid_mouse_test4(bts2_app_stru *bts2_app_data);
-void bt_hid_mouse_test5(bts2_app_stru *bts2_app_data);
-void bt_hid_mouse_test6(bts2_app_stru *bts2_app_data);
-void bt_hid_mouse_test7(bts2_app_stru *bts2_app_data);
-void bt_hid_mouse_test8(bts2_app_stru *bts2_app_data);
-void bt_hid_mouse_test9(bts2_app_stru *bts2_app_data);
+/*
+Description:
+    hid device control the mobile drag once
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+    dx:X-direction move
+    dy:Y-direction move
+    wheel_offset:mouse wheel movement
+Time:2026/04/20 15:07:58
 
+Author:zhengyu
 
+Modify:
+*/
+void bt_hid_mouse_drag_page(bts2_app_stru *bts2_app_data, U8 conn_idx, U8 buttons, S16 dx, S16 dy, S8 wheel_offset);
+
+/*
+Description:
+    hid device control the mobile drag up once
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/20 14:07:00
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_mouse_drag_page_up(bts2_app_stru *bts2_app_data, U8 conn_idx);
+
+/*
+Description:
+    hid device control the mobile drag down once
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/20 14:07:00
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_mouse_drag_page_down(bts2_app_stru *bts2_app_data, U8 conn_idx);
+
+/*
+Description:
+    Set whether the peer device is an ios device
+Input:
+    bd_addr:bd address pointer
+    is_ios:whether the peer device is an ios device
+Time:2026/04/14 13:36:02
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_set_ios_device(BTS2S_BD_ADDR *bd_addr, U8 is_ios);
+
+/*
+Description:
+    send sos call report
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_consumer_report_power_onoff(bts2_app_stru *bts2_app_data, U8 conn_idx);
+
+/*
+Description:
+    send play status change report
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_consumer_report_play_status(bts2_app_stru *bts2_app_data, U8 conn_idx);
+
+/*
+Description:
+    send next song change report
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_consumer_report_next_track(bts2_app_stru *bts2_app_data, U8 conn_idx);
+
+/*
+Description:
+    send previous song change report
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_consumer_report_back_track(bts2_app_stru *bts2_app_data, U8 conn_idx);
+
+/*
+Description:
+    send volume down report
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_consumer_report_volume_down(bts2_app_stru *bts2_app_data, U8 conn_idx);
+
+/*
+Description:
+    send volume up report
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_consumer_report_volume_up(bts2_app_stru *bts2_app_data, U8 conn_idx);
+
+/*
+Description:
+    send forward report
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_consumer_report_forward(bts2_app_stru *bts2_app_data, U8 conn_idx);
+
+/*
+Description:
+    send go back report
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_consumer_report_go_back(bts2_app_stru *bts2_app_data, U8 conn_idx);
+
+/*
+Description:
+    send right control key report
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_controller_report_right_arrow(bts2_app_stru *bts2_app_data, U8 conn_idx);
+
+/*
+Description:
+    send left control key report
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_controller_report_left_arrow(bts2_app_stru *bts2_app_data, U8 conn_idx);
+
+/*
+Description:
+    send up control key report
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_controller_report_up_arrow(bts2_app_stru *bts2_app_data, U8 conn_idx);
+
+/*
+Description:
+    send down control key report
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_controller_report_down_arrow(bts2_app_stru *bts2_app_data, U8 conn_idx);
+
+/*
+Description:
+    send controller reset report
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+Time:2026/04/14 13:43:29
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_controller_report_reset(bts2_app_stru *bts2_app_data, U8 conn_idx);
+
+/*
+Description:
+    hid device send handshake packet to hid host
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+    code:results code
+Time:2026/04/20 20:09:03
+
+Author:zhengyu
+
+Modify:
+*/
+void hid_send_handshake(bts2_app_stru *bts2_app_data, U8 conn_idx, hid_handshake_param_type_enum_t code);
+
+/*
+Description:
+    test hid function
+Input:
+    global app bt instance
+Time:2026/04/20 15:51:12
+
+Author:zhengyu
+
+Modify:
+*/
+void bt_hid_mouse_test1(bts2_app_stru *bts2_app_data, U8 con_idx);
+
+void bt_hid_mouse_test2(bts2_app_stru *bts2_app_data, U8 con_idx);
+
+void bt_hid_mouse_test3(bts2_app_stru *bts2_app_data, U8 con_idx);
+
+void bt_hid_mouse_test4(bts2_app_stru *bts2_app_data, U8 con_idx);
+
+void bt_hid_mouse_test5(bts2_app_stru *bts2_app_data, U8 con_idx);
+
+void bt_hid_mouse_test6(bts2_app_stru *bts2_app_data, U8 con_idx);
+
+void bt_hid_mouse_test7(bts2_app_stru *bts2_app_data, U8 con_idx);
+
+void bt_hid_mouse_test8(bts2_app_stru *bts2_app_data, U8 con_idx);
+
+void bt_hid_mouse_test9(bts2_app_stru *bts2_app_data, U8 con_idx);
+
+/*
+Description:
+    check connection exist by addr
+Input:
+    bd:bd address pointer
+    idx:connection index
+Time:2026/04/14 14:00:42
+
+Author:zhengyu
+
+Modify:
+*/
+BOOL bt_hid_check_connection_by_addr(BTS2S_BD_ADDR *bd, U8 *idx);
+
+/*
+Description:
+    get available connection
+Input:
+
+Time:2026/04/14 14:02:17
+
+Author:zhengyu
+
+Modify:
+*/
+U8 bt_hid_get_available_connection(void);
 
 #endif
 
