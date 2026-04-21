@@ -14,6 +14,7 @@ extern "C" {
 #define BT_NOTIFY_PBAP_MAX_VCARD_ENTRY_HANDLE_SIZE    (42)
 #define BT_NOTIFY_PBAP_MAX_VCARD_CONTACT_NAME_SIZE    (80)
 #define BT_NOTIFY_MAX_FRIENDLY_NAME_LEN               (60)
+#define BT_NOTIFY_PBAP_MAX_VCARD_SIZE                 (20)
 
 /**
  * @defgroup BT_interface_type BT interface type define
@@ -371,6 +372,13 @@ typedef enum
     BT_NOTIFY_PBAP_VCARD_LIST_ITEM_IND,
     ///  PBAP profile vCard list complete event
     BT_NOTIFY_PBAP_VCARD_LIST_CMPL,
+    ///  PBAP profile pull vCard complete event
+    BT_NOTIFY_PBAP_PULL_VCARD_CMPL,
+    ///  PBAP profile pull phone book complete event
+    BT_NOTIFY_PBAP_PULL_PB_CMPL,
+    ///  PBAP profile set path cfm
+    BT_NOTIFY_PBAP_SET_PATH_CFM,
+    BT_NOTIFY_PBAP_VCARD_ITEM_IND,
 } bt_notify_pbap_event_id_t;
 
 typedef enum
@@ -696,6 +704,23 @@ typedef struct
     char vcard_name[BT_NOTIFY_PBAP_MAX_VCARD_CONTACT_NAME_SIZE + 1];
 } bt_notify_pbap_vcard_listing_item_t;
 
+
+///  PABP vcard name result
+typedef struct
+{
+    ///  vcard name length
+    uint8_t vcard_name_len;
+    /// vcard name
+    char vcard_name[BT_NOTIFY_PBAP_MAX_VCARD_SIZE];
+    ///  vcard name length
+    uint8_t vcard_number_len;
+    /// vcard name
+    char vcard_number[BT_NOTIFY_PBAP_MAX_VCARD_SIZE];
+    ///  vcard name length
+    uint8_t vcard_time_len;
+    /// vcard name
+    char vcard_time[BT_NOTIFY_PBAP_MAX_VCARD_SIZE];
+} bt_notify_pbap_vcard_item_t;
 
 typedef union
 {

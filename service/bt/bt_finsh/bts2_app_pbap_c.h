@@ -66,6 +66,12 @@ typedef struct
     U8 length;
 } vcard_name;
 
+typedef struct
+{
+    char *time;
+    U8 length;
+} vcard_time;
+
 
 typedef struct
 {
@@ -79,6 +85,7 @@ typedef struct
 typedef struct
 {
     vcard_name v_name;
+    vcard_time v_time;
     vcard_tel_list *v_tel;
 } BT_PBAP_VCARD;
 

@@ -213,37 +213,66 @@ static void bt_pbap_clt_dump_vcard(void)
 {
     LOG_D("*********************************************\n");
     LOG_D("pbap_vcard[%d]:\n", pring_count++);
-    LOG_D("[name]  ");
-    char *name = bmalloc(local_inst->pbab_vcard->v_name.length + 1);
-    if (name)
+
+    bt_notify_pbap_vcard_item_t vcard_item;
+
+    if (local_inst->pbab_vcard->v_name.length > BT_NOTIFY_PBAP_MAX_VCARD_SIZE)
     {
-        memcpy(name, local_inst->pbab_vcard->v_name.name, local_inst->pbab_vcard->v_name.length);
-        name[local_inst->pbab_vcard->v_name.length] = 0;
-        LOG_D("%s", name);
-        LOG_D("\n");
-        bfree(name);
+        memcpy(&vcard_item.vcard_name, local_inst->pbab_vcard->v_name.name, BT_NOTIFY_PBAP_MAX_VCARD_SIZE - 1);
+        vcard_item.vcard_name[BT_NOTIFY_PBAP_MAX_VCARD_SIZE - 1] = 0;
+        vcard_item.vcard_name_len = BT_NOTIFY_PBAP_MAX_VCARD_SIZE;
     }
     else
-        LOG_D("out of memory");
+    {
+        memcpy(&vcard_item.vcard_name, local_inst->pbab_vcard->v_name.name, local_inst->pbab_vcard->v_name.length);
+        vcard_item.vcard_name[local_inst->pbab_vcard->v_name.length] = 0;
+        vcard_item.vcard_name_len = local_inst->pbab_vcard->v_name.length;
+    }
+
+    if (local_inst->pbab_vcard->v_time.length > BT_NOTIFY_PBAP_MAX_VCARD_SIZE)
+    {
+        memcpy(&vcard_item.vcard_time, local_inst->pbab_vcard->v_time.time, BT_NOTIFY_PBAP_MAX_VCARD_SIZE - 1);
+        vcard_item.vcard_time[BT_NOTIFY_PBAP_MAX_VCARD_SIZE - 1] = 0;
+        vcard_item.vcard_time_len = BT_NOTIFY_PBAP_MAX_VCARD_SIZE;
+    }
+    else
+    {
+        memcpy(&vcard_item.vcard_time, local_inst->pbab_vcard->v_time.time, local_inst->pbab_vcard->v_time.length);
+        vcard_item.vcard_time[local_inst->pbab_vcard->v_time.length] = 0;
+        vcard_item.vcard_time_len = local_inst->pbab_vcard->v_time.length;
+    }
+
+    LOG_D("[name]  ");
+    LOG_D("%s", vcard_item.vcard_name);
+    LOG_D("\n");
+    LOG_D("[time]  ");
+    LOG_D("%s", vcard_item.vcard_time);
+    LOG_D("\n");
 
     vcard_tel_list *tmp = local_inst->pbab_vcard->v_tel;
+    if (tmp && (tmp->length > BT_NOTIFY_PBAP_MAX_VCARD_SIZE))
+    {
+        memcpy(&vcard_item.vcard_number, local_inst->pbab_vcard->v_time.time, BT_NOTIFY_PBAP_MAX_VCARD_SIZE - 1);
+        vcard_item.vcard_number[BT_NOTIFY_PBAP_MAX_VCARD_SIZE - 1] = 0;
+        vcard_item.vcard_number_len = BT_NOTIFY_PBAP_MAX_VCARD_SIZE;
+    }
+    else
+    {
+        memcpy(&vcard_item.vcard_number, tmp->tel, tmp->length);
+        vcard_item.vcard_number[tmp->length] = 0;
+        vcard_item.vcard_number_len = tmp->length;
+    }
 
     while (tmp)
     {
         LOG_D("[tel]  ");
-        char *name_tel = bmalloc(tmp->length + 1);
-        if (name_tel)
-        {
-            memcpy(name_tel, tmp->tel, tmp->length);
-            name_tel[tmp->length] = 0;
-            tmp = tmp->next_struct;
-            LOG_D("%s", name_tel);
-            LOG_D("\n");
-            bfree(name_tel);
-        }
-        else
-            LOG_D("out of memory");
+        LOG_D("%d", tmp->length);
+        LOG_D("%s", tmp->tel);
+        LOG_D("\n");
+        tmp = tmp->next_struct;
     }
+    bt_interface_bt_event_notify(BT_NOTIFY_PBAP, BT_NOTIFY_PBAP_VCARD_ITEM_IND,
+                                 &vcard_item, sizeof(bt_notify_pbap_vcard_item_t));
     LOG_D("*********************************************\n");
 }
 
@@ -329,6 +358,10 @@ void PropHandler(void *userData, const CARD_Char *propName, const CARD_Char **pa
         {
             type = BT_PBAP_CLT_PHOTO;
         }
+        else if (bstricmp((char *)propName, "X-IRMC-CALL-DATETIME") == 0)
+        {
+            type = BT_PBAP_CLT_TZ;
+        }
     }
 }
 
@@ -365,12 +398,20 @@ void DataHandler(void *userData, const CARD_Char *data, int len)
             if (local_inst->is_valid_vcard)
             {
                 bt_pbap_clt_dump_vcard();
+                LOG_D("local_inst->is_valid_vcard %d\n", local_inst->is_valid_vcard);
                 //todo 上报solution
             }
             else
             {
                 LOG_E("error,no valid vcard!!!!!!\n");
             }
+
+            if (local_inst->pbab_vcard->v_time.time)
+            {
+                bfree(local_inst->pbab_vcard->v_time.time);
+                local_inst->pbab_vcard->v_time.time = NULL;
+            }
+
             bfree(local_inst->pbab_vcard->v_name.name);
             local_inst->pbab_vcard->v_name.name = NULL;
 
@@ -455,6 +496,7 @@ void DataHandler(void *userData, const CARD_Char *data, int len)
                         }
                     }
                 }
+                type = BT_PBAP_CLT_VCARD_IDLE;
             }
             else if (type == BT_PBAP_CLT_FN)
             {
@@ -473,6 +515,27 @@ void DataHandler(void *userData, const CARD_Char *data, int len)
                     if (local_inst->pbab_vcard->v_name.name)
                         memcpy(local_inst->pbab_vcard->v_name.name, data, len);
                 }
+                type = BT_PBAP_CLT_VCARD_IDLE;
+            }
+            else if (type == BT_PBAP_CLT_TZ)
+            {
+                // rt_kprintf("vcard_end_prop %s %d\n", data, len);
+                if (local_inst->is_valid_vcard)
+                {
+                    if (local_inst->pbab_vcard->v_time.time)
+                    {
+                        bfree(local_inst->pbab_vcard->v_time.time);
+                        local_inst->pbab_vcard->v_time.time = NULL;
+                        local_inst->pbab_vcard->v_time.length = 0;
+                    }
+
+                    local_inst->pbab_vcard->v_time.length = len;
+                    local_inst->pbab_vcard->v_time.time = bmalloc(len);
+                    BT_OOM_ASSERT(local_inst->pbab_vcard->v_time.time);
+                    if (local_inst->pbab_vcard->v_time.time)
+                        memcpy(local_inst->pbab_vcard->v_time.time, data, len);
+                }
+                type = BT_PBAP_CLT_VCARD_IDLE;
             }
         }
     }
@@ -1200,6 +1263,8 @@ void bt_pbap_clt_hdl_msg(bts2_app_stru *bts2_app_data)
         {
             USER_TRACE(">> pbap set phonebook failed\n");
         }
+        bt_interface_bt_event_notify(BT_NOTIFY_PBAP, BT_NOTIFY_PBAP_SET_PATH_CFM,
+                                     &msg->res, sizeof(uint8_t));
         break;
     }
     case BTS2MU_PBAP_CLT_PULL_PB_BEGIN_IND:
@@ -1255,6 +1320,8 @@ void bt_pbap_clt_hdl_msg(bts2_app_stru *bts2_app_data)
         }
         count = 0;
         pring_count = 1;
+        bt_interface_bt_event_notify(BT_NOTIFY_PBAP, BT_NOTIFY_PBAP_PULL_PB_CMPL,
+                                     &msg->res, sizeof(uint8_t));
         break;
     }
     case BTS2MU_PBAP_CLT_PULL_VCARD_BEGIN_IND:
@@ -1303,6 +1370,8 @@ void bt_pbap_clt_hdl_msg(bts2_app_stru *bts2_app_data)
             fclose(local_inst->cur_file_hdl);
             local_inst->cur_file_hdl = NULL;
         }
+        bt_interface_bt_event_notify(BT_NOTIFY_PBAP, BT_NOTIFY_PBAP_PULL_VCARD_CMPL,
+                                     &msg->res, sizeof(uint8_t));
         break;
     }
     case BTS2MU_PBAP_CLT_PULL_VCARD_LIST_BEGIN_IND:
