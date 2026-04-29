@@ -132,6 +132,10 @@ enum app_nvds_tag
 #ifdef PKG_USING_FMNA
     #define SIFLI_NVDS_TYPE_FIND_MY 6
 #endif
+#ifdef MESH_INFO_SAVE_TO_BLE_NV
+    #define SIFLI_NVDS_TYPE_MESH 7
+#endif
+
 typedef uint8_t sifli_nvds_type_t;
 
 
@@ -141,6 +145,10 @@ typedef uint8_t sifli_nvds_type_t;
 #define SIFLI_NVDS_KEY_LEN_BT_CM 512
 #ifdef PKG_USING_FMNA
     #define SIFLI_NVDS_KEY_LEN_FIND_MY 2048
+#endif
+
+#ifdef MESH_INFO_SAVE_TO_BLE_NV
+    #define SIFLI_NVDS_KEY_LEN_MESH 2048
 #endif
 
 
@@ -266,6 +274,11 @@ uint8_t sifli_nvds_flash_adaptor_write(const char *key, const void *value_buf, s
 size_t sifli_nvds_flash_adaptor_read(const char *key, void *value_buf, size_t buf_len);
 
 
+#ifdef CONFIG_BT_MESH
+    // FlashDB access API for Mesh settings iteration
+    typedef struct fdb_kvdb *fdb_kvdb_t;  // Forward declaration
+    fdb_kvdb_t sifli_nvds_get_ble_kvdb(void);
+#endif
 
 
 #endif // _BF0_SIBLES_NVDS_H

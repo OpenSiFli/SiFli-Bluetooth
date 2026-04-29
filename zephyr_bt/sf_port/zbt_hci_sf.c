@@ -141,7 +141,27 @@ struct mbox_env_tag
     rt_timer_t  tx_timer;
     uint8_t is_init;
 };
+#ifdef DISABLE_SF_BT_LIB
+// For ZBT mode, provide mbox_env definition to avoid dependency on bluetooth_config.c
+struct mbox_env_tag mbox_env =
+{
+    .ipc_port = 0,  // ipc_queue_handle_t is int32_t, not pointer
+    .tx.callback = NULL,
+    .tx.dummy = NULL,
+    .tx.buf = NULL,
+    .tx.data_size = 0,
+    .tx.offset = 0,
+    .rx.callback = NULL,
+    .rx.dummy = NULL,
+    .rx.buf = NULL,
+    .rx.data_size = 0,
+    .rx.offset = 0,
+    .tx_timer = NULL,
+    .is_init = 0,
+};
+#else
 extern struct mbox_env_tag mbox_env;
+#endif
 static inline void process_tx(const struct device *dev);
 static inline void process_rx(const struct device *dev);
 static void log_hci_to_console(struct net_buf *buf);
@@ -1013,7 +1033,7 @@ __ROM_USED int zbt_config_mailbox(void)
     return 0;
 }
 
-#ifdef BSP_BLE_SIBLES
+#if defined(BSP_BLE_SIBLES) && !defined(DISABLE_SF_BT_LIB)
 #include "bt_config.h"
 
 #ifndef CFG_MAX_SCO_CONN_NUM

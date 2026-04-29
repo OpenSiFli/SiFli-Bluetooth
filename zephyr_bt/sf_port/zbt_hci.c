@@ -448,7 +448,11 @@ int bt_hci_cmd_send_sync(uint16_t opcode, struct net_buf *buf,
     /* Since the commands are now processed in the syswq, we cannot suspend
      * and wait. We have to send the command from the current context.
      */
+#if defined(CONFIG_BT_RECV_WORKQ_SYS)
     if (k_current_get() == k_sys_work_q_get()->work_thread)
+#elif defined(CONFIG_BT_RECV_WORKQ_BT)
+    if (k_current_get() == bt_txworkq.work_thread)
+#endif
     {
         /* drain the command queue until we get to send the command of interest. */
         struct net_buf *cmd = NULL;
@@ -4675,7 +4679,7 @@ void bt_finalize_init(void)
 {
     atomic_set_bit(bt_dev.flags, BT_DEV_READY);
 
-#ifdef BSP_BLE_SIBLES
+#if defined(BSP_BLE_SIBLES) && !defined(DISABLE_SF_BT_LIB)
     extern void bts2_main(void);
     bts2_main();
 #endif
@@ -4826,8 +4830,10 @@ int bt_enable(bt_ready_cb_t cb)
 {
     int err;
 
+#ifndef DISABLE_SF_BT_LIB
     _rwip_init_handler = rwip_init_dummy_handler;
     bluetooth_init();
+#endif
     ble_power_on();
 
 #if defined(BSP_USING_DATA_SVC) && !defined(DATA_SVC_MBOX_THREAD_DISABLED)

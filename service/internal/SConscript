@@ -5,8 +5,13 @@ src = []
 CPPPATH = [cwd]
 
 
-if not GetDepend('SOC_SF32LB55X') or not GetDepend('BF0_HCPU'):
-    src = Glob('*.c')
+if GetDepend('DISABLE_SF_BT_LIB'):
+    # For ZBT mode, skip all internal BLE stack files
+    # mbox_env is defined in zbt_hci_sf.c instead
+    src = []
+else:
+    if not GetDepend('SOC_SF32LB55X') or not GetDepend('BF0_HCPU'):
+        src = Glob('*.c')
 
 group = DefineGroup('bt', src, depend = ['BLUETOOTH'],CPPPATH = CPPPATH)
 

@@ -8,16 +8,19 @@ src = Glob('*.c')
 objs =[]
 
 if GetDepend('BF0_HCPU'):
-    if rtconfig.PLATFORM=='gcc':
-        if GetDepend('SPP_TRAN_ONLY'):
-            lib=['lib_bt_gcc_tran_only']
+    if GetDepend('ZBT') and GetDepend('DISABLE_SF_BT_LIB'):
+        lib=[]
+    elif GetDepend('ZBT') or not GetDepend('ZBT'):
+        if rtconfig.PLATFORM=='gcc':
+            if GetDepend('SPP_TRAN_ONLY'):
+                lib=['lib_bt_gcc_tran_only']
+            else:
+                lib=['lib_bt_gcc']
         else:
-            lib=['lib_bt_gcc']
-    else:
-        if GetDepend('SPP_TRAN_ONLY'):
-            lib=['lib_bt_rvds_tran_only']
-        else:
-            lib=['lib_bt_rvds']
+            if GetDepend('SPP_TRAN_ONLY'):
+                lib=['lib_bt_rvds_tran_only']
+            else:
+                lib=['lib_bt_rvds']
 elif GetDepend('BSP_USING_PC_SIMULATOR'):
     lib=['lib_bt_msvc']
 else:

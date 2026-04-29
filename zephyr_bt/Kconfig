@@ -54,6 +54,13 @@ config SYSTEM_WORKQUEUE_PRIORITY
     int
 	range -256 -1
 
+config DISABLE_SF_BT_LIB
+    bool "disable sifli bt lib"
+    default n
+	help
+	  This option allows to disable sifli bt stack lib to
+	  reduce the size of the compiled output
+
 if BT_HCI
 
 config BT_HCI_RAW

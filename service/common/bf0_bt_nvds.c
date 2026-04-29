@@ -68,6 +68,10 @@
 #ifdef PKG_USING_FMNA
     #define SIFLI_NVDS_KEY_FIND_MY "SIF_FIND_MY"
 #endif
+#ifdef MESH_INFO_SAVE_TO_BLE_NV
+    #define SIFLI_NVDS_KEY_MESH "SIF_MESH"
+#endif
+
 #define BLE_DEFAULT_BDADDR  {{0x12, 0x34, 0x56, 0x78, 0xab, 0xcd}}
 
 
@@ -242,8 +246,16 @@ __WEAK uint8_t sifli_nvds_flash_adaptor_write(const char *key, const void *value
 // Return NVDS_STATUS
 __WEAK uint8_t sifli_nvds_flash_adaptor_init(void)
 {
+    bt_nvds_env_t *env = sifli_nvds_get_env();
     uint8_t ret = NVDS_FAIL;
 #ifdef FDB_USING_KVDB
+
+    // Check if already initialized to avoid double initialization
+    if (sifli_nvds_is_init())
+    {
+        LOG_W("NVDS already initialized, skip re-initialization");
+        return NVDS_OK;
+    }
 
     fdb_err_t err;
 
@@ -289,6 +301,7 @@ __WEAK uint8_t sifli_nvds_flash_adaptor_init(void)
             break;
         }
 
+        env->is_init = 1;
         ret = NVDS_OK;
     }
     while (0);
@@ -309,6 +322,21 @@ __WEAK uint8_t sifli_nvds_flash_adaptor_delete(const char *key)
     ret = NVDS_OK;
 #endif
     return ret;
+}
+
+/**
+@brief Get the BLE FlashDB instance for iteration
+@return Pointer to fdb_kvdb_t, or NULL if not initialized
+*/
+fdb_kvdb_t sifli_nvds_get_ble_kvdb(void)
+{
+#ifdef PKG_USING_FLASHDB
+    if (p_ble_db && p_ble_db->parent.init_ok)
+    {
+        return p_ble_db;
+    }
+#endif
+    return NULL;
 }
 
 
@@ -602,6 +630,20 @@ static uint8_t *sifli_nvds_read_int(sifli_nvds_type_t type, uint16_t *len)
         OS_ASSERT(read_len <= SIFLI_NVDS_KEY_LEN_CM);
         break;
     }
+#ifdef MESH_INFO_SAVE_TO_BLE_NV
+    case SIFLI_NVDS_TYPE_MESH:
+    {
+        ptr = bt_mem_alloc(SIFLI_NVDS_KEY_LEN_MESH);
+        if (ptr == NULL)
+            break;
+
+        memset(ptr, 0, SIFLI_NVDS_KEY_LEN_MESH);
+        read_len = sifli_nvds_flash_read(SIFLI_NVDS_KEY_MESH, ptr, SIFLI_NVDS_KEY_LEN_MESH);
+        // Just assume SIFLI_NVDS_KEY_LEN_APP is the maximum l..en
+        OS_ASSERT(read_len <= SIFLI_NVDS_KEY_LEN_MESH);
+        break;
+    }
+#endif
     case SIFLI_NVDS_TYPE_BT_CM:
     {
         ptr = bt_mem_alloc(SIFLI_NVDS_KEY_LEN_BT_CM);
@@ -758,6 +800,18 @@ uint8_t sifli_nvds_write(sifli_nvds_type_t type, uint16_t len, uint8_t *ptr)
         ret = sifli_nvds_flash_write(SIFLI_NVDS_KEY_CM, ptr, len);
         break;
     }
+#ifdef MESH_INFO_SAVE_TO_BLE_NV
+    case SIFLI_NVDS_TYPE_MESH:
+    {
+        if (len > SIFLI_NVDS_KEY_LEN_MESH)
+        {
+            ret = NVDS_FAIL;
+            break;
+        }
+        ret = sifli_nvds_flash_write(SIFLI_NVDS_KEY_MESH, ptr, len);
+        break;
+    }
+#endif
     case SIFLI_NVDS_TYPE_BT_CM:
     {
         if (len > SIFLI_NVDS_KEY_LEN_BT_CM)

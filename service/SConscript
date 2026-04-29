@@ -10,7 +10,9 @@ list = os.listdir(cwd)
 
 #lib = lib_bt_rvds
 
-src = Glob('bluetooth.c')
+# For ZBT mode, skip traditional BLE stack (lib_bt_gcc.a is not linked)
+if not GetDepend('DISABLE_SF_BT_LIB'):
+    src = Glob('bluetooth.c')
 
 objs = DefineGroup('bt', src, depend = ['BLUETOOTH'], CPPPATH = CPPPATH)
 

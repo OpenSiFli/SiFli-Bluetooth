@@ -18,6 +18,80 @@
 // NVDS Adapter Header (update path for your project)
 #include "bf0_sibles_nvds.h"
 
+// FlashDB header for KV iteration
+#ifdef PKG_USING_FLASHDB
+    #include "flashdb.h"
+#endif
+
+#ifdef CONFIG_BT_MESH
+#include "subnet.h"
+#include "app_keys.h"
+#include "cdb.h"
+#include "settings.h"
+#include "access.h"
+#include "net.h"
+#include "../mesh/keys.h"
+
+#define F_NODE_CONFIGURED 0x01
+
+/* NetKey storage information */
+struct net_key_val
+{
+    uint8_t kr_flag: 1,
+            kr_phase: 7;
+    struct bt_mesh_key val[2];
+} __packed;
+
+/* Node information for persistent storage (from cdb.c) */
+struct node_val
+{
+    uint16_t net_idx;
+    uint8_t num_elem;
+    uint8_t flags;
+    uint8_t uuid[16];
+    struct bt_mesh_key dev_key;
+} __packed;
+
+/* CDB Network information for persistent storage (from cdb.c) */
+struct cdb_net_val
+{
+    struct __packed
+    {
+        uint32_t index;
+        bool     update;
+    } iv;
+    uint16_t lowest_avail_addr;
+} __packed;
+
+/* AppKey information for persistent storage. */
+struct app_key_val
+{
+    uint16_t net_idx;
+    bool updated;
+    struct bt_mesh_key val[2];
+} __packed;
+
+struct net_val
+{
+    uint16_t primary_addr;
+    struct bt_mesh_key dev_key;
+} __packed;
+
+/* Sequence number information for persistent storage. */
+struct seq_val
+{
+    uint8_t val[3];
+} __packed;
+
+/* IV Index & IV Update information for persistent storage. */
+struct iv_val
+{
+    uint32_t iv_index;
+    uint8_t  iv_update: 1,
+             iv_duration: 7;
+} __packed;
+#endif
+
 LOG_MODULE_REGISTER(settings_sifli, LOG_LEVEL_INF);
 
 // Log Configuration
@@ -917,109 +991,709 @@ static int bt_bundle_load_from_nvds(void)
 // Zephyr Settings Framework Implementation
 // --------------------------
 
+#ifdef CONFIG_BT_MESH
+/**
+@brief Iterate and load all bt/mesh/* keys from FlashDB
+@param arg Settings load argument with callback (may be NULL during probe/cleanup)
+@return 0 on success, negative error code on failure
+*/
+static int load_mesh_keys_from_flashdb(const struct settings_load_arg *arg)
+{
+    struct fdb_kv_iterator itr_obj;
+    fdb_kv_iterator_t itr = &itr_obj;
+    int loaded_count = 0;
+    fdb_kvdb_t kvdb;
+
+    LOG_INF("load_mesh_keys_from_flashdb called (arg=%p)", arg);
+
+    // Get FlashDB instance through NVDS adapter
+    kvdb = sifli_nvds_get_ble_kvdb();
+    if (!kvdb)
+    {
+        LOG_WRN("FlashDB not available, skipping Mesh key loading");
+        return 0;  // Don't fail, just skip
+    }
+
+    LOG_INF("FlashDB instance obtained, starting iteration...");
+
+    // Initialize iterator
+    memset(itr, 0, sizeof(struct fdb_kv_iterator));
+    itr->iterated_cnt = 0;
+
+    // Debug: Print all keys in FlashDB
+    int total_keys = 0;
+    int mesh_keys = 0;
+    struct fdb_kv_iterator debug_itr_obj;
+    fdb_kv_iterator_t debug_itr = &debug_itr_obj;
+    memset(debug_itr, 0, sizeof(struct fdb_kv_iterator));
+
+    LOG_INF("=== FlashDB Contents ===");
+    while (fdb_kv_iterate(kvdb, debug_itr))
+    {
+        total_keys++;
+        const char *key_name = debug_itr->curr_kv.name;
+        if (strncmp(key_name, "bt/mesh", 7) == 0)
+        {
+            mesh_keys++;
+            LOG_INF("  [MESH] %s", key_name);
+        }
+        else if (strncmp(key_name, "bt/", 3) == 0)
+        {
+            LOG_INF("  [BT]   %s", key_name);
+        }
+    }
+    LOG_INF("Total keys: %d, Mesh keys: %d", total_keys, mesh_keys);
+    LOG_INF("========================");
+
+    // Reset iterator for actual loading
+    memset(itr, 0, sizeof(struct fdb_kv_iterator));
+    itr->iterated_cnt = 0;
+
+    LOG_INF("Starting to iterate bt/mesh/* keys from FlashDB");
+
+    // Iterate through all KV pairs in FlashDB
+    while (fdb_kv_iterate(kvdb, itr))
+    {
+        const char *key_name = itr->curr_kv.name;
+
+        // Check if this is a bt/mesh/* key
+        if (strncmp(key_name, "bt/mesh", 7) == 0)
+        {
+            // Read the value using blob API
+            uint8_t value_buf[256];  // Max value size for Mesh keys
+            struct fdb_blob blob;
+
+            // Create blob structure pointing to our buffer
+            fdb_blob_make(&blob, value_buf, sizeof(value_buf));
+
+            // Read the value into the blob
+            size_t read_len = fdb_kv_get_blob(kvdb, key_name, &blob);
+
+            if (read_len > 0 && read_len <= sizeof(value_buf))
+            {
+                // Try to restore Mesh data directly using internal APIs
+                bool restored = false;
+
+                // Handle bt/mesh/NetKey/<net_idx>
+                if (strncmp(key_name, "bt/mesh/NetKey/", 15) == 0)
+                {
+                    uint16_t net_idx = strtoul(key_name + 15, NULL, 16);
+                    struct net_key_val *net_key = (struct net_key_val *)value_buf;
+
+                    LOG_INF("Restoring NetKey 0x%03x (kr_phase=%d)", net_idx, net_key->kr_phase);
+
+                    // Check if new key exists (all zeros means no new key)
+                    bool has_new_key = false;
+                    for (int i = 0; i < 16; i++)
+                    {
+                        if (net_key->val[1].key[i] != 0)
+                        {
+                            has_new_key = true;
+                            break;
+                        }
+                    }
+
+                    int ret = bt_mesh_subnet_set(net_idx, net_key->kr_phase,
+                                                 &net_key->val[0],
+                                                 has_new_key ? &net_key->val[1] : NULL);
+                    if (ret == 0)
+                    {
+                        LOG_INF("Successfully restored NetKey 0x%03x", net_idx);
+                        restored = true;
+                    }
+                    else
+                    {
+                        LOG_WRN("Failed to restore NetKey 0x%03x (ret=%d)", net_idx, ret);
+                    }
+                }
+                // Handle bt/mesh/AppKey/<app_idx>
+                else if (strncmp(key_name, "bt/mesh/AppKey/", 15) == 0)
+                {
+                    uint16_t app_idx = strtoul(key_name + 15, NULL, 16);
+                    struct app_key_val *app_key = (struct app_key_val *)value_buf;
+
+                    LOG_INF("Restoring AppKey 0x%03x (net_idx=%d, updated=%d)",
+                            app_idx, app_key->net_idx, app_key->updated);
+
+                    // Check if new key exists
+                    bool has_new_key = false;
+                    for (int i = 0; i < 16; i++)
+                    {
+                        if (app_key->val[1].key[i] != 0)
+                        {
+                            has_new_key = true;
+                            break;
+                        }
+                    }
+
+                    int ret = bt_mesh_app_key_set(app_idx, app_key->net_idx,
+                                                  &app_key->val[0],
+                                                  has_new_key ? &app_key->val[1] : NULL);
+                    if (ret == 0)
+                    {
+                        LOG_INF("Successfully restored AppKey 0x%03x (net_idx=%d)", app_idx, app_key->net_idx);
+                        restored = true;
+                    }
+                    else
+                    {
+                        LOG_WRN("Failed to restore AppKey 0x%03x (ret=%d)", app_idx, ret);
+                    }
+                }
+                // Handle CDB keys - manually parse and restore since callback is not available
+                else if (strncmp(key_name, "bt/mesh/cdb/", 12) == 0)
+                {
+                    LOG_INF("Restoring CDB key '%s' (%d bytes)", key_name, read_len);
+
+                    // Parse the sub-key type
+                    const char *sub_key = key_name + 12;  // Skip "bt/mesh/cdb/"
+
+                    if (strcmp(sub_key, "Net") == 0)
+                    {
+                        // Restore CDB network state (IV index, etc.)
+                        struct cdb_net_val *net_data = (struct cdb_net_val *)value_buf;
+                        if (read_len >= sizeof(struct cdb_net_val))
+                        {
+                            bt_mesh_cdb.iv_index = net_data->iv.index;
+                            bt_mesh_cdb.lowest_avail_addr = net_data->lowest_avail_addr;
+
+                            if (net_data->iv.update)
+                            {
+                                atomic_set_bit(bt_mesh_cdb.flags, BT_MESH_CDB_IVU_IN_PROGRESS);
+                            }
+
+                            atomic_set_bit(bt_mesh_cdb.flags, BT_MESH_CDB_VALID);
+                            LOG_INF("Successfully restored CDB Net state (IV=0x%08x)", bt_mesh_cdb.iv_index);
+                            restored = true;
+                        }
+                    }
+                    else if (strncmp(sub_key, "Node/", 5) == 0)
+                    {
+                        // Restore CDB node
+                        uint16_t addr = strtol(sub_key + 5, NULL, 16);
+                        struct node_val *node_data = (struct node_val *)value_buf;
+
+                        if (read_len >= sizeof(struct node_val))
+                        {
+                            struct bt_mesh_cdb_node *node = bt_mesh_cdb_node_alloc(node_data->uuid, addr,
+                                                            node_data->num_elem,
+                                                            node_data->net_idx);
+                            if (node)
+                            {
+                                if (node_data->flags & F_NODE_CONFIGURED)
+                                {
+                                    atomic_set_bit(node->flags, BT_MESH_CDB_NODE_CONFIGURED);
+                                }
+
+                                /* Restore DevKey - critical for Config Client operations */
+                                memcpy(&node->dev_key, &node_data->dev_key, sizeof(struct bt_mesh_key));
+
+                                LOG_INF("Successfully restored CDB Node 0x%04x (dev_key.id=%u)",
+                                        addr, node_data->dev_key.key);
+                                restored = true;
+                            }
+                            else
+                            {
+                                LOG_WRN("Failed to allocate CDB Node 0x%04x", addr);
+                            }
+                        }
+                    }
+                    else if (strncmp(sub_key, "Subnet/", 7) == 0)
+                    {
+                        // Restore CDB subnet - uses net_key_val structure (same as NetKey)
+                        uint16_t net_idx = strtol(sub_key + 7, NULL, 16);
+                        struct net_key_val *subnet_data = (struct net_key_val *)value_buf;
+
+                        if (read_len >= sizeof(struct net_key_val))
+                        {
+                            struct bt_mesh_cdb_subnet *sub = bt_mesh_cdb_subnet_alloc(net_idx);
+                            if (sub)
+                            {
+                                memcpy(sub->keys[0].net_key.key, subnet_data->val[0].key, 16);
+                                sub->kr_phase = subnet_data->kr_phase;
+
+                                LOG_INF("Successfully restored CDB Subnet 0x%03x", net_idx);
+                                restored = true;
+                            }
+                            else
+                            {
+                                LOG_WRN("Failed to allocate CDB Subnet 0x%03x", net_idx);
+                            }
+                        }
+                    }
+                    else if (strncmp(sub_key, "AppKey/", 7) == 0)
+                    {
+                        // Restore CDB app key
+                        uint16_t app_idx = strtol(sub_key + 7, NULL, 16);
+                        struct app_key_val *appkey_data = (struct app_key_val *)value_buf;
+
+                        if (read_len >= sizeof(struct app_key_val))
+                        {
+                            struct bt_mesh_cdb_app_key *app = bt_mesh_cdb_app_key_alloc(appkey_data->net_idx, app_idx);
+                            if (app)
+                            {
+                                memcpy(app->keys[0].app_key.key, appkey_data->val[0].key, 16);
+                                if (appkey_data->updated)
+                                {
+                                    memcpy(app->keys[1].app_key.key, appkey_data->val[1].key, 16);
+                                }
+
+                                LOG_INF("Successfully restored CDB AppKey 0x%03x", app_idx);
+                                restored = true;
+                            }
+                            else
+                            {
+                                LOG_WRN("Failed to allocate CDB AppKey 0x%03x", app_idx);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        LOG_WRN("Unknown CDB key: %s", key_name);
+                    }
+                }
+                // Handle model binding and subscription keys (bt/mesh/s/<mod_key>/bind or sub)
+                else if (strncmp(key_name, "bt/mesh/s/", 10) == 0)
+                {
+                    // Parse: bt/mesh/s/<mod_key>/<type> where type is "bind" or "sub"
+                    const char *after_s = key_name + 10;  // Skip "bt/mesh/s/"
+                    const char *slash = strchr(after_s, '/');
+
+                    if (!slash)
+                    {
+                        LOG_WRN("Invalid s key format (no slash): %s", key_name);
+                        continue;
+                    }
+
+                    // Extract mod_key (hex string before the slash)
+                    char mod_key_str[8] = {0};
+                    size_t key_len = slash - after_s;
+                    if (key_len >= sizeof(mod_key_str))
+                    {
+                        LOG_WRN("Mod key too long: %s", key_name);
+                        continue;
+                    }
+                    strncpy(mod_key_str, after_s, key_len);
+
+                    uint16_t mod_key = strtol(mod_key_str, NULL, 16);
+                    uint8_t elem_idx = mod_key >> 8;
+                    uint8_t mod_idx = mod_key & 0xFF;
+
+                    // Get the model
+                    struct bt_mesh_model *mod = (struct bt_mesh_model *)bt_mesh_model_get(false, elem_idx, mod_idx);
+                    if (!mod)
+                    {
+                        LOG_WRN("Model s/%d/%d (mod_key=0x%04x) not found", elem_idx, mod_idx, mod_key);
+                        continue;
+                    }
+
+                    // Determine if this is a "sub" or "bind" key
+                    if (strcmp(slash + 1, "sub") == 0)
+                    {
+                        // ===== Handle SUBSCRIPTION restoration =====
+                        LOG_INF("Restoring subscription key '%s' (%d bytes)", key_name, read_len);
+
+                        // Clear existing subscriptions first
+                        memset(mod->groups, 0, mod->groups_cnt * sizeof(mod->groups[0]));
+
+                        // Restore subscriptions from stored data
+                        size_t max_groups = mod->groups_cnt * sizeof(mod->groups[0]);
+                        if (read_len > 0 && read_len <= max_groups)
+                        {
+                            memcpy(mod->groups, value_buf, read_len);
+
+                            // Count restored subscriptions
+                            int sub_count = 0;
+                            for (int i = 0; i < mod->groups_cnt; i++)
+                            {
+                                if (mod->groups[i] != 0)
+                                {
+                                    sub_count++;
+                                    LOG_INF("  Restored sub[%d]: 0x%04x", i, mod->groups[i]);
+                                }
+                            }
+
+                            LOG_INF("Successfully restored %d subscriptions for model s/%d/%d (mod_key=0x%04x)",
+                                    sub_count, elem_idx, mod_idx, mod_key);
+                            restored = true;
+                        }
+                        else
+                        {
+                            LOG_WRN("Invalid sub data length for s/%d/%d (read_len=%d, max=%zu)",
+                                    elem_idx, mod_idx, read_len, max_groups);
+                        }
+                    }
+                    else if (strcmp(slash + 1, "bind") == 0)
+                    {
+                        // ===== Handle BINDING restoration =====
+                        LOG_INF("Restoring model binding key '%s' (%d bytes)", key_name, read_len);
+                        LOG_INF("Parsing bind key: mod_key=0x%04x, elem=%d, mod=%d", mod_key, elem_idx, mod_idx);
+
+                        LOG_INF("Found model s/%d/%d (keys_cnt=%d), mod_ptr=%p", elem_idx, mod_idx, mod->keys_cnt, (void *)mod);
+
+                        // Calculate actual size of keys array
+                        size_t keys_size = mod->keys_cnt * sizeof(mod->keys[0]);
+
+                        // Dump keys before clearing
+                        LOG_INF("Keys BEFORE clear:");
+                        for (int dbg_i = 0; dbg_i < mod->keys_cnt; dbg_i++)
+                        {
+                            LOG_INF("  keys[%d] = 0x%04x", dbg_i, mod->keys[dbg_i]);
+                        }
+
+                        // Clear existing bindings
+                        for (int i = 0; i < mod->keys_cnt; i++)
+                        {
+                            mod->keys[i] = BT_MESH_KEY_UNUSED;
+                        }
+
+                        // Dump keys after clearing
+                        LOG_INF("Keys AFTER clear:");
+                        for (int dbg_i = 0; dbg_i < mod->keys_cnt; dbg_i++)
+                        {
+                            LOG_INF("  keys[%d] = 0x%04x", dbg_i, mod->keys[dbg_i]);
+                        }
+
+                        // Read and restore bindings from stored data
+                        if (read_len > 0 && read_len <= keys_size)
+                        {
+                            memcpy(mod->keys, value_buf, read_len);
+
+                            // Count restored bindings
+                            int bind_count = 0;
+                            for (int i = 0; i < mod->keys_cnt; i++)
+                            {
+                                if (mod->keys[i] != BT_MESH_KEY_UNUSED)
+                                {
+                                    bind_count++;
+                                    LOG_INF("  Restored bind[%d]: 0x%04x", i, mod->keys[i]);
+                                }
+                            }
+
+                            // Dump keys after restore
+                            LOG_INF("Keys AFTER restore:");
+                            for (int dbg_i = 0; dbg_i < mod->keys_cnt; dbg_i++)
+                            {
+                                LOG_INF("  keys[%d] = 0x%04x", dbg_i, mod->keys[dbg_i]);
+                            }
+
+                            LOG_INF("Successfully restored %d bindings for model s/%d/%d (mod_key=0x%04x)",
+                                    bind_count, elem_idx, mod_idx, mod_key);
+                            restored = true;
+                        }
+                        else
+                        {
+                            LOG_WRN("Invalid bind data length for s/%d/%d (read_len=%d, max=%zu)",
+                                    elem_idx, mod_idx, read_len, keys_size);
+                        }
+                    }
+                    else
+                    {
+                        // Unknown key type - skip
+                        LOG_DBG("Unknown key type '%s' in %s", slash + 1, key_name);
+                    }
+                }
+                // Handle bt/mesh/Net key - restore provisioned state and device key
+                else if (strcmp(key_name, "bt/mesh/Net") == 0)
+                {
+                    LOG_INF("Restoring Net key '%s' (%d bytes)", key_name, read_len);
+
+                    if (read_len >= sizeof(struct net_val))
+                    {
+                        struct net_val *net = (struct net_val *)value_buf;
+
+                        // Restore primary address and device key
+                        extern struct bt_mesh_net bt_mesh_net;
+                        extern void bt_mesh_comp_provision(uint16_t addr);
+                        extern void bt_mesh_key_assign(struct bt_mesh_key * key, const struct bt_mesh_key * src);
+
+                        bt_mesh_comp_provision(net->primary_addr);
+                        bt_mesh_key_assign(&bt_mesh.dev_key, &net->dev_key);
+
+                        LOG_INF("Successfully restored Net state (addr=0x%04x)", net->primary_addr);
+                        restored = true;
+                    }
+                    else
+                    {
+                        LOG_WRN("Invalid Net data length: %d bytes (expected %zu)", read_len, sizeof(struct net_val));
+                    }
+                }
+                // Handle bt/mesh/IV key - restore IV Index and update state
+                else if (strcmp(key_name, "bt/mesh/IV") == 0)
+                {
+                    LOG_INF("Restoring IV key '%s' (%d bytes)", key_name, read_len);
+
+                    if (read_len >= sizeof(struct iv_val))
+                    {
+                        struct iv_val *iv = (struct iv_val *)value_buf;
+
+                        extern struct bt_mesh_net bt_mesh_net;
+                        extern atomic_t bt_mesh_flags;
+
+                        bt_mesh.iv_index = iv->iv_index;
+                        atomic_set_bit_to(bt_mesh.flags, BT_MESH_IVU_IN_PROGRESS, iv->iv_update);
+                        bt_mesh.ivu_duration = iv->iv_duration;
+
+                        LOG_INF("Successfully restored IV state (index=0x%08x, update=%d, duration=%d)",
+                                iv->iv_index, iv->iv_update, iv->iv_duration);
+                        restored = true;
+                    }
+                    else
+                    {
+                        LOG_WRN("Invalid IV data length: %d bytes (expected %zu)", read_len, sizeof(struct iv_val));
+                    }
+                }
+                else if (strcmp(key_name, "bt/mesh/Seq") == 0)
+                {
+                    // Manually restore sequence number since callback is not available
+                    LOG_INF("Restoring sequence number key '%s' (%d bytes)", key_name, read_len);
+
+                    if (read_len >= 3)
+                    {
+                        // seq_val is 3 bytes (24-bit sequence number)
+                        uint32_t seq = value_buf[0] | (value_buf[1] << 8) | (value_buf[2] << 16);
+
+                        // Apply the same adjustment as in seq_set handler
+                        if (CONFIG_BT_MESH_SEQ_STORE_RATE > 0)
+                        {
+                            seq += (CONFIG_BT_MESH_SEQ_STORE_RATE -
+                                    (seq % CONFIG_BT_MESH_SEQ_STORE_RATE));
+                            seq--;
+                        }
+
+                        // Restore to bt_mesh.seq
+                        extern struct bt_mesh_net bt_mesh_net;
+                        bt_mesh.seq = seq;
+
+                        LOG_INF("Successfully restored sequence number: 0x%06x", bt_mesh.seq);
+                        restored = true;
+                    }
+                    else
+                    {
+                        LOG_WRN("Invalid Seq data length: %d bytes (expected 3)", read_len);
+                    }
+                }
+                // Handle other Mesh keys that are not explicitly handled above
+                else
+                {
+                    LOG_DBG("Unhandled Mesh key '%s', skipping", key_name);
+                }
+
+                if (restored)
+                {
+                    loaded_count++;
+                }
+                else
+                {
+                    // Fallback: try to invoke settings framework callback
+                    if (arg && arg->cb)
+                    {
+                        LOG_INF("Invoking callback for Mesh key '%s' (%d bytes)", key_name, read_len);
+                        int ret = invoke_load_callback(arg, key_name, value_buf, read_len);
+                        if (ret < 0)
+                        {
+                            LOG_WRN("Failed to load Mesh key '%s' via callback (ret=%d)", key_name, ret);
+                        }
+                        else
+                        {
+                            LOG_DBG("Loaded Mesh key '%s' via callback (%d bytes)", key_name, read_len);
+                            loaded_count++;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                LOG_WRN("Failed to read value for key '%s' (len=%d)", key_name, read_len);
+            }
+        }
+    }
+
+    LOG_INF("Completed loading %d bt/mesh/* keys from FlashDB", loaded_count);
+    return 0;
+}
+#endif
+
 /**
 
-@brief Load settings and invoke callbacks (settings framework interface)
-Loads all keys from cache and passes them to the framework
+@brief Load BT settings from NVDS (settings framework interface)
 */
 static int nvds_csi_load(struct settings_store *cs, const struct settings_load_arg *arg)
 {
     int ret;
     char key_buf[MAX_KEY_NAME_LEN];
-    if (!cs || !arg)
+
+    LOG_INF("nvds_csi_load called (cs=%p, arg=%p)", cs, arg);
+
+    if (!cs)
     {
-        LOG_ERR("Invalid parameters (cs=%p, arg=%p, cb=%p)", cs, arg, arg->cb);
+        LOG_ERR("Invalid cs parameter");
         return -EINVAL;
     }
-    LOG_DBG("Loading BT settings and invoking callbacks");
-// Load bundle from NVDS into cache
+
+    // Note: arg may be NULL during probe phase, but we still need to load data
+    // The callback checks inside each loading function will handle NULL arg gracefully
+
+    LOG_INF("Loading BT settings bundle...");
+
+    // Load bundle from NVDS into cache
     ret = bt_bundle_load_from_nvds();
     if (ret != 0)
     {
         LOG_ERR("Failed to load bundle (ret=%d)", ret);
-        return ret;
+        // Don't return here, continue to load Mesh keys
     }
-// 1. Load bt/keys/<addr> entries (address-based)
-    for (size_t i = 0; i < BT_MAX_PAIRED; i++)
+
+    // If arg is NULL or has no callback, skip the detailed loading
+    // but still try to load Mesh keys via iteration
+    if (!arg || !arg->cb)
     {
-        struct bt_paired_device *dev = &nvds_backend.bt_cache.paired_devs[i];
-        if (!dev->in_use)
+        LOG_INF("Probe phase detected (arg=%p), skipping detailed BT settings load", arg);
+        // Continue to Mesh key loading below
+    }
+    else
+    {
+        LOG_INF("Loading detailed BT settings and invoking callbacks");
+
+        // 1. Load bt/keys/<addr> entries (address-based)
+        for (size_t i = 0; i < BT_MAX_PAIRED; i++)
         {
-            continue; // Skip unused entries
-        }
+            struct bt_paired_device *dev = &nvds_backend.bt_cache.paired_devs[i];
+            if (!dev->in_use)
+            {
+                continue; // Skip unused entries
+            }
 // Generate key name (e.g., bt/keys/AABBCCDDEEFF)
-        ret = generate_addr_based_key(key_buf, sizeof(key_buf), BT_KEYS_BASE_KEY, &dev->addr);
-        if (ret != 0)
-        {
-            continue;
-        }
+            ret = generate_addr_based_key(key_buf, sizeof(key_buf), BT_KEYS_BASE_KEY, &dev->addr);
+            if (ret != 0)
+            {
+                continue;
+            }
 // Invoke framework callback with key-value pair
-        ret = invoke_load_callback(arg, key_buf, dev->key, BT_KEYS_STORAGE_LEN);
-        if (ret < 0)
-        {
-            LOG_WRN("Callback error for %s (ret=%d)", key_buf, ret);
+            ret = invoke_load_callback(arg, key_buf, dev->key, BT_KEYS_STORAGE_LEN);
+            if (ret < 0)
+            {
+                LOG_WRN("Callback error for %s (ret=%d)", key_buf, ret);
 // Don't stop loading on individual errors
+            }
         }
-    }
 // 2. Load bt/sc/<addr> entries (address-based)
-    for (size_t i = 0; i < BT_MAX_PAIRED; i++)
-    {
-        struct bt_paired_device *dev = &nvds_backend.bt_cache.paired_devs[i];
-        if (!dev->in_use)
+        for (size_t i = 0; i < BT_MAX_PAIRED; i++)
         {
-            continue; // Skip unused entries
-        }
+            struct bt_paired_device *dev = &nvds_backend.bt_cache.paired_devs[i];
+            if (!dev->in_use)
+            {
+                continue; // Skip unused entries
+            }
 // Generate key name (e.g., bt/sc/AABBCCDDEEFF)
-        ret = generate_addr_based_key(key_buf, sizeof(key_buf), BT_SC_BASE_KEY, &dev->addr);
-        if (ret != 0)
-        {
-            continue;
-        }
+            ret = generate_addr_based_key(key_buf, sizeof(key_buf), BT_SC_BASE_KEY, &dev->addr);
+            if (ret != 0)
+            {
+                continue;
+            }
 // Invoke framework callback with key-value pair
-        ret = invoke_load_callback(arg, key_buf, dev->sc, BT_SC_STORAGE_LEN);
-        if (ret < 0)
-        {
-            LOG_WRN("Callback error for %s (ret=%d)", key_buf, ret);
+            ret = invoke_load_callback(arg, key_buf, dev->sc, BT_SC_STORAGE_LEN);
+            if (ret < 0)
+            {
+                LOG_WRN("Callback error for %s (ret=%d)", key_buf, ret);
+            }
         }
-    }
 // 3. Load bt/name (string entry)
-    ret = invoke_load_callback(arg, BT_NAME_KEY,
-                               nvds_backend.bt_cache.name,
-                               strlen((const char *)nvds_backend.bt_cache.name));
-    if (ret < 0)
-    {
-        LOG_WRN("Callback error for %s (ret=%d)", BT_NAME_KEY, ret);
-    }
+        // Skip if name is empty (first boot or cleared)
+        if (nvds_backend.bt_cache.name[0] != '\0')
+        {
+            ret = invoke_load_callback(arg, BT_NAME_KEY,
+                                       nvds_backend.bt_cache.name,
+                                       strlen((const char *)nvds_backend.bt_cache.name));
+            if (ret < 0)
+            {
+                LOG_WRN("Callback error for %s (ret=%d)", BT_NAME_KEY, ret);
+            }
+        }
+        else
+        {
+            LOG_DBG("Skipping empty bt/name");
+        }
 // 4. Load bt/id/<index> entries (Bluetooth addresses)
-    for (size_t i = 0; i < BT_ID_MAX; i++)
-    {
-        ret = generate_indexed_key(key_buf, sizeof(key_buf), BT_ID_KEY, i);
-        if (ret != 0)
+        for (size_t i = 0; i < BT_ID_MAX; i++)
         {
-            continue;
-        }
+            // Skip if address is all zeros (unused entry)
+            bool is_zero = true;
+            for (size_t j = 0; j < sizeof(bt_addr_le_t); j++)
+            {
+                if (((uint8_t *)&nvds_backend.bt_cache.id[i])[j] != 0)
+                {
+                    is_zero = false;
+                    break;
+                }
+            }
+
+            if (is_zero)
+            {
+                LOG_DBG("Skipping empty bt/id/%d", i);
+                continue;
+            }
+
+            ret = generate_indexed_key(key_buf, sizeof(key_buf), BT_ID_KEY, i);
+            if (ret != 0)
+            {
+                continue;
+            }
 // Each bt/id/<index> entry is a 6-byte Bluetooth address
-        ret = invoke_load_callback(arg, key_buf, &nvds_backend.bt_cache.id[i], BT_ADDR_LEN);
-        if (ret < 0)
-        {
-            LOG_WRN("Callback error for %s (ret=%d)", key_buf, ret);
+            ret = invoke_load_callback(arg, key_buf, &nvds_backend.bt_cache.id[i], BT_ADDR_LEN);
+            if (ret < 0)
+            {
+                LOG_WRN("Callback error for %s (ret=%d)", key_buf, ret);
+            }
         }
-    }
 // 5. Load bt/irk/<index> entries
-    for (size_t i = 0; i < BT_ID_MAX; i++)
-    {
-        ret = generate_indexed_key(key_buf, sizeof(key_buf), BT_IRK_KEY, i);
-        if (ret != 0)
+        for (size_t i = 0; i < BT_ID_MAX; i++)
         {
-            continue;
+            // Skip if IRK is all zeros (unused entry)
+            bool is_zero = true;
+            for (size_t j = 0; j < 16; j++)
+            {
+                if (nvds_backend.bt_cache.irk[i][j] != 0)
+                {
+                    is_zero = false;
+                    break;
+                }
+            }
+
+            if (is_zero)
+            {
+                LOG_DBG("Skipping empty bt/irk/%d", i);
+                continue;
+            }
+
+            ret = generate_indexed_key(key_buf, sizeof(key_buf), BT_IRK_KEY, i);
+            if (ret != 0)
+            {
+                continue;
+            }
+            ret = invoke_load_callback(arg, key_buf, nvds_backend.bt_cache.irk[i], 16);
+            if (ret < 0)
+            {
+                LOG_WRN("Callback error for %s (ret=%d)", key_buf, ret);
+            }
         }
-        ret = invoke_load_callback(arg, key_buf, nvds_backend.bt_cache.irk[i], 16);
-        if (ret < 0)
-        {
-            LOG_WRN("Callback error for %s (ret=%d)", key_buf, ret);
-        }
+        LOG_DBG("Completed BT settings load");
     }
-    LOG_DBG("Completed BT settings load");
+
+    // Load all bt/mesh/* keys from FlashDB (Mesh CDB, AppKeys, etc.)
+    LOG_INF("Loading Mesh keys from FlashDB...");
+#ifdef CONFIG_BT_MESH
+    ret = load_mesh_keys_from_flashdb(arg);
+#endif
+    if (ret != 0)
+    {
+        LOG_ERR("Failed to load Mesh keys (ret=%d)", ret);
+        // Don't fail the entire load operation, just log the error
+    }
+    else
+    {
+        LOG_INF("Mesh keys loading completed");
+    }
+
     return 0;
 }
 
@@ -1285,6 +1959,39 @@ static int nvds_csi_save(struct settings_store *cs, const char *name,
             }
         }
     }
+#ifdef CONFIG_BT_MESH
+// Handle bt/mesh/* entries (store directly to FlashDB)
+    else if (strstr(name, "bt/mesh") == name)
+    {
+        // Mesh data should be stored as individual keys in FlashDB
+        if (clear_operation)
+        {
+            // Clear operation: delete the key from FlashDB
+            LOG_DBG("Clearing Mesh key '%s'", name);
+            r = 0; // FlashDB will handle deletion internally
+        }
+        else if (value == NULL)
+        {
+            LOG_ERR("Invalid NULL value for non-clear operation on %s", name);
+            r = -EINVAL;
+        }
+        else
+        {
+            // Store Mesh data directly to FlashDB
+            uint8_t nvds_ret = sifli_nvds_flash_adaptor_write(name, value, val_len);
+            if (nvds_ret != 0)
+            {
+                LOG_ERR("Failed to store Mesh key '%s' (NVDS ret=0x%02X)", name, nvds_ret);
+                r = -EIO;
+            }
+            else
+            {
+                LOG_DBG("Stored Mesh key '%s' (%d bytes)", name, val_len);
+                r = 0;
+            }
+        }
+    }
+#endif
     else
     {
         LOG_ERR("Unknown BT key: %s", name);
