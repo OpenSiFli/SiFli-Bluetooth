@@ -16,7 +16,7 @@ menu "Bluetooth Hardware Config"
             bool "Config maximum 2 links"
     endchoice
     menu "STACK_CONFIG"
-        depends on (SOC_SF32LB56X || SOC_SF32LB52X) && BF0_LCPU
+        depends on (SOC_SF32LB56X || SOC_SF32LB52X || SOC_SF32LB57X) && BF0_LCPU
         menuconfig STACK_BT_ON
             bool "BT classical enable"
             default y
@@ -61,7 +61,7 @@ menu "Bluetooth Hardware Config"
     choice STACK_ENV_BUFF
         prompt "Select ROM envoirment buffer"
         default BT_DUAL_CTRL_MEM
-        depends on (SOC_SF32LB58X || SOC_SF32LB56X || SOC_SF32LB52X)
+        depends on (SOC_SF32LB58X || SOC_SF32LB56X || SOC_SF32LB52X || SOC_SF32LB57X)
         config BT_DUAL_FULL_MEM
             bool "Conifg BT dual-mode full memory"
             depends on BF0_LCPU
@@ -77,7 +77,7 @@ menu "Bluetooth Hardware Config"
     default "uart3"
     depends on SOC_SF32LB55X
     choice
-        depends on (SOC_SF32LB58X || SOC_SF32LB56X || SOC_SF32LB52X || BSP_USING_PC_SIMULATOR)
+        depends on (SOC_SF32LB58X || SOC_SF32LB56X || SOC_SF32LB52X || SOC_SF32LB57X || BSP_USING_PC_SIMULATOR)
         prompt "Select stack data transfer port"
         default MB_PORT
         config UART_PORT0
@@ -93,7 +93,7 @@ menu "Bluetooth Hardware Config"
     endchoice
     choice
         prompt "Select trace port"
-        depends on ((SOC_SF32LB58X || SOC_SF32LB56X) && BF0_LCPU) || ((SOC_SF32LB52X || SOC_SF32LB56X || SOC_SF32LB58X) && BF0_HCPU)
+        depends on ((SOC_SF32LB58X || SOC_SF32LB56X) && BF0_LCPU) || ((SOC_SF32LB52X || SOC_SF32LB56X || SOC_SF32LB58X || SOC_SF32LB57X) && BF0_HCPU)
         default UART_PORT1
         config UART_PORT1
             bool "Use UART as trace port"
@@ -103,10 +103,10 @@ menu "Bluetooth Hardware Config"
             default "uart4"
         config HCI_ON_FLASH
             bool "Write HCI log to dedicated flash area"
-            depends on (SOC_SF32LB52X || SOC_SF32LB56X || SOC_SF32LB58X) && BF0_HCPU
+            depends on (SOC_SF32LB52X || SOC_SF32LB57X || SOC_SF32LB56X || SOC_SF32LB58X) && BF0_HCPU
         config HCI_ON_LOG
             bool "Write HCI log to ulog"
-            depends on SOC_SF32LB52X || SOC_SF32LB56X || SOC_SF32LB58X
+            depends on SOC_SF32LB52X || SOC_SF32LB57X || SOC_SF32LB56X || SOC_SF32LB58X
             config LOG_ON_CONSOLE
             bool "Mixed HCI log with system log"
                 depends on HCI_ON_LOG

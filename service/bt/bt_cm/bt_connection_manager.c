@@ -1758,7 +1758,7 @@ void bt_cm(uint8_t argc, char **argv)
         }
         else if (strcmp(argv[1], "sleep") == 0)
         {
-#ifdef SOC_SF32LB52X
+#if defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)
             uint8_t is_enable = atoi(argv[2]);
             if (is_enable == 0)
                 bt_sleep_control(0);
