@@ -536,13 +536,13 @@ int ble_serial_client_event_handler(uint16_t event_id, uint8_t *data, uint16_t l
     case BLE_GAP_CONNECTED_IND:
     {
         ble_gap_connect_ind_t *ind = (ble_gap_connect_ind_t *)data;
-        env->mtu[env->conn_idx] = 23;
+        env->mtu[ind->conn_idx] = 23;
         break;
     }
     case SIBLES_MTU_EXCHANGE_IND:
     {
         sibles_mtu_exchange_ind_t *ind = (sibles_mtu_exchange_ind_t *)data;
-        env->mtu[env->conn_idx] = ind->mtu;
+        env->mtu[ind->conn_idx] = ind->mtu;
         break;
     }
     case BLE_GAP_DISCONNECTED_IND:
