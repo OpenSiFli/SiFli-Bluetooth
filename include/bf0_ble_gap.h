@@ -520,11 +520,11 @@ enum gap_phy
 enum gapc_phy_option
 {
     /// No preference for rate used when transmitting on the LE Coded PHY
-    GAPC_PHY_OPT_LE_CODED_ALL_RATES     = (1 << 0),
+    GAPC_PHY_OPT_LE_CODED_ALL_RATES     = 0,
     /// 500kbps rate preferred when transmitting on the LE Coded PHY
-    GAPC_PHY_OPT_LE_CODED_500K_RATE     = (1 << 1),
+    GAPC_PHY_OPT_LE_CODED_500K_RATE     = 1,
     /// 125kbps  when transmitting on the LE Coded PHY
-    GAPC_PHY_OPT_LE_CODED_125K_RATE     = (1 << 2),
+    GAPC_PHY_OPT_LE_CODED_125K_RATE     = 2,
 };
 
 /// Packet Payload type for test mode

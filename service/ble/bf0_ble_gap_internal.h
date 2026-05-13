@@ -1024,9 +1024,9 @@ struct gapc_con_rssi_ind
 /*@TRACE*/
 struct gapc_le_phy_ind
 {
-    /// LE PHY for data transmission (@see enum gap_phy)
+    /// LE PHY for data transmission (@see enum gap_phy_type)
     uint8_t tx_phy;
-    /// LE PHY for data reception (@see enum gap_phy)
+    /// LE PHY for data reception (@see enum gap_phy_type)
     uint8_t rx_phy;
 };
 
