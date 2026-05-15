@@ -98,13 +98,13 @@ __WEAK bt_err_t bt_interface_profile_connect_request(unsigned char *mac, uint8_t
     {
     case BT_NOTIFY_HFP_PROFILE:
     {
-        if (role == BT_NOTIFY_HFP_HF)
+        if (role == BT_NOTIFY_HFP_ROLE_HF)
         {
 #ifdef CFG_HFP_HF
             err = bt_hfp_hf_connect_request(&bd_addr);
 #endif
         }
-        else if (role == BT_NOTIFY_HFP_AG)
+        else if (role == BT_NOTIFY_HFP_ROLE_AG)
         {
 #ifdef CFG_HFP_AG
             err = bt_hfp_ag_connect_request(&bd_addr);

@@ -82,7 +82,7 @@ static uint8_t bt_cm_get_link_type_by_profile_role(uint8_t profile, uint8_t role
     {
     case BT_NOTIFY_HFP_PROFILE:
     {
-        if (role == BT_NOTIFY_HFP_AG)
+        if (role == BT_NOTIFY_HFP_ROLE_AG)
         {
             link_type = BT_LINK_EARPHONE;
         }
