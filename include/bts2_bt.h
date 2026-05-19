@@ -378,26 +378,26 @@ typedef U8 BTS2S_DB_FILE_PATH[DB_FILE_PATH];
 #define BT_SYNC_S4_VOICE_SETTING            (BT_VOICE_SETTING)
 // Change to 0x13 to avoid nego uncetain value in CVSD. But for bqb, this value may change to 0x0C
 #define BT_SYNC_S4_MAX_LATENCY              (0x013)
-#define BT_SYNC_S4_RE_TX_EFFORT             (0x02)
+#define BT_SYNC_S4_RE_TX_EFFORT             (0x01)
 
 #define BT_SYNC_T1_PACKET_TYPE              0x003F  // 0xFFCF (BT_ESCO_PKT_EV3)
 #define BT_SYNC_T1_TX_BANDWIDTH             (8000)
 #define BT_SYNC_T1_RX_BANDWIDTH             (8000)
 #define BT_SYNC_T1_VOICE_SETTING            (BT_VOICE_SETTING_TRANS)
 #define BT_SYNC_T1_MAX_LATENCY              (8)
-#define BT_SYNC_T1_RE_TX_EFFORT             (0x02)
+#define BT_SYNC_T1_RE_TX_EFFORT             (0x01)
 
 #define BT_SYNC_T2_PACKET_TYPE              (BT_ESCO_PKT_EV3 | BT_ESCO_PKT_3EV3)  // 0xFFBF (BT_ESCO_PKT_EV3 | BT_ESCO_PKT_3EV3)  // 0xFFBF (BT_ESCO_PKT_2EV3)
 #define BT_SYNC_T2_TX_BANDWIDTH             (8000)
 #define BT_SYNC_T2_RX_BANDWIDTH             (8000)
 #define BT_SYNC_T2_VOICE_SETTING            (BT_VOICE_SETTING_TRANS)
 #define BT_SYNC_T2_MAX_LATENCY              (13)
-#define BT_SYNC_T2_RE_TX_EFFORT             (0x02)
+#define BT_SYNC_T2_RE_TX_EFFORT             (0x01)
 
 /* eSCO retransmission effort */
 #define BT_ESCO_NO_RETX            ((U8)0x00)
 #define BT_ESCO_POWER_SAVING_RETX  ((U8)0x01)
-#define BT_ESCO_LINK_QA_RETX       ((U8)0x02)
+#define BT_ESCO_LINK_QA_RETX       ((U8)0x01)
 #define BT_ESCO_DONT_CARE_RETX     ((U8)0xFF)
 
 #define BT_ALL_MR_ESCO    ((U16)BT_ESCO_PKT_2EV3 | BT_ESCO_PKT_3EV3 | BT_ESCO_PKT_2EV5 | BT_ESCO_PKT_3EV5)
