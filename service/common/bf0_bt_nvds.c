@@ -1684,7 +1684,13 @@ static int sifli_nvds_callback(data_callback_arg_t *arg)
     case MSG_SERVICE_SUBSCRIBE_RSP:
     {
         data_subscribe_rsp_t *rsp = (data_subscribe_rsp_t *)arg->data;
-        env->is_subscribed = 1;
+
+        // if you haven't received MSG_SERVICE_SUBSCRIBE_RSP message, check data service is enabled.
+        // if rsp->result is not 0, check to see if ble_nvds_service_register was not called or was called too late.
+        if (rsp->result == 0)
+        {
+            env->is_subscribed = 1;
+        }
         os_sem_release(g_sible_nvds_sema);
         LOG_I("Subscribed nvds service ret %d.", rsp->result);
         break;
