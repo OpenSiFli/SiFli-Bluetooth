@@ -708,6 +708,7 @@ typedef struct
 ///  PABP vcard name result
 typedef struct
 {
+    uint8_t vcard_type;
     ///  vcard name length
     uint8_t vcard_name_len;
     /// vcard name

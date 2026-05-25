@@ -58,7 +58,13 @@ typedef enum
     BT_PBAP_ELEM_MAX        = 0xff
 } BT_PBAP_ELEM_VCARD;
 
-
+typedef enum
+{
+    BT_PBAP_CALL_TYPE_UNKNOWN = 0,
+    BT_PBAP_CALL_TYPE_MISSED,
+    BT_PBAP_CALL_TYPE_RECEIVED,
+    BT_PBAP_CALL_TYPE_DIALED,
+} bt_pbap_call_type_t;
 
 typedef struct
 {
@@ -81,9 +87,9 @@ typedef struct
     U8 num;
 } vcard_tel_list;
 
-
 typedef struct
 {
+    bt_pbap_call_type_t call_type;
     vcard_name v_name;
     vcard_time v_time;
     vcard_tel_list *v_tel;

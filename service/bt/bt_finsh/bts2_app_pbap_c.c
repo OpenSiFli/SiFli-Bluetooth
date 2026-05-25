@@ -18,6 +18,7 @@
 #define USER_ID             "BTS2_TEST"
 #define TEMP_PHONEBOOK_NAME "temp_phone_book.vcf"
 
+
 typedef enum
 {
     BT_PBAPC_IDLE_ST,
@@ -234,12 +235,14 @@ static void bt_pbap_clt_dump_vcard(void)
         memcpy(&vcard_item.vcard_time, local_inst->pbab_vcard->v_time.time, BT_NOTIFY_PBAP_MAX_VCARD_SIZE - 1);
         vcard_item.vcard_time[BT_NOTIFY_PBAP_MAX_VCARD_SIZE - 1] = 0;
         vcard_item.vcard_time_len = BT_NOTIFY_PBAP_MAX_VCARD_SIZE;
+        vcard_item.vcard_type = local_inst->pbab_vcard->call_type;
     }
     else
     {
         memcpy(&vcard_item.vcard_time, local_inst->pbab_vcard->v_time.time, local_inst->pbab_vcard->v_time.length);
         vcard_item.vcard_time[local_inst->pbab_vcard->v_time.length] = 0;
         vcard_item.vcard_time_len = local_inst->pbab_vcard->v_time.length;
+        vcard_item.vcard_type = local_inst->pbab_vcard->call_type;
     }
 
     LOG_D("[name]  ");
@@ -276,6 +279,57 @@ static void bt_pbap_clt_dump_vcard(void)
     LOG_D("*********************************************\n");
 }
 
+static bt_pbap_call_type_t bt_pbap_parse_call_type(const CARD_Char **params)
+{
+    const CARD_Char **p = params;
+
+    while (p && *p)
+    {
+        const CARD_Char *name = p[0];
+        const CARD_Char *value = p[1];
+
+        if (name)
+        {
+            if (bstricmp((char *)name, "MISSED") == 0)
+            {
+                // USER_TRACE("PBAP call log type: MISSED\n");
+                return BT_PBAP_CALL_TYPE_MISSED;
+            }
+            else if (bstricmp((char *)name, "RECEIVED") == 0)
+            {
+                // USER_TRACE("PBAP call log type: RECEIVED\n");
+                return BT_PBAP_CALL_TYPE_RECEIVED;
+            }
+            else if (bstricmp((char *)name, "DIALED") == 0)
+            {
+                // USER_TRACE("PBAP call log type: DIALED\n");
+                return BT_PBAP_CALL_TYPE_DIALED;
+            }
+            else if (bstricmp((char *)name, "TYPE") == 0 && value)
+            {
+                if (bstricmp((char *)value, "MISSED") == 0)
+                {
+                    // USER_TRACE("PBAP call log type: MISSED\n");
+                    return BT_PBAP_CALL_TYPE_MISSED;
+                }
+                else if (bstricmp((char *)value, "RECEIVED") == 0)
+                {
+                    // USER_TRACE("PBAP call log type: RECEIVED\n");
+                    return BT_PBAP_CALL_TYPE_RECEIVED;
+                }
+                else if (bstricmp((char *)value, "DIALED") == 0)
+                {
+                    // USER_TRACE("PBAP call log type: DIALED\n");
+                    return BT_PBAP_CALL_TYPE_DIALED;
+                }
+            }
+        }
+
+        p += 2;
+    }
+
+    return BT_PBAP_CALL_TYPE_UNKNOWN;
+}
 
 static void bt_pbap_check_vcard_valid(U32 index)
 {
@@ -361,6 +415,10 @@ void PropHandler(void *userData, const CARD_Char *propName, const CARD_Char **pa
         else if (bstricmp((char *)propName, "X-IRMC-CALL-DATETIME") == 0)
         {
             type = BT_PBAP_CLT_TZ;
+            if (local_inst && local_inst->pbab_vcard)
+            {
+                local_inst->pbab_vcard->call_type = bt_pbap_parse_call_type(params);
+            }
         }
     }
 }
