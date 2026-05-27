@@ -274,6 +274,7 @@ static void bt_pbap_clt_dump_vcard(void)
         LOG_D("\n");
         tmp = tmp->next_struct;
     }
+    vcard_item.phone_book = local_inst->curr_phonebook;
     bt_interface_bt_event_notify(BT_NOTIFY_PBAP, BT_NOTIFY_PBAP_VCARD_ITEM_IND,
                                  &vcard_item, sizeof(bt_notify_pbap_vcard_item_t));
     LOG_D("*********************************************\n");
@@ -1321,8 +1322,11 @@ void bt_pbap_clt_hdl_msg(bts2_app_stru *bts2_app_data)
         {
             USER_TRACE(">> pbap set phonebook failed\n");
         }
+        bt_notify_pbap_vcard_item_cmpl_t vcard_pb_cmpl;
+        vcard_pb_cmpl.phone_book = local_inst->curr_phonebook;
+        vcard_pb_cmpl.res = msg->res;
         bt_interface_bt_event_notify(BT_NOTIFY_PBAP, BT_NOTIFY_PBAP_SET_PATH_CFM,
-                                     &msg->res, sizeof(uint8_t));
+                                     &vcard_pb_cmpl, sizeof(bt_notify_pbap_vcard_item_cmpl_t));
         break;
     }
     case BTS2MU_PBAP_CLT_PULL_PB_BEGIN_IND:
@@ -1378,8 +1382,11 @@ void bt_pbap_clt_hdl_msg(bts2_app_stru *bts2_app_data)
         }
         count = 0;
         pring_count = 1;
+        bt_notify_pbap_vcard_item_cmpl_t vcard_item_cmpl;
+        vcard_item_cmpl.phone_book = local_inst->curr_phonebook;
+        vcard_item_cmpl.res = msg->res;
         bt_interface_bt_event_notify(BT_NOTIFY_PBAP, BT_NOTIFY_PBAP_PULL_PB_CMPL,
-                                     &msg->res, sizeof(uint8_t));
+                                     &vcard_item_cmpl, sizeof(bt_notify_pbap_vcard_item_cmpl_t));
         break;
     }
     case BTS2MU_PBAP_CLT_PULL_VCARD_BEGIN_IND:

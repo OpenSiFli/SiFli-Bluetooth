@@ -708,20 +708,32 @@ typedef struct
 ///  PABP vcard name result
 typedef struct
 {
+    ///  phone book
+    uint8_t phone_book;
     uint8_t vcard_type;
     ///  vcard name length
     uint8_t vcard_name_len;
-    /// vcard name
-    char vcard_name[BT_NOTIFY_PBAP_MAX_VCARD_SIZE];
-    ///  vcard name length
+    ///  vcard number length
     uint8_t vcard_number_len;
-    /// vcard name
-    char vcard_number[BT_NOTIFY_PBAP_MAX_VCARD_SIZE];
-    ///  vcard name length
+    ///  vcard time length
     uint8_t vcard_time_len;
     /// vcard name
+    char vcard_name[BT_NOTIFY_PBAP_MAX_VCARD_SIZE];
+    /// vcard number
+    char vcard_number[BT_NOTIFY_PBAP_MAX_VCARD_SIZE];
+    /// vcard time
     char vcard_time[BT_NOTIFY_PBAP_MAX_VCARD_SIZE];
 } bt_notify_pbap_vcard_item_t;
+
+///  PABP vcard item complete result value
+///  solution上修改此结构体时"bt_device.h"文件中的"bt_pbap_vcard_item_cmpl_t"结构体要同步修改
+typedef struct
+{
+    ///  phone book
+    uint8_t phone_book;
+    ///  result value
+    uint8_t res;
+} bt_notify_pbap_vcard_item_cmpl_t;
 
 typedef union
 {
