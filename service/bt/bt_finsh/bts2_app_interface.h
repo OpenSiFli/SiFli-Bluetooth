@@ -625,6 +625,20 @@ bt_err_t bt_interface_set_avrcp_role_ext(bt_notify_device_mac_t *rmt_addr, uint8
  **/
 uint8_t bt_interface_avrcp_get_playback_status(bt_notify_device_mac_t *mac);
 
+/**
+ * @brief            Get the music element
+ * @param[in] mac    Remote device address
+ *
+ **/
+void bt_interface_avrcp_get_music_element(bt_notify_device_mac_t *mac);
+
+/**
+ * @brief            Get the music element
+ * @param[in] mac    Remote device address
+ *
+ **/
+void bt_interface_avrcp_set_music_element(bt_notify_device_mac_t *mac, uint32_t element);
+
 #ifdef CFG_AVRCP_COVER_ART
 /**
  * @brief            Get the cover picture of the song being played by the mobile phone

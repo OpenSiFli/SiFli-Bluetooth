@@ -1023,6 +1023,24 @@ uint8_t bt_interface_avrcp_get_playback_status(bt_notify_device_mac_t *mac)
 #endif
 }
 
+void bt_interface_avrcp_get_music_element(bt_notify_device_mac_t *mac)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    BTS2S_BD_ADDR     bd_addr;
+
+    bt_addr_convert_to_bts((bd_addr_t *)mac, &bd_addr);
+    bt_avrcp_get_all_element_request(bts2_app_data, &bd_addr);
+}
+
+void bt_interface_avrcp_set_music_element(bt_notify_device_mac_t *mac, uint32_t element)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    BTS2S_BD_ADDR     bd_addr;
+
+    bt_addr_convert_to_bts((bd_addr_t *)mac, &bd_addr);
+    bt_avrcp_set_element_support(bts2_app_data, &bd_addr, element);
+}
+
 uint8_t bt_interface_avrcp_get_connection_by_addr(bt_notify_device_mac_t *mac)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;

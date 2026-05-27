@@ -300,7 +300,7 @@ typedef struct
 typedef struct
 {
     uint8_t  track_id;
-    uint8_t  attri_req;
+    uint32_t  attri_req;
     bt_notify_avrcp_music_detail_info_t  detail_info;
 } bt_notify_avrcp_music_detail_t;
 #endif

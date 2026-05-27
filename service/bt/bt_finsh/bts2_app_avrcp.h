@@ -98,7 +98,7 @@ typedef struct
 typedef struct
 {
     uint8_t  track_id;
-    uint8_t  attri_req;
+    uint32_t  attri_req;
     bt_avrcp_music_detail_info_t detail_info;
 } bt_avrcp_music_detail_t;
 
@@ -134,6 +134,8 @@ void bt_avrcp_init(bts2_app_stru *bts2_app_data);
  *
  *----------------------------------------------------------------------------*/
 U8 bt_avrcp_get_role_by_addr(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd_addr);
+
+void bt_avrcp_set_element_support(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd_addr, U32 element);
 
 /*----------------------------------------------------------------------------*
  *
@@ -207,6 +209,10 @@ void bt_avrcp_play_status_changed_register_response(bts2_app_stru *bts2_app_data
 void bt_avrcp_track_changed_register_response(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, U8 response, U8 track_changed);
 
 void bt_avrcp_get_element_attributes_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, U8 media_attribute);
+
+void bt_avrcp_get_next_element_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
+
+void bt_avrcp_get_all_element_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
 
 void bt_avrcp_playback_register_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd);
 

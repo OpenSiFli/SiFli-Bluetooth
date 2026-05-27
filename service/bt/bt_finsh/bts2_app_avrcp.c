@@ -80,12 +80,17 @@ void bt_avrcp_init(bts2_app_stru *bts2_app_data)
         bts2_app_data->avrcp_inst.conn[idx].playback_status = 0;
         bts2_app_data->avrcp_inst.conn[idx].abs_vol_support = 0;
         bts2_app_data->avrcp_inst.conn[idx].role = AVRCP_NO_ROLE;
+        bts2_app_data->avrcp_inst.conn[idx].element_support = ATTRIBUTES_IDX(AVRCP_MEDIA_ATTRIBUTES_TITLE) |  \
+                ATTRIBUTES_IDX(AVRCP_MEDIA_ATTRIBUTES_ARTIST) | \
+                ATTRIBUTES_IDX(AVRCP_MEDIA_ATTRIBUTES_ALBUM) |  \
+                ATTRIBUTES_IDX(AVRCP_MEDIA_ATTRIBUTES_PLAYTIME);
 #ifdef CFG_AVRCP_COVER_ART
         bts2_app_data->avrcp_inst.conn[idx].is_cover_connected = 0;
         bts2_app_data->avrcp_inst.conn[idx].need_reconnect = 0;
         bts2_app_data->avrcp_inst.conn[idx].has_image_hdl = 0;
         bts2_app_data->avrcp_inst.conn[idx].get_cover_art_pending = 0;
         bts2_app_data->avrcp_inst.conn[idx].need_update_cover_art = 0;
+        bts2_app_data->avrcp_inst.conn[idx].element_support |= ATTRIBUTES_IDX(AVRCP_MEDIA_ATTRIBUTES_COVER_ART);
 #endif
     }
 #ifdef CFG_OPEN_AVRCP
@@ -162,6 +167,17 @@ U8 bt_avrcp_get_role_by_addr(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd_add
         }
     }
     return role;
+}
+
+void bt_avrcp_set_element_support(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd_addr, U32 element)
+{
+    U8 con_idx = 0xff;
+
+    if (bt_avrcp_check_connection_by_addr(bts2_app_data, bd_addr, &con_idx))
+    {
+        bts2_app_data->avrcp_inst.conn[con_idx].element_support = element;
+        USER_TRACE("update elment:%x\n", element);
+    }
 }
 
 int bt_avrcp_target_connect_request(BTS2S_BD_ADDR *bd)
@@ -751,6 +767,8 @@ void bt_avrcp_get_capabilities_request(bts2_app_stru *bts2_app_data, BTS2S_BD_AD
 
 void bt_avrcp_get_capabilities_response(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, int tlabel)
 {
+    U8 role = bt_avrcp_get_role_by_addr(bts2_app_data, bd);
+
     U8 data_len = 12;
     U8 data[12];
 
@@ -765,11 +783,22 @@ void bt_avrcp_get_capabilities_response(bts2_app_stru *bts2_app_data, BTS2S_BD_A
     // parameter
     // capability
     *(data + 8) = AVRCP_VENDOR_DEPENDENT_EVENT_CAPABILITY_FOR_EVENTS;
-    // capability count
-    *(data + 9) = 2;
-    // event ID volume changed
-    *(data + 10) = AVRCP_VENDOR_DEPENDENT_EVENT_PLAYBACK_STATUS_CHANGED;
-    *(data + 11) = AVRCP_VENDOR_DEPENDENT_EVENT_VOLUME_CHANGED;
+
+    if (role == AVRCP_CT)
+    {
+        // capability count
+        *(data + 9) = 1;
+        *(data + 10) = AVRCP_VENDOR_DEPENDENT_EVENT_VOLUME_CHANGED;
+        data_len -= 1;
+    }
+    else
+    {
+        // capability count
+        *(data + 9) = 2;
+        // event ID volume changed
+        *(data + 10) = AVRCP_VENDOR_DEPENDENT_EVENT_PLAYBACK_STATUS_CHANGED;
+        *(data + 11) = AVRCP_VENDOR_DEPENDENT_EVENT_VOLUME_CHANGED;
+    }
 
     avrcp_cmd_data_rsp_ext(bd, bts2_app_data->phdl,
                            tlabel,
@@ -1213,6 +1242,9 @@ void bt_avrcp_get_play_status_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADD
 static void bt_avrcp_get_element_attributes_confirm(bts2_app_stru *bts2_app_data, BTS2S_AVRCP_VENDOR_DEPEND_CMD_CFM *avrcmsg)
 {
     U16 paramter_length;
+    U8 *value;
+    U16 value_length;
+    U32 media_attribute;
     paramter_length = ((avrcmsg->data[6] << 8) | (avrcmsg->data[7]));
 
 
@@ -1221,39 +1253,31 @@ static void bt_avrcp_get_element_attributes_confirm(bts2_app_stru *bts2_app_data
     {
         attribute_rej = *(avrcmsg->data + 8);
         USER_TRACE("avrcp attr_cfm reject %d\n", attribute_rej);
-        return;
     }
+
     if (paramter_length < 9)
     {
         USER_TRACE("avrcp attr_cfm short len %d\n", paramter_length);
-        return;
     }
+    else
+    {
+        //data[8]:number of attribute,is 1 general.jump
+        media_attribute = ((avrcmsg->data[9] << 24) | (avrcmsg->data[10] << 16) | (avrcmsg->data[11] << 8) | (avrcmsg->data[12]));
+        USER_TRACE("avrcp media_attribute %x  req_attr %x\n", media_attribute, music_detail_info.attri_req);
 
-    //data[8]:number of attribute,is 1 general.jump
-    U32 media_attribute;
-    media_attribute = ((avrcmsg->data[9] << 24) | (avrcmsg->data[10] << 16) | (avrcmsg->data[11] << 8) | (avrcmsg->data[12]));
-    USER_TRACE("avrcp media_attribute %x  req_attr %x\n", media_attribute, music_detail_info.attri_req);
+        music_detail_info.detail_info.character_set_id = ((avrcmsg->data[13] << 8) | (avrcmsg->data[14]));
+        USER_TRACE("avrcp character_set_id %x\n", music_detail_info.detail_info.character_set_id);
 
-    music_detail_info.detail_info.character_set_id = ((avrcmsg->data[13] << 8) | (avrcmsg->data[14]));
-    USER_TRACE("avrcp character_set_id %x\n", music_detail_info.detail_info.character_set_id);
+        value_length = ((avrcmsg->data[15] << 8) | (avrcmsg->data[16]));
+        USER_TRACE("avrcp value_length %x\n", value_length);
 
-    U16 value_length;
-    value_length = ((avrcmsg->data[15] << 8) | (avrcmsg->data[16]));
-    USER_TRACE("avrcp value_length %x\n", value_length);
+        bt_notify_avrcp_media_attribute_cfm_t media_attribute_cfm;
+        media_attribute_cfm.media_attribute = media_attribute;
+        media_attribute_cfm.value_length = value_length;
+        media_attribute_cfm.value = (U8 *)(avrcmsg->data + 17);
 
-    U8 *value;
-
-    bt_notify_avrcp_media_attribute_cfm_t media_attribute_cfm;
-    media_attribute_cfm.media_attribute = media_attribute;
-    media_attribute_cfm.value_length = value_length;
-    media_attribute_cfm.value = (U8 *)(avrcmsg->data + 17);
-
-    bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_MEDIA_ATTRIBUTE_CFM, &media_attribute_cfm, sizeof(bt_notify_avrcp_media_attribute_cfm_t));
-
-    // if (media_attribute != music_detail_info.attri_req)
-    // {
-    //     return;
-    // }
+        bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_MEDIA_ATTRIBUTE_CFM, &media_attribute_cfm, sizeof(bt_notify_avrcp_media_attribute_cfm_t));
+    }
 
     switch (media_attribute)
     {
@@ -1292,8 +1316,6 @@ static void bt_avrcp_get_element_attributes_confirm(bts2_app_stru *bts2_app_data
             bfree(value);
 #endif
         }
-        music_detail_info.attri_req = AVRCP_MEDIA_ATTRIBUTES_ARTIST;
-        bt_avrcp_get_element_attributes_request(bts2_app_data, &avrcmsg->bd, AVRCP_MEDIA_ATTRIBUTES_ARTIST);
         break;
     }
     case AVRCP_MEDIA_ATTRIBUTES_ARTIST:
@@ -1321,8 +1343,6 @@ static void bt_avrcp_get_element_attributes_confirm(bts2_app_stru *bts2_app_data
         {
             music_detail_info.detail_info.singer_name.size = 0;
         }
-        music_detail_info.attri_req = AVRCP_MEDIA_ATTRIBUTES_ALBUM;
-        bt_avrcp_get_element_attributes_request(bts2_app_data, &avrcmsg->bd, AVRCP_MEDIA_ATTRIBUTES_ALBUM);
         break;
     }
     case AVRCP_MEDIA_ATTRIBUTES_ALBUM:
@@ -1349,8 +1369,6 @@ static void bt_avrcp_get_element_attributes_confirm(bts2_app_stru *bts2_app_data
         {
             music_detail_info.detail_info.album_info.size = 0;
         }
-        music_detail_info.attri_req = AVRCP_MEDIA_ATTRIBUTES_TITLE;
-        bt_avrcp_get_element_attributes_request(bts2_app_data, &avrcmsg->bd, AVRCP_MEDIA_ATTRIBUTES_TITLE);
         break;
     }
     case AVRCP_MEDIA_ATTRIBUTES_TITLE:
@@ -1377,8 +1395,6 @@ static void bt_avrcp_get_element_attributes_confirm(bts2_app_stru *bts2_app_data
         {
             music_detail_info.detail_info.song_name.size = 0;
         }
-        music_detail_info.attri_req = AVRCP_MEDIA_ATTRIBUTES_PLAYTIME;
-        bt_avrcp_get_element_attributes_request(bts2_app_data, &avrcmsg->bd, AVRCP_MEDIA_ATTRIBUTES_PLAYTIME);
         break;
     }
     case AVRCP_MEDIA_ATTRIBUTES_PLAYTIME:
@@ -1405,21 +1421,47 @@ static void bt_avrcp_get_element_attributes_confirm(bts2_app_stru *bts2_app_data
         {
             music_detail_info.detail_info.duration.size = 0;
         }
-
-        music_detail_info.attri_req = 0x00;
-
-        if ((0 == music_detail_info.detail_info.singer_name.size) && (0 == music_detail_info.detail_info.album_info.size))
-        {
-            break;
-        }
-        USER_TRACE("URC BT music detail end %x\n", music_detail_info.track_id);
-#if defined(CFG_AVRCP)
-        bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_MUSIC_DETAIL_INFO, &music_detail_info, sizeof(bt_notify_avrcp_music_detail_t));
-#endif
         break;
     }
     default:
         ;
+    }
+
+    bt_avrcp_get_next_element_request(bts2_app_data, &avrcmsg->bd);
+}
+
+void bt_avrcp_get_all_element_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
+{
+    U8 con_idx = 0xff;
+
+    if (bt_avrcp_check_connection_by_addr(bts2_app_data, bd, &con_idx))
+    {
+        music_detail_info.attri_req = bts2_app_data->avrcp_inst.conn[con_idx].element_support;
+        U8 attribute_val = __builtin_ctz(music_detail_info.attri_req);
+        music_detail_info.attri_req &= music_detail_info.attri_req - 1;
+        bt_avrcp_get_element_attributes_request(bts2_app_data, bd, attribute_val);
+    }
+}
+
+void bt_avrcp_get_next_element_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
+{
+    U8 con_idx = 0xff;
+
+    if (bt_avrcp_check_connection_by_addr(bts2_app_data, bd, &con_idx))
+    {
+        if (music_detail_info.attri_req != 0)
+        {
+            U8 attribute_val = __builtin_ctz(music_detail_info.attri_req);
+            music_detail_info.attri_req &= music_detail_info.attri_req - 1;
+            bt_avrcp_get_element_attributes_request(bts2_app_data, bd, attribute_val);
+        }
+        else
+        {
+            USER_TRACE("URC BT music detail end %x\n", music_detail_info.track_id);
+#if defined(CFG_AVRCP)
+            bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_MUSIC_DETAIL_INFO, &music_detail_info, sizeof(bt_notify_avrcp_music_detail_t));
+#endif
+        }
     }
 }
 
@@ -2047,11 +2089,10 @@ static void bt_avrcp_hdl_vendor_depend_cmd_cfm(bts2_app_stru *bts2_app_data)
                         // playing, should get element attributes
                         memset(&music_detail_info, 0x00, sizeof(bt_avrcp_music_detail_t));
                         music_detail_info.track_id = value;
-                        music_detail_info.attri_req = AVRCP_MEDIA_ATTRIBUTES_ARTIST;
-                        bt_avrcp_get_element_attributes_request(bts2_app_data, &avrcmsg->bd, AVRCP_MEDIA_ATTRIBUTES_ARTIST);
-#ifdef CFG_AVRCP_COVER_ART
-                        bt_avrcp_get_element_attributes_request(bts2_app_data, &avrcmsg->bd, AVRCP_MEDIA_ATTRIBUTES_COVER_ART);
-#endif
+                        music_detail_info.attri_req = bts2_app_data->avrcp_inst.conn[idx].element_support;
+                        U8 attribute_val = __builtin_ctz(music_detail_info.attri_req);
+                        music_detail_info.attri_req &= music_detail_info.attri_req - 1;
+                        bt_avrcp_get_element_attributes_request(bts2_app_data, &avrcmsg->bd, attribute_val);
                     }
                     else if (identifier_result == 1)
                     {

@@ -253,6 +253,7 @@ typedef struct
     U8             need_update_cover_art;
     const char     avrcp_cover_art_image_handle[AVRCP_COVER_ART_IMAGE_HANDLE_LEN];
 #endif
+    U32            element_support;
 } bts2_avrcp_conn;
 
 typedef struct

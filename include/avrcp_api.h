@@ -120,6 +120,7 @@ extern "C" {
 #define AVRCP_MEDIA_ATTRIBUTES_PLAYTIME 0x07
 #define AVRCP_MEDIA_ATTRIBUTES_COVER_ART 0x08
 
+#define ATTRIBUTES_IDX(X)    (1 << X)
 
 typedef enum BTS2E_AVRCP_MSG_TAG
 {
