@@ -39,10 +39,10 @@
     #define A2DP_CMD_PAUSE          0
     #define A2DP_CMD_RESUME         1
 
-    static uint16_t bt_avsrc_send_data(struct rt_ringbuffer *rb);
+    static uint16_t bt_avsrc_send_data(struct rt_ringbuffer32 *rb);
     static int bt_avsrc_register_audio_open(void *user_data, audio_device_input_callback callback);
     static int bt_avsrc_register_audio_close(void *user_data);
-    static uint32_t bt_avsrc_register_audio_output(void *user_data, struct rt_ringbuffer *rb);
+    static uint32_t bt_avsrc_register_audio_output(void *user_data, struct rt_ringbuffer32 *rb);
     static int bt_avsrc_register_audio_ioctl(void *user_data, int cmd, void *val);
 #endif
 
@@ -96,7 +96,7 @@ static int bt_avsrc_register_audio_close(void *user_data)
     return 0;
 }
 
-static uint32_t bt_avsrc_register_audio_output(void *user_data, struct rt_ringbuffer *rb)
+static uint32_t bt_avsrc_register_audio_output(void *user_data, struct rt_ringbuffer32 *rb)
 {
     uint16_t rd_len = bt_avsrc_send_data(rb);
     return rd_len;
@@ -138,7 +138,7 @@ static int bt_avsrc_register_audio_service(bts2_app_stru *bts2_app_data)
 
 static void bt_avsrc_send_cb(uint16_t m, void *para)
 {
-    struct rt_ringbuffer *rb = (struct rt_ringbuffer *)para;
+    struct rt_ringbuffer32 *rb = (struct rt_ringbuffer32 *)para;
     send_timer_added = 0;
     bt_avsrc_send_data(rb);
 }
@@ -1031,7 +1031,7 @@ static void bt_avsrc_send_data(U16 m, void *data)
 }
 #else
 
-static uint16_t bt_avsrc_send_data(struct rt_ringbuffer *rb)
+static uint16_t bt_avsrc_send_data(struct rt_ringbuffer32 *rb)
 {
     bts2s_av_inst_data *inst = bt_av_get_inst_data();
 
@@ -1105,7 +1105,7 @@ static uint16_t bt_avsrc_send_data(struct rt_ringbuffer *rb)
             }
 
 
-            uint16_t len = rt_ringbuffer_data_len((struct rt_ringbuffer *)rb);
+            uint16_t len = rt_ringbuffer32_data_len(rb);
 
             act_cfg = &inst->con[con_idx].act_cfg;
 
@@ -1140,11 +1140,11 @@ static uint16_t bt_avsrc_send_data(struct rt_ringbuffer *rb)
 
             if (!is_empty)
             {
-                rt_ringbuffer_get((struct rt_ringbuffer *)rb, ptr, act_cfg->bytes_to_rd);
+                rt_ringbuffer32_get(rb, ptr, act_cfg->bytes_to_rd);
 
-                len = rt_ringbuffer_data_len((struct rt_ringbuffer *)rb);
+                len = rt_ringbuffer32_data_len(rb);
 #ifdef AUDIO_USING_MANAGER
-                if ((len <= rt_ringbuffer_get_size((struct rt_ringbuffer *)rb) / 2)
+                if ((len <= rt_ringbuffer32_get_size(rb) / 2)
                         || (len < act_cfg->bytes_to_rd))
                 {
                     if (inst->src_data.input_cb)

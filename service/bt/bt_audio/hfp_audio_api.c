@@ -164,6 +164,7 @@ void hfp_aduio_open_path(hfp_audio_type_t audioType)
         param.read_samplerate = g_hfp_audio_env.voice_para.sample_rate;
         param.write_bits_per_sample = 16;
         param.write_channnel_num = 1;
+        param.is_need_3a = 1;
         param.write_samplerate = g_hfp_audio_env.voice_para.sample_rate;
 
         if (g_hfp_audio_env.handle)
@@ -278,7 +279,7 @@ static int bt_hfpag_register_audio_close(void *user_data)
 }
 
 #if AUDIO_BOX_EN
-static uint32_t bt_hfpag_register_audio_output(void *user_data, struct rt_ringbuffer *rb)
+static uint32_t bt_hfpag_register_audio_output(void *user_data, struct rt_ringbuffer32 *rb)
 {
     HFP_AG_AUDIO_INFO_T *ag_inf = (HFP_AG_AUDIO_INFO_T *)user_data;
     struct rt_ringbuffer *ag_rb_cache = &(ag_inf->ring_buf);
@@ -293,9 +294,9 @@ static uint32_t bt_hfpag_register_audio_output(void *user_data, struct rt_ringbu
 
     if (rt_ringbuffer_space_len(ag_rb_cache) >= ag_inf->data_len)
     {
-        if (rt_ringbuffer_data_len(rb) >= ag_inf->data_len)
+        if (rt_ringbuffer32_data_len(rb) >= ag_inf->data_len)
         {
-            getsize = rt_ringbuffer_get(rb, &buf[0], ag_inf->data_len);
+            getsize = rt_ringbuffer32_get(rb, &buf[0], ag_inf->data_len);
             RT_ASSERT(getsize == ag_inf->data_len);
             putsize = rt_ringbuffer_put(ag_rb_cache, &buf[0], ag_inf->data_len);
             RT_ASSERT(putsize == ag_inf->data_len);
@@ -333,7 +334,7 @@ static uint32_t bt_hfpag_register_audio_output(void *user_data, struct rt_ringbu
     return ag_inf->data_len;
 }
 #else //for 4G
-static uint32_t bt_hfpag_register_audio_output(void *user_data, struct rt_ringbuffer *rb)
+static uint32_t bt_hfpag_register_audio_output(void *user_data, struct rt_ringbuffer32 *rb)
 {
     RT_ASSERT(0);//TODO: concatenate with 4G audio path
 }
