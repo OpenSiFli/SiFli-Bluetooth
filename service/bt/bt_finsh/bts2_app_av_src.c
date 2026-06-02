@@ -1105,7 +1105,7 @@ static uint16_t bt_avsrc_send_data(struct rt_ringbuffer32 *rb)
             }
 
 
-            uint16_t len = rt_ringbuffer32_data_len(rb);
+            uint32_t len = rt_ringbuffer32_data_len(rb);
 
             act_cfg = &inst->con[con_idx].act_cfg;
 
@@ -1113,7 +1113,7 @@ static uint16_t bt_avsrc_send_data(struct rt_ringbuffer32 *rb)
             if (len < act_cfg->bytes_to_rd)
             {
 #ifdef AUDIO_USING_MANAGER
-                LOG_I("a2dp_src: buffer empty\n");
+                LOG_I("a2dp_src: buffer empty %d/%d\n", len, act_cfg->bytes_to_rd);
 
                 if (inst->src_data.input_cb == NULL)
                 {
@@ -1144,7 +1144,7 @@ static uint16_t bt_avsrc_send_data(struct rt_ringbuffer32 *rb)
 
                 len = rt_ringbuffer32_data_len(rb);
 #ifdef AUDIO_USING_MANAGER
-                if ((len <= rt_ringbuffer32_get_size(rb) / 2)
+                if ((len <= rt_ringbuffer32_get_size(rb) / 8)
                         || (len < act_cfg->bytes_to_rd))
                 {
                     if (inst->src_data.input_cb)
