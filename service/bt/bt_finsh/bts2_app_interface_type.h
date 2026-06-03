@@ -144,6 +144,8 @@ typedef enum
     BT_NOTIFY_HF_BTRH_IND,
     ///  HFP HF profile at cmd send result event
     BT_NOTIFY_HF_CALL_INCOMING_NUMBER_IND,
+    ///  HFP HF profile in-band ring tone status change event
+    BT_NOTIFY_HF_INBAND_RING_STATUS_CHANGE,
 } bt_notify_hfp_hf_event_id_t;
 
 ///  these type are BT_NOTIFY_HFP_AG event id

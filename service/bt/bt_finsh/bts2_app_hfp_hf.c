@@ -2161,6 +2161,12 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
             {
                 device_info->peer_features &= (~HFP_AG_FEAT_INBAND);
             }
+            bt_notify_ag_at_arg_t *bsir = (bt_notify_ag_at_arg_t *)bmalloc(sizeof(bt_notify_ag_at_arg_t));
+            bsir->profile_channel = msg->mux_id;
+            bsir->payload_len = 1;
+            bsir->payload[0] = bt_hfp_is_support_feature(device_info, HFP_AG_FEAT_INBAND);
+            bt_interface_bt_event_notify(BT_NOTIFY_HFP_HF, BT_NOTIFY_HF_INBAND_RING_STATUS_CHANGE, bsir, sizeof(bt_notify_ag_at_arg_t));
+            bfree(bsir);
         }
         break;
     }

@@ -992,7 +992,7 @@ void bt_interface_bt_gatt_mtu_changed(uint16_t mtu);
 #endif
 
 
-#if defined(BT_USING_AG) || defined(_SIFLI_DOXYGEN_)
+#if defined(CFG_HFP_AG) || defined(_SIFLI_DOXYGEN_)
 
 /** @defgroup HFP_AG  HFP_AG profile interfaces
   * @{

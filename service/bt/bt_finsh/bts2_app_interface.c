@@ -1815,7 +1815,7 @@ void bt_interface_bt_gatt_mtu_changed(uint16_t mtu)
   * @{
   */
 
-#ifdef BT_USING_AG
+#ifdef CFG_HFP_AG
 void bt_interface_phone_state_changed(HFP_CALL_INFO_T *call_info)
 {
     bt_hfp_ag_call_state_update_listener(call_info->mux_id, call_info);
@@ -1895,7 +1895,7 @@ bt_err_t bt_interface_hfp_hf_start_connecting(unsigned char *mac)
     return BT_ERROR_INPARAM;
 }
 
-bt_err_t bt_interface_get_ph_num(void)
+bt_err_t  bt_interface_get_ph_num(void)
 {
     bt_err_t ret = bt_hfp_hf_at_cnum_send();
     return ret;

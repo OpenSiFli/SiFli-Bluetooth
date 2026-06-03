@@ -18,7 +18,7 @@
     #include "hfp_audio_api.h"
 #endif
 
-#ifdef BT_USING_AG
+#ifdef RT_USING_BT
     #include "bt_rt_device.h"
 #endif
 
