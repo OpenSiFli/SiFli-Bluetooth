@@ -20,7 +20,7 @@ pipeline {
                         sh "git reset --hard; git clean -fdx"
                         sh "git submodule foreach --recursive 'git reset --hard; git clean -fdx'"
                         checkout([$class: 'GitSCM',
-                            branches: [[name: 'main']],
+                            branches: [[name: 'release/v2.4']],
                             userRemoteConfigs: [[
                                 url: 'ssh://jenkins@10.21.10.179:29418/SiFli-SDK',
                                 credentialsId: '1'
@@ -40,7 +40,7 @@ pipeline {
                         ])
                         dir('middleware/bluetooth') {
                             checkout([$class: 'GitSCM',
-                                branches: [[name: 'main']],
+                                branches: [[name: 'v2.4_bluetooth']],
                                 userRemoteConfigs: [[
                                     url: 'ssh://jenkins@10.21.10.179:29418/SiFli-Bluetooth',
                                     credentialsId: '1'
