@@ -1144,7 +1144,7 @@ static uint16_t bt_avsrc_send_data(struct rt_ringbuffer32 *rb)
 
                 len = rt_ringbuffer32_data_len(rb);
 #ifdef AUDIO_USING_MANAGER
-                if ((len <= rt_ringbuffer32_get_size(rb) / 8)
+                if ((rt_ringbuffer32_space_len(rb) > act_cfg->bytes_to_rd)
                         || (len < act_cfg->bytes_to_rd))
                 {
                     if (inst->src_data.input_cb)
