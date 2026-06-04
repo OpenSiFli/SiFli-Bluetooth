@@ -23,8 +23,14 @@
 #endif
 
 #ifndef BT_USING_AG
-    U8 g_flag_auto_answer_call = 1;
+uint8_t g_flag_auto_answer_call = 1;
+
+__WEAK uint8_t bt_hfp_ag_set_auto_answer_call_default()
+{
+    return g_flag_auto_answer_call;
+}
 #endif
+
 /*******************************************device info func start**********************************************/
 static void bt_hfp_ag_app_init_device_info(bts2_hfp_ag_inst_data *ag_data)
 {
@@ -318,7 +324,7 @@ static void bt_hfp_ag_app_device_state_changed(bts2_app_stru *bts2_app_data, BTS
             profile_state.profile_channel = con_msg->mux_id;
             bt_profile_update_connection_state(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_PROFILE_CONNECTED, &profile_state);
 #ifndef BT_USING_AG
-            if (g_flag_auto_answer_call)
+            if (bt_hfp_ag_set_auto_answer_call_default())
             {
                 hfp_phone_call_info_t *call_info = bt_hfp_ag_app_get_remote_call_info();
 
@@ -389,7 +395,7 @@ static void bt_hfp_ag_app_answercall(U8 mux_id)
 {
     bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_ANSWER_CALL_REQ, &mux_id, 1);
 #ifndef BT_USING_AG
-    if (g_flag_auto_answer_call)
+    if (bt_hfp_ag_set_auto_answer_call_default())
     {
         hfp_phone_call_info_t *call_info = bt_hfp_ag_app_get_remote_call_info();
         bt_hfp_ag_app_call_status_change(mux_id, (char *)&call_info->phone_info.phone_number, strlen(call_info->phone_info.phone_number) + 1,
@@ -402,9 +408,12 @@ static void bt_hfp_ag_app_hangupcall(U8 mux_id)
 {
     bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_HANGUP_CALL_REQ,  &mux_id, 1);
 #ifndef BT_USING_AG
-    hfp_phone_call_info_t *call_info = bt_hfp_ag_app_get_remote_call_info();
-    bt_hfp_ag_app_call_status_change(mux_id, (char *)&call_info->phone_info.phone_number, strlen(call_info->phone_info.phone_number) + 1,
-                                     0, 0, call_info->call_dir);
+    if (bt_hfp_ag_set_auto_answer_call_default())
+    {
+        hfp_phone_call_info_t *call_info = bt_hfp_ag_app_get_remote_call_info();
+        bt_hfp_ag_app_call_status_change(mux_id, (char *)&call_info->phone_info.phone_number, strlen(call_info->phone_info.phone_number) + 1,
+                                         0, 0, call_info->call_dir);
+    }
 #endif
 
 }
@@ -428,7 +437,7 @@ static void bt_hfp_ag_app_onDialCall(U8 mux_id, char *number)
     bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_MAKE_CALL_REQ, data_info, sizeof(bt_notify_ag_at_arg_t) + strlen(number));
     bfree(data_info);
 #ifndef BT_USING_AG
-    if (g_flag_auto_answer_call)
+    if (bt_hfp_ag_set_auto_answer_call_default())
     {
         hfp_ag_at_cmd_result(mux_id, BTS2_SUCC);
         uint8_t phone_len = strlen(number);
@@ -469,11 +478,14 @@ static void bt_hfp_ag_app_onAtCnum(U8 mux_id)
 {
     bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_GET_LOCAL_PHONE_INFO_REQ, &mux_id, 1);
 #ifndef BT_USING_AG
-    hfp_phone_number_t local_phone_num;
-    char *str = "19396395979";
-    bmemcpy(&local_phone_num.phone_number, str, strlen(str) + 1);
-    local_phone_num.type = 0x81;
-    bt_hfp_ag_cnum_response(mux_id, &local_phone_num);
+    if (bt_hfp_ag_set_auto_answer_call_default())
+    {
+        hfp_phone_number_t local_phone_num;
+        char *str = "19396395979";
+        bmemcpy(&local_phone_num.phone_number, str, strlen(str) + 1);
+        local_phone_num.type = 0x81;
+        bt_hfp_ag_cnum_response(mux_id, &local_phone_num);
+    }
 #endif
 }
 
@@ -481,7 +493,7 @@ static void bt_hfp_ag_app_onAtCind(U8 mux_id)
 {
     bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_GET_INDICATOR_STATUS_REQ, &mux_id, 1);
 #ifndef BT_USING_AG
-    if (g_flag_auto_answer_call)
+    if (bt_hfp_ag_set_auto_answer_call_default())
     {
         hfp_cind_status_t cind_status;
         cind_status.service_status = 1;
@@ -506,7 +518,7 @@ static void bt_hfp_ag_app_onAtClcc(U8 mux_id)
 {
     bt_interface_bt_event_notify(BT_NOTIFY_HFP_AG, BT_NOTIFY_AG_GET_ALL_REMT_CALLS_INFO_REQ, &mux_id, 1);
 #ifndef BT_USING_AG
-    if (g_flag_auto_answer_call)
+    if (bt_hfp_ag_set_auto_answer_call_default())
     {
         hfp_phone_call_info_t *remote_call_info = bt_hfp_ag_app_get_remote_call_info();
         if (remote_call_info->call_idx)

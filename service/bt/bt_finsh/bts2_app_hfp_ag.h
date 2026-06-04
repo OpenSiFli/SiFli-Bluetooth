@@ -32,8 +32,6 @@ void bt_hfp_ag_app_call_status_change(U8 mux_id, char *phone_num, uint8_t phone_
 void bt_hfp_ag_app_cind_status_change(uint8_t type, uint8_t val);
 hfp_phone_call_info_t *bt_hfp_ag_app_get_remote_call_info();
 
-
-
 /*************************************AT CMD *************************************/
 void bt_hfp_ag_spk_vol_control(U8 mux_id, U8 vol);
 void bt_hfp_ag_mic_vol_control(U8 mux_id, U8 vol);
