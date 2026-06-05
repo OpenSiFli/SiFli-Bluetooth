@@ -112,7 +112,7 @@ static uint8_t bt_cm_get_link_type_by_cls(uint32_t dev_cls)
 {
     uint8_t link_type = BT_LINK_PHONE;
 
-    if (dev_cls & BT_DEVCLS_PHONE)
+    if ((dev_cls & BT_DEVCLS_PHONE) || (dev_cls & BT_DEVCLS_COMPUTER))
     {
         return link_type;
     }
@@ -158,6 +158,10 @@ void bt_cm_add_bonded_dev(bt_cm_dev_info_t *dev, uint8_t force)
     if (idx == BT_CM_MAX_BOND)
     {
         idx = bt_cm_alloc_bond_dev();
+    }
+    else
+    {
+        return;
     }
     if (idx == BT_CM_MAX_BOND && force)
     {
@@ -310,9 +314,9 @@ bt_cm_dev_acl_info_t *bt_cm_conn_alloc(bt_cm_device_manager_t *env, BTS2S_BD_ADD
     {
 
         bt_cm_dev_acl_info_t *conn = &env->bt_devices[i];
-        memset(conn, 0, sizeof(bt_cm_dev_acl_info_t));
         if (!conn->is_use)
         {
+            memset(conn, 0, sizeof(bt_cm_dev_acl_info_t));
             conn->is_use = 1;
             conn->info.link_type = link_type;
             conn->state = BT_CM_ACL_STATE_CONNECTING;
@@ -823,16 +827,14 @@ void bt_close_bt_request_complete_check(bt_cm_device_manager_t *env, bt_cm_dev_a
     gap_wr_scan_enb_req(bts2_task_get_app_task_id(), 0, 0);
     if (0 == bt_cm_get_conn_num())
     {
-
+        env->close_process = BT_CM_CLOSED;
         if (BT_CM_OPENED != env->close_process)
         {
             bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_CLOSE_COMPLETE, NULL, 0);
         }
-
-        env->close_process = BT_CM_CLOSED;
     }
 
-    LOG_I("bt_close_bt_request_complete_check, close_process%d", env->close_process);
+    LOG_I("bt_close_bt_request_complete_check, close_process:%d", env->close_process);
 }
 
 
@@ -967,6 +969,17 @@ int bt_cm_gap_event_handler(uint16_t event_id, uint8_t *msg)
         bt_cm_delete_bonded_devs_and_linkkey_by_addr(&ind->bd);
         break;
     }
+    case BTS2MU_GAP_ENCRYPTION_IND:     //IOS手机先连接ble配对后再连接bt没有BTS2MU_SC_PAIR_IND事件，这个事件不能删除。
+    {
+        BTS2S_GAP_ENCRYPTION_IND *ind = (BTS2S_GAP_ENCRYPTION_IND *)msg;
+        bt_cm_dev_acl_info_t *conn = bt_cm_get_conn_by_addr(env, &ind->bd);
+        if (conn)
+        {
+            LOG_D("Encryption status updated for device: %06X:%02X:%04X, link_type: %d", ind->bd.lap, ind->bd.uap, ind->bd.nap, conn->info.link_type);
+            bt_cm_add_bonded_dev(&conn->info, 1);
+        }
+        break;
+    }
     default:
         break;
     }
@@ -1020,12 +1033,25 @@ static void bt_cm_hci_acl_connect_complete_event_hdl(BTS2S_DM_EN_ACL_OPENED_IND 
         hcia_wr_lp_settings_keep_sniff_interval(&ind->bd, HCI_LINK_POLICY_NO_CHANGE, BT_CM_SNIFF_ENTER_TIME,
                                                 BT_CM_SNIFF_INV, BT_CM_SNIFF_INV, BT_CM_SNIFF_ATTEMPT, BT_CM_SNIFF_TIMEOUT, NULL);
     }
-
-    else if (conn && (ind->st != HCI_SUCC || (BT_CM_OPENED != env->close_process)))
+    else if (conn && (ind->st != HCI_SUCC))
     {
         bt_cm_conn_dealloc(env, conn);
     }
 
+    if (BT_CM_OPENED != env->close_process)
+    {
+        if (conn)
+        {
+            bt_cm_conn_dealloc(env, conn);
+        }
+        if (ind->st == HCI_SUCC && (BT_CM_CLOSING == env->close_process || BT_CM_CLOSED == env->close_process))
+        {
+            gap_close_req(&ind->bd);
+            return;
+        }
+    }
+
+    LOG_I("%s conn:%p", __func__, conn);
     if ((bt_cm_get_conn_num() + 1) > BT_CM_DEVICE_MAX_CONN)
     {
         gap_wr_scan_enb_req(bts2_task_get_app_task_id(), 0, 0);

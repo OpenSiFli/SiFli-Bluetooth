@@ -281,12 +281,6 @@ uint8_t bt_addr_convert(BTS2S_BD_ADDR *src_addr, uint8_t *addr);
 uint8_t bt_interface_this_connect_addr(unsigned char *mac, BTS2S_BD_ADDR *bd_addr);
 
 /**
- * @brief            Set the local role when acl connection is received
- * @param[in] role   Role to be set when acl connection is received
- **/
-void bt_interface_acl_accept_role_set(uint8_t role);
-
-/**
  * @brief            Set the local link policy
  * @param[in] lp_in  Link policy to be set
  * @param[in] lp_out Link policy to be set

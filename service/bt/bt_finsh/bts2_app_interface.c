@@ -567,11 +567,6 @@ uint8_t bt_interface_this_connect_addr(unsigned char *mac, BTS2S_BD_ADDR *bd_add
     return 1;
 }
 
-void bt_interface_acl_accept_role_set(uint8_t role) //0；master 1:slave
-{
-    bt_acl_accept_role_set(role);
-}
-
 void bt_interface_set_linkpolicy(uint16_t lp_in, uint16_t lp_out)//bit0:roleswitch   bit2:sniff
 {
     bt_acl_set_default_link_policy(lp_in, lp_out);
