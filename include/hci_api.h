@@ -2659,8 +2659,6 @@ void hcia_sync_disc_req(U16 hdl, U8 reason);
  *----------------------------------------------------------------------------*/
 void hcia_free_umsg_msg(BTS2U_HCI_MSG *umsg);
 
-void hcia_register_receive_connect_req_handler(BOOL (*cb)(BTS2S_BD_ADDR *p_bd, U24 dev_cls));
-
 void hcia_set_sniff_mode_enable(BOOL enable);
 void hcia_set_sniff_mode_enable_ext(BTS2S_BD_ADDR *bd, BOOL enable);
 BOOL hcia_get_sniff_mode_enable(void);
@@ -2713,7 +2711,6 @@ void hcia_hci_user_cfm_req_reply(BTS2S_BD_ADDR *bd, BTS2U_HCI_MSG **pmsg);
 
 void hcia_hci_user_cfm_req_neg_reply(BTS2S_BD_ADDR *bd, BTS2U_HCI_MSG **pmsg);
 
-void bt_acl_accept_role_set(U8 role);
 void hcia_send_acpt_conn_request(BTS2S_BD_ADDR *bd, U8 role);
 void hcia_send_rej_conn_request(BTS2S_BD_ADDR *bd, U8 reason);
 
