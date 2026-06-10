@@ -253,7 +253,7 @@ typedef enum
     BT_NOTIFY_LINK_POLICY_ROLE_SWITCH   = 0x0001,
     BT_NOTIFY_LINK_POLICY_HOLD_MODE     = 0x0002,
     BT_NOTIFY_LINK_POLICY_SNIFF_MODE    = 0x0004,
-    BT_NOTIFY_LINK_POLICY_PARK_SETTING    = 0x0008,
+    BT_NOTIFY_LINK_POLICY_PARK_SETTING  = 0x0008,
 } bt_notify_link_policy_settings_t;
 
 #ifdef  CFG_AVRCP
@@ -380,7 +380,10 @@ typedef enum
     BT_NOTIFY_PBAP_PULL_PB_CMPL,
     ///  PBAP profile set path cfm
     BT_NOTIFY_PBAP_SET_PATH_CFM,
+    ///  PBAP profile vCard item event
     BT_NOTIFY_PBAP_VCARD_ITEM_IND,
+    ///  PBAP profile vCard total number indication event
+    BT_NOTIFY_PBAP_VCARD_TOTAL_NUM_IND,
 } bt_notify_pbap_event_id_t;
 
 typedef enum
@@ -726,6 +729,14 @@ typedef struct
     /// vcard time
     char vcard_time[BT_NOTIFY_PBAP_MAX_VCARD_SIZE];
 } bt_notify_pbap_vcard_item_t;
+
+typedef struct
+{
+    ///  phone book
+    uint8_t phone_book;
+    /// total number of vcard in current vacard list
+    uint16_t total_num;
+} bt_notify_pbap_vcard_num_check_t;
 
 ///  PABP vcard item complete result value
 ///  solution上修改此结构体时"bt_device.h"文件中的"bt_pbap_vcard_item_cmpl_t"结构体要同步修改

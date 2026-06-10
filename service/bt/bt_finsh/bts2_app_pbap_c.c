@@ -1334,9 +1334,18 @@ void bt_pbap_clt_hdl_msg(bts2_app_stru *bts2_app_data)
         BTS2S_PBAP_CLT_PULL_PB_BEGIN_IND *msg;
         msg = (BTS2S_PBAP_CLT_PULL_PB_BEGIN_IND *)bts2_app_data->recv_msg;
         INFO_TRACE(">> BTS2MU_PBAP_CLT_PULL_PB_BEGIN_IND msg->body_data_length %d\n", msg->body_data_length);
+        INFO_TRACE(">> BTS2MU_PBAP_CLT_PULL_PB_BEGIN_IND msg->pbook_size %d\n", msg->pbook_size);
         if (msg->body_data_length)
         {
             bt_parser_vcard_property((U8 *)&msg->body_data, msg->body_data_length, msg->is_final_packet);
+        }
+        else
+        {
+            bt_notify_pbap_vcard_num_check_t vcard_num_check;
+            vcard_num_check.phone_book = local_inst->curr_phonebook;
+            vcard_num_check.total_num = msg->pbook_size;
+            bt_interface_bt_event_notify(BT_NOTIFY_PBAP, BT_NOTIFY_PBAP_VCARD_TOTAL_NUM_IND,
+                                         &vcard_num_check, sizeof(bt_notify_pbap_vcard_num_check_t));
         }
 
         if (!msg->is_final_packet)
