@@ -1956,10 +1956,11 @@ static void smp_pairing_complete(struct bt_smp *smp, uint8_t status)
         uint8_t lebr_key[16];
         const struct bt_conn_auth_cb *smp_auth_cb = latch_auth_cb(smp);
 
-        if (ble_key_2_bt_key(atomic_test_bit(smp->flags, SMP_FLAG_CT2), conn->le.keys->ltk.val, lebr_key) == 0)
+        if (smp_auth_cb && smp_auth_cb->le_br_key &&
+                ble_key_2_bt_key(atomic_test_bit(smp->flags, SMP_FLAG_CT2),
+                                 conn->le.keys->ltk.val, lebr_key) == 0)
         {
-            if (smp_auth_cb->le_br_key)
-                smp_auth_cb->le_br_key(conn, lebr_key);
+            smp_auth_cb->le_br_key(conn, lebr_key);
         }
 #endif /* CONFIG_BT_CLASSIC */
         bool bond_flag = atomic_test_bit(smp->flags, SMP_FLAG_BOND);

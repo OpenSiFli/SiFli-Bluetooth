@@ -1375,9 +1375,11 @@ BT_GATT_SERVICE_DEFINE(_1_gatt_svc,
                                BT_GATT_CHRC_READ | BT_GATT_CHRC_WRITE,
                                BT_GATT_PERM_READ | BT_GATT_PERM_WRITE,
                                cf_read, cf_write, NULL),
+#if !defined(CONFIG_BT_DISABLE_GATT_DB_HASH) && !defined(BT_DISABLE_GATT_DB_HASH)
                        BT_GATT_CHARACTERISTIC(BT_UUID_GATT_DB_HASH,
                                BT_GATT_CHRC_READ, BT_GATT_PERM_READ,
                                db_hash_read, NULL, NULL),
+#endif /* CONFIG_BT_DISABLE_GATT_DB_HASH */
 #if defined(CONFIG_BT_EATT)
                        BT_GATT_CHARACTERISTIC(BT_UUID_GATT_SERVER_FEATURES,
                                BT_GATT_CHRC_READ, BT_GATT_PERM_READ,

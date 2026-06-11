@@ -1543,9 +1543,10 @@ static int nvds_csi_load(struct settings_store *cs, const struct settings_load_a
         // Don't return here, continue to load Mesh keys
     }
 
-    // If arg is NULL or has no callback, skip the detailed loading
-    // but still try to load Mesh keys via iteration
-    if (!arg || !arg->cb)
+    // If arg is NULL, skip the detailed loading but still try to load Mesh keys
+    // via iteration. When arg is present but arg->cb is NULL, invoke_load_callback()
+    // can still dispatch to static settings handlers through settings_parse_and_lookup().
+    if (!arg)
     {
         LOG_INF("Probe phase detected (arg=%p), skipping detailed BT settings load", arg);
         // Continue to Mesh key loading below
