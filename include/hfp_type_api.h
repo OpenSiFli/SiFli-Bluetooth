@@ -192,6 +192,16 @@ typedef enum
     /*! Battery level indicator. */
     hfp_battery_level_mask            = 1 << 1,
 } hfp_hf_indicators_mask;
+
+typedef enum
+{
+    HFP_SCO_RETRY_NONE,
+    HFP_SCO_RETRY_ONCE,
+    HFP_SCO_RETRY_TWICE,
+    HFP_SCO_RETRY_DEFAULT,
+    SCO_RETRY_MAX   /* 枚举项总数，用于数组大小/边界检查 */
+} hfp_sco_retry_flag_t;
+
 /****************************************struct define***************************************/
 typedef struct
 {

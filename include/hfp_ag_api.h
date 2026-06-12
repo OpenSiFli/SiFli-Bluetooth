@@ -481,9 +481,6 @@ void hfp_ag_send_unknow_at_cmd(U8 mux_id, char *payload, U8 payload_len);
  *
  ******************************************************************************/
 void hfp_ag_at_cmd_result(U8 mux_id, U8 res);
-
-void hfp_set_sco_retry_flag(U8 enable);
-U8 hfp_get_sco_retry_flag();
 uint8_t bt_hfp_ag_profile_get_service_max_num();
 void bt_hfp_ag_profile_set_service_max_num(uint8_t max_num);
 
