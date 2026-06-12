@@ -154,6 +154,8 @@ void bt_cm_disconnect_req(void);
 
 void bt_cm_set_profile_target(uint32_t setProfile, bt_cm_link_type_t link_type, uint8_t addFlag);
 
+bt_err_t bt_interface_acpt_connect_req(unsigned char *mac, uint8_t link_role, uint8_t link_type);
+
 bt_cm_err_t bt_cm_profile_connect(uint32_t profile_bit, BTS2S_BD_ADDR *bd_addr, bt_cm_link_type_t link_type);
 
 void bt_cm_add_bonded_dev(bt_cm_dev_info_t *dev, uint8_t force);
