@@ -45,6 +45,8 @@ const uint8_t ancs_data_src_uuid[ATT_UUID_128_LEN] =
 #define BLE_ANCS_NOTI_ATTR_MAX_LEN 14 //8+6
 #define BLE_ANCS_NOTI_ATTR_NUMBER 8
 #define BLE_ANCS_APP_ATTR_NUMBER 1
+#define BLE_ANCS_WRITE_RETRY_MAX 5
+#define BLE_ANCS_WRITE_RETRY_INTERVAL 60
 
 typedef enum
 {
@@ -124,13 +126,18 @@ typedef struct
 {
     ble_ancs_noti_attr_t src;
     uint8_t is_used;
+    uint8_t is_get_attr_pending;
+    uint8_t retry_count;
 } ble_ancs_noti_attr_queue_t;
 
 static ble_ancs_env_t g_ble_ancs_env;
 
 static ble_ancs_noti_attr_queue_t g_ble_ancs_noti_queue[BLE_ANCS_NOTI_QUEUE_SIZE];
+static rt_timer_t g_ble_ancs_write_retry_timer;
 
 static int ble_ancs_gattc_event_handler(uint16_t event_id, uint8_t *data, uint16_t len);
+static int8_t ble_ancs_get_notification_attr(ble_ancs_noti_attr_queue_t *noti);
+static void ble_ancs_write_retry_timer_handler(void *parameter);
 
 
 static ble_ancs_env_t *ble_ancs_get_env(void)
@@ -141,6 +148,30 @@ static ble_ancs_env_t *ble_ancs_get_env(void)
 static void ble_ancs_clear_noti_buffer(void)
 {
     memset((void *)&g_ble_ancs_noti_queue, 0, sizeof(g_ble_ancs_noti_queue));
+}
+
+static void ble_ancs_write_retry_timer_start(void)
+{
+    if (g_ble_ancs_write_retry_timer == NULL)
+    {
+        g_ble_ancs_write_retry_timer = rt_timer_create("ancs_wr", ble_ancs_write_retry_timer_handler, NULL,
+                                       rt_tick_from_millisecond(BLE_ANCS_WRITE_RETRY_INTERVAL),
+                                       RT_TIMER_FLAG_ONE_SHOT | RT_TIMER_FLAG_SOFT_TIMER);
+    }
+
+    if (g_ble_ancs_write_retry_timer)
+    {
+        rt_timer_stop(g_ble_ancs_write_retry_timer);
+        rt_timer_start(g_ble_ancs_write_retry_timer);
+    }
+}
+
+static void ble_ancs_write_retry_timer_stop(void)
+{
+    if (g_ble_ancs_write_retry_timer)
+    {
+        rt_timer_stop(g_ble_ancs_write_retry_timer);
+    }
 }
 
 static ble_ancs_noti_attr_queue_t *ble_ancs_get_noti_buffer(void)
@@ -208,6 +239,11 @@ static void ble_ancs_parser_get_noti_attr_rsp(ble_ancs_get_noti_attr_rsp_t *data
     ble_ancs_noti_attr_queue_t *noti = ble_ancs_find_noti_buffer_by_uuid(data->noti_uid);
     ble_ancs_env_t *env = ble_ancs_get_env();
     OS_ASSERT(data);
+    if (noti == NULL)
+    {
+        LOG_W("ancs noti buffer not found, uid %d", data->noti_uid);
+        return;
+    }
     uint16_t len = data_len - sizeof(ble_ancs_get_noti_attr_rsp_t);
     ble_ancs_attr_value_t *attr_value = data->value;
     while (len)
@@ -295,17 +331,23 @@ static void ble_ancs_parser_data_source(uint8_t *data, uint16_t data_len)
     }
 }
 
-static void ble_ancs_get_notification_attr(ble_ancs_noti_attr_t *header)
+static int8_t ble_ancs_get_notification_attr(ble_ancs_noti_attr_queue_t *noti)
 {
     // Get the attribute
     ble_ancs_get_noti_attr_t attr;
     ble_ancs_env_t *env = ble_ancs_get_env();
+    ble_ancs_noti_attr_t *header;
     uint32_t i;
+    int8_t res;
+
+    if (noti == NULL)
+        return -1;
+
+    header = &noti->src;
     attr.command_id = BLE_ANCS_COMMAND_ID_GET_NOTIFICATION_ATTR;
     memcpy(&attr.noti_uid, &header->noti_uid, sizeof(uint32_t));
     uint8_t *attr_id = attr.attr_id;
     uint8_t attr_len = 0;
-    int8_t res;
 
     for (i = BLE_ANCS_NOTIFICATION_ATTR_ID_APP_ID; i <= BLE_ANCS_NOTIFICATION_ATTR_ID_NEGATIVE_ACTION_LABLE; i++)
     {
@@ -342,7 +384,58 @@ static void ble_ancs_get_notification_attr(ble_ancs_noti_attr_t *header)
     value.len = 1 + 4 + attr_len;
     value.value = (uint8_t *)&attr;
     res = sibles_write_remote_value(env->remote_handle, env->conn_idx, &value);
-    OS_ASSERT(res == SIBLES_WRITE_NO_ERR);
+
+    if (res == SIBLES_WIRTE_TX_FLOWCTRL_ERR)
+    {
+        noti->is_get_attr_pending = 1;
+        LOG_I("ancs get attr write flowctrl, uid %d retry %d", header->noti_uid, noti->retry_count);
+    }
+    else if (res == SIBLES_WRITE_NO_ERR)
+    {
+        noti->is_get_attr_pending = 0;
+        noti->retry_count = 0;
+    }
+    else
+    {
+        LOG_E("ancs get attr write failed %d", res);
+    }
+
+    return res;
+}
+
+static void ble_ancs_write_retry_timer_handler(void *parameter)
+{
+    (void)parameter;
+    uint32_t i;
+    uint8_t need_retry = 0;
+    ble_ancs_env_t *env = ble_ancs_get_env();
+
+    if (env->state != BLE_ANCS_STATE_READY)
+        return;
+
+    for (i = 0; i < BLE_ANCS_NOTI_QUEUE_SIZE; i++)
+    {
+        ble_ancs_noti_attr_queue_t *noti = &g_ble_ancs_noti_queue[i];
+
+        if (!noti->is_used || !noti->is_get_attr_pending)
+            continue;
+
+        if (noti->retry_count >= BLE_ANCS_WRITE_RETRY_MAX)
+        {
+            LOG_E("ancs get attr write retry fail, uid %d", noti->src.noti_uid);
+            memset(noti, 0, sizeof(ble_ancs_noti_attr_queue_t));
+            continue;
+        }
+
+        noti->retry_count++;
+        if (ble_ancs_get_notification_attr(noti) == SIBLES_WIRTE_TX_FLOWCTRL_ERR)
+        {
+            need_retry = 1;
+        }
+    }
+
+    if (need_retry)
+        ble_ancs_write_retry_timer_start();
 }
 
 static int8_t ble_ancs_enable_cccd(ble_ancs_env_t *env, uint8_t is_enable)
@@ -368,6 +461,7 @@ static void ble_ancs_disconnect_handler(ble_ancs_env_t *env)
     // step1: de-register remote svc
     sibles_unregister_remote_svc(env->conn_idx, env->svc.hdl_start, env->svc.hdl_end, ble_ancs_gattc_event_handler);
     // step2: clear noti buffer
+    ble_ancs_write_retry_timer_stop();
     ble_ancs_clear_noti_buffer();
     // step3: reset env
     env->conn_idx = INVALID_CONN_IDX;
@@ -457,8 +551,15 @@ static void ble_ancs_notification_source_notify_handler(uint8_t *data)
         memset(header, 0, sizeof(ble_ancs_noti_attr_queue_t));
         return;
     }
-    ble_ancs_get_notification_attr(&header->src);
     header->is_used = 1;
+    if (ble_ancs_get_notification_attr(header) != SIBLES_WRITE_NO_ERR && !header->is_get_attr_pending)
+    {
+        memset(header, 0, sizeof(ble_ancs_noti_attr_queue_t));
+    }
+    else if (header->is_get_attr_pending)
+    {
+        ble_ancs_write_retry_timer_start();
+    }
 }
 
 void ble_ancs_attr_enable(uint8_t attr_index, uint8_t enable, uint16_t len)
