@@ -30,7 +30,8 @@ enum
     BTS2MU_PBAP_CLT_PULL_VCARD_COMPLETE_IND,
     BTS2MU_PBAP_CLT_PULL_VCARD_LIST_BEGIN_IND,
     BTS2MU_PBAP_CLT_PULL_VCARD_LIST_NEXT_IND,
-    BTS2MU_PBAP_CLT_PULL_VCARD_LIST_COMPLETE_IND
+    BTS2MU_PBAP_CLT_PULL_VCARD_LIST_COMPLETE_IND,
+    BTS2MU_PBAP_CLT_FOLDER_VERSION_IND,
 };
 
 typedef enum
@@ -157,6 +158,13 @@ typedef struct
     BTS2S_BD_ADDR bd;
 } BTS2S_PBAP_CLT_PULL_CMPT_IND;
 
+typedef struct
+{
+    U16 type;                   /* message identity */
+    U8 primary_version_counter[16];
+    U8 secondary_version_counter[16];
+    U8 database_identifier[16];
+} BTS2S_PBAP_CLT_FOLDER_VERSION_IND;
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:

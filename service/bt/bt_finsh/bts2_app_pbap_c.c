@@ -1492,6 +1492,14 @@ void bt_pbap_clt_hdl_msg(bts2_app_stru *bts2_app_data)
                                      &msg->res, sizeof(uint8_t));
         break;
     }
+    case BTS2MU_PBAP_CLT_FOLDER_VERSION_IND:
+    {
+        BTS2S_PBAP_CLT_FOLDER_VERSION_IND *msg;
+
+        msg = (BTS2S_PBAP_CLT_FOLDER_VERSION_IND *)bts2_app_data->recv_msg;
+        USER_TRACE("BTS2MU_PBAP_CLT_FOLDER_VERSION_INDs\n");
+        break;
+    }
     case BTS2MU_PBAP_CLT_ABORT_CFM:
     {
         BTS2S_PBAP_CLT_ABORT_CFM *msg;
