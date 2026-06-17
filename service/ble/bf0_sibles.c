@@ -1529,7 +1529,7 @@ void sibles_set_dev_name(int len, uint8_t *name)
 
 int8_t sibles_search_service(uint8_t conn_idx, uint8_t uuid_len, uint8_t *uuid)
 {
-    if (uuid == NULL || uuid_len > ATT_UUID_128_LEN)
+    if ((uuid == NULL && uuid_len != 0) || uuid_len > ATT_UUID_128_LEN)
         return (int8_t)PRF_ERR_INVALID_PARAM;
 
     // convert to 128
@@ -1538,7 +1538,10 @@ int8_t sibles_search_service(uint8_t conn_idx, uint8_t uuid_len, uint8_t *uuid)
                                         TASK_BUILD_ID(task_id, conn_idx), TASK_BUILD_ID(sifli_get_stack_id(), conn_idx), sizeof(struct sibles_svc_search_req));
     req->conn_idx = conn_idx;
     req->len = uuid_len;
-    memcpy(req->svc_uuid, uuid, uuid_len);
+    if (uuid_len != 0)
+    {
+        memcpy(req->svc_uuid, uuid, uuid_len);
+    }
     sifli_msg_send((void const *)req);
     //sifli_msg_free(req);
     return 0;

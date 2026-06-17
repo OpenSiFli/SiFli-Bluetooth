@@ -643,10 +643,10 @@ int sibles_write_value_with_rsp(uint8_t conn_idx, sibles_value_t *value);
 void sibles_stop_svc(sibles_hdl hdl);
 
 /**
-  * @brief  Search peer device's service via uuid.
+  * @brief  Search peer device's service via uuid or search peer device's all services.
   * @param[in]  conn_idx connection index.
-  * @param[in]  uuid_len uuid length.
-  * @param[in]  uuid service uuid.
+  * @param[in]  uuid_len uuid length, 0 for all services.
+  * @param[in]  uuid service uuid, NULL for all services.
   * @retval result.
   */
 int8_t sibles_search_service(uint8_t conn_idx, uint8_t uuid_len, uint8_t *uuid);
