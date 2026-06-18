@@ -684,6 +684,15 @@ void bt_interface_hid_mouse_move(int16_t dx, int16_t dy);
 void bt_interface_hid_mouse_move_ext(BTS2S_BD_ADDR *bd_addr, int16_t dx, int16_t dy);
 
 /**
+ * @brief            Send a generic HID keyboard input report to a connected HID host
+ * @param[in] bd_addr   Remote HID host address
+ * @param[in] modifier  HID keyboard modifier byte
+ * @param[in] keys      Array of HID keycodes
+ * @param[in] key_num   Number of valid keycodes (0..6); 0 releases all keys
+ **/
+void bt_interface_hid_send_keyboard(BTS2S_BD_ADDR *bd_addr, U8 modifier, const U8 *keys, U8 key_num);
+
+/**
  * @brief            Control the mobile phone to page up
  *
  **/

@@ -127,6 +127,10 @@ Modify:
 */
 void bt_hid_cmpose_hid_descriptor(void);
 
+/* Keyboard HID SDP descriptor and its length. */
+extern const U8  bts2s_sds_hid_device_svc_record_mid_keyboard[];
+extern const U16 bts2s_sds_hid_device_svc_record_mid_keyboard_len;
+
 /*
 Description:
     Add new descriptor
@@ -194,6 +198,15 @@ Author:zhengyu
 Modify:
 */
 void bt_hid_mouse_move(bts2_app_stru *bts2_app_data, S16 dx, S16 dy, U8 conn_idx);
+
+/*
+Description:
+    send a generic HID keyboard input report (modifier + up to 6 keycodes); key_num=0 releases
+Input:
+    bts2_app_data:global app bt instance; conn_idx:connection index;
+    modifier:HID modifier byte; keys:keycode array; key_num:valid keycodes (0..6)
+*/
+void bt_hid_send_keyboard(bts2_app_stru *bts2_app_data, U8 conn_idx, U8 modifier, const U8 *keys, U8 key_num);
 
 /*
 Description:

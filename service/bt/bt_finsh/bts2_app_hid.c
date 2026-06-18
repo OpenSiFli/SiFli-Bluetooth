@@ -119,6 +119,9 @@ const U8 bts2s_sds_hid_device_svc_record_mid_keyboard[] =
     0xc0             //# END_COLLECTION
 };
 
+/* Length of the keyboard HID SDP descriptor above. */
+const U16 bts2s_sds_hid_device_svc_record_mid_keyboard_len = sizeof(bts2s_sds_hid_device_svc_record_mid_keyboard);
+
 const U8 bts2s_sds_hid_device_svc_record_mid_controller[] =
 {
     /* HIDDescriptorList */
@@ -801,6 +804,37 @@ void bt_hid_mouse_move(bts2_app_stru *bts2_app_data, S16 dx, S16 dy, U8 conn_idx
     mouse_msg.dy = (dy & 0x0FFF);
     bt_hid_send_report_req(bts2_app_data, conn_idx, sizeof(mouse_msg), (U8 *)&mouse_msg, TRUE);
     bt_hid_mouse_reset(bts2_app_data, conn_idx);
+}
+
+/*
+Description:
+    send a generic HID keyboard input report (modifier + up to 6 standard keycodes).
+    Send an all-zero report (key_num=0) to release; no auto-reset.
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+    modifier:HID keyboard modifier byte
+    keys:array of HID keycodes
+    key_num:number of valid keycodes (0..6)
+*/
+void bt_hid_send_keyboard(bts2_app_stru *bts2_app_data, U8 conn_idx, U8 modifier, const U8 *keys, U8 key_num)
+{
+    hid_msg_controller_t kbd_msg = {0};
+
+    kbd_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
+    kbd_msg.report_id = HID_KEYBOARD_REPORT_ID;
+    kbd_msg.modifierKeys = modifier;
+    if (key_num > 6)
+    {
+        key_num = 6;
+    }
+    if (key_num > 0) kbd_msg.standardkey1 = keys[0];
+    if (key_num > 1) kbd_msg.standardkey2 = keys[1];
+    if (key_num > 2) kbd_msg.standardkey3 = keys[2];
+    if (key_num > 3) kbd_msg.standardkey4 = keys[3];
+    if (key_num > 4) kbd_msg.standardkey5 = keys[4];
+    if (key_num > 5) kbd_msg.standardkey6 = keys[5];
+    bt_hid_send_report_req(bts2_app_data, conn_idx, sizeof(kbd_msg), (U8 *)&kbd_msg, TRUE);
 }
 
 
