@@ -37,7 +37,8 @@ typedef struct
 {
     U8 header;
     U8 report_id;
-    U8 consumer;
+    U8 consumer;    /* report byte 0: Play/Pause, AL Config, Next, Prev, VolDn, VolUp, AC Fwd, AC Back */
+    U8 consumer2;   /* report byte 1: bit0 = Eject (iOS show/hide keyboard); rest constant pad */
 } __packed hid_msg_consumer_t;
 
 typedef struct
@@ -131,6 +132,10 @@ void bt_hid_cmpose_hid_descriptor(void);
 extern const U8  bts2s_sds_hid_device_svc_record_mid_keyboard[];
 extern const U16 bts2s_sds_hid_device_svc_record_mid_keyboard_len;
 
+/* Consumer HID SDP descriptor (includes Eject) and its length. */
+extern const U8  bts2s_sds_hid_device_svc_record_mid_consumer[];
+extern const U16 bts2s_sds_hid_device_svc_record_mid_consumer_len;
+
 /*
 Description:
     Add new descriptor
@@ -207,6 +212,15 @@ Input:
     modifier:HID modifier byte; keys:keycode array; key_num:valid keycodes (0..6)
 */
 void bt_hid_send_keyboard(bts2_app_stru *bts2_app_data, U8 conn_idx, U8 modifier, const U8 *keys, U8 key_num);
+
+/*
+Description:
+    send a generic HID consumer input report (16-bit usage bitmap; byte1 bit0 = Eject);
+    bitmap=0 releases
+Input:
+    bts2_app_data:global app bt instance; conn_idx:connection index; bitmap:16-bit usage bitmap
+*/
+void bt_hid_send_consumer(bts2_app_stru *bts2_app_data, U8 conn_idx, U16 bitmap);
 
 /*
 Description:

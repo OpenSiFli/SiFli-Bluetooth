@@ -237,10 +237,10 @@ const U8 bts2s_sds_hid_device_svc_record_mid_consumer[] =
 {
     // /* HIDDescriptorList */
     0x09, 0x02, 0x06, /* HIDDescriptorList */
-    0x35, 0x3a,
-    0x35, 0x38,
+    0x35, 0x42,
+    0x35, 0x40,
     0x08, 0x22,
-    0x25, 0x34,
+    0x25, 0x3C,
 
     0x05, 0x0C,       // Usage Page (Consumer)
     0x09, 0x01,       //Usage (Consumer Control)
@@ -268,8 +268,15 @@ const U8 bts2s_sds_hid_device_svc_record_mid_consumer[] =
     0x81, 0x06,       //    Input (Data,Value,Relative,Bit Field)
     0x0A, 0x24, 0x02, //    Usage (AC Back)
     0x81, 0x06,       //    Input (Data,Value,Relative,Bit Field)
+    0x09, 0xB8,       //    Usage (Eject) -- bit 8 (byte1 bit0); iOS show/hide keyboard
+    0x81, 0x06,       //    Input (Data,Value,Relative,Bit Field)
+    0x95, 0x07,       //    Report Count (7) -- pad the report up to 16 bits (2 bytes)
+    0x81, 0x03,       //    Input (Constant)
     0xC0              //End Collection
 };
+
+/* Length of the consumer HID SDP descriptor above. */
+const U16 bts2s_sds_hid_device_svc_record_mid_consumer_len = sizeof(bts2s_sds_hid_device_svc_record_mid_consumer);
 
 //*/************************************************static function declaration***************************************************************/
 static void bt_hid_send_report_req(bts2_app_stru *bts2_app_data, U8 conn_idx, U16 data_len, U8 *data, BOOL send_on_interrupt_channel);
@@ -835,6 +842,27 @@ void bt_hid_send_keyboard(bts2_app_stru *bts2_app_data, U8 conn_idx, U8 modifier
     if (key_num > 4) kbd_msg.standardkey5 = keys[4];
     if (key_num > 5) kbd_msg.standardkey6 = keys[5];
     bt_hid_send_report_req(bts2_app_data, conn_idx, sizeof(kbd_msg), (U8 *)&kbd_msg, TRUE);
+}
+
+/*
+Description:
+    send a generic HID consumer input report. bitmap is the 16-bit usage bitmap matching the
+    consumer descriptor: byte0 bit0..7 = Play/Pause, AL Config, Next, Prev, Volume Down,
+    Volume Up, AC Forward, AC Back; byte1 bit0 = Eject. Send bitmap=0 to release; no auto-reset.
+Input:
+    bts2_app_data:global app bt instance
+    conn_idx:connection index
+    bitmap:16-bit consumer usage bitmap
+*/
+void bt_hid_send_consumer(bts2_app_stru *bts2_app_data, U8 conn_idx, U16 bitmap)
+{
+    hid_msg_consumer_t consumer_msg = {0};
+
+    consumer_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
+    consumer_msg.report_id = HID_CONSUMER_REPORT_ID;
+    consumer_msg.consumer = (U8)(bitmap & 0xFF);
+    consumer_msg.consumer2 = (U8)((bitmap >> 8) & 0xFF);
+    bt_hid_send_report_req(bts2_app_data, conn_idx, sizeof(consumer_msg), (U8 *)&consumer_msg, TRUE);
 }
 
 

@@ -1178,6 +1178,19 @@ void bt_interface_hid_send_keyboard(BTS2S_BD_ADDR *bd_addr, U8 modifier, const U
     bt_hid_send_keyboard(bts2_app_data, conn_idx, modifier, keys, key_num);
 }
 
+void bt_interface_hid_send_consumer(BTS2S_BD_ADDR *bd_addr, U16 bitmap)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    uint8_t conn_idx = CFG_MAX_HID_CONN_NUM;
+
+    if (!bt_hid_check_connection_by_addr(bd_addr, &conn_idx))
+    {
+        return;
+    }
+
+    bt_hid_send_consumer(bts2_app_data, conn_idx, bitmap);
+}
+
 void bt_interface_hid_mouse_drag_up(void)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;

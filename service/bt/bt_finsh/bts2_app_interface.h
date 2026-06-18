@@ -693,6 +693,13 @@ void bt_interface_hid_mouse_move_ext(BTS2S_BD_ADDR *bd_addr, int16_t dx, int16_t
 void bt_interface_hid_send_keyboard(BTS2S_BD_ADDR *bd_addr, U8 modifier, const U8 *keys, U8 key_num);
 
 /**
+ * @brief            Send a generic HID consumer input report to a connected HID host
+ * @param[in] bd_addr   Remote HID host address
+ * @param[in] bitmap    16-bit consumer usage bitmap (byte1 bit0 = Eject); 0 releases
+ **/
+void bt_interface_hid_send_consumer(BTS2S_BD_ADDR *bd_addr, U16 bitmap);
+
+/**
  * @brief            Control the mobile phone to page up
  *
  **/
