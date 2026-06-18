@@ -826,22 +826,23 @@ Input:
 */
 void bt_hid_send_keyboard(bts2_app_stru *bts2_app_data, U8 conn_idx, U8 modifier, const U8 *keys, U8 key_num)
 {
-    hid_msg_controller_t kbd_msg = {0};
+    /* Boot-keyboard input report layout: [header][report_id][modifier][reserved][key1..key6]. */
+    U8 kbd_msg[10] = {0};
+    U8 i;
 
-    kbd_msg.header = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);
-    kbd_msg.report_id = HID_KEYBOARD_REPORT_ID;
-    kbd_msg.modifierKeys = modifier;
+    kbd_msg[0] = (HID_MSG_TYPE_DATA << 4) | (HID_REPORT_TYPE_INPUT & 0x3);  /* HID DATA header */
+    kbd_msg[1] = HID_KEYBOARD_REPORT_ID;                                    /* report id (1) */
+    kbd_msg[2] = modifier;                                                  /* modifier byte */
+    kbd_msg[3] = 0;                                                         /* reserved byte */
     if (key_num > 6)
     {
         key_num = 6;
     }
-    if (key_num > 0) kbd_msg.standardkey1 = keys[0];
-    if (key_num > 1) kbd_msg.standardkey2 = keys[1];
-    if (key_num > 2) kbd_msg.standardkey3 = keys[2];
-    if (key_num > 3) kbd_msg.standardkey4 = keys[3];
-    if (key_num > 4) kbd_msg.standardkey5 = keys[4];
-    if (key_num > 5) kbd_msg.standardkey6 = keys[5];
-    bt_hid_send_report_req(bts2_app_data, conn_idx, sizeof(kbd_msg), (U8 *)&kbd_msg, TRUE);
+    for (i = 0; i < key_num; i++)
+    {
+        kbd_msg[4 + i] = keys[i];                                           /* key1..key6 */
+    }
+    bt_hid_send_report_req(bts2_app_data, conn_idx, sizeof(kbd_msg), kbd_msg, TRUE);
 }
 
 /*
