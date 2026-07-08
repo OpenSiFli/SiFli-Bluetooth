@@ -841,8 +841,12 @@ void bt_nosignal_evt_send(void)
     #define BT_RSSI_ADDR   0x500840C8
     #define BT_PKT_ADDR    0x500904DC
     #define BLE_PKT_ADDR   0x500908D8
-#elif defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)
+#elif defined(SOC_SF32LB52X)
     #define BT_RSSI_ADDR   0x400840D4
+    #define BT_PKT_ADDR    0x400904DC
+    #define BLE_PKT_ADDR   0x400908D8
+#elif defined(SOC_SF32LB57X)
+    #define BT_RSSI_ADDR   0x40084100
     #define BT_PKT_ADDR    0x400904DC
     #define BLE_PKT_ADDR   0x400908D8
 #else
