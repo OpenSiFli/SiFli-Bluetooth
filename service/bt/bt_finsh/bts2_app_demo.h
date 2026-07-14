@@ -236,7 +236,7 @@ typedef struct
 {
     BTS2S_BD_ADDR  rmt_bd;
     U8             role;
-    ot_timer_id_t     avrcp_vol_time_handle;
+    rt_timer_t     avrcp_vol_time_handle;
     U8             play_status_notify;
     U8             ab_volume;//the absolute volue be set.
     U8             tgTlable_1;

@@ -464,6 +464,10 @@ static void bt_avsrc_init_data(bts2s_av_inst_data *inst, bts2_app_stru *bts2_app
     inst->src_data.tid = 0;
     inst->src_data.stream_frm_time_begin = 0;
 #endif // AUDIO_USING_MANAGER
+
+#ifdef CFG_AV_SHARING
+    inst->src_data.discard_data = NULL; //bt_avsrc_discard_data;
+#endif
 }
 
 /*----------------------------------------------------------------------------*
@@ -526,7 +530,7 @@ U8 bt_avsrc_prepare_sbc(bts2s_av_inst_data *inst, U8 con_idx)
                                            cfg->sample_freq,
                                            cfg->blocks,
                                            cfg->subbands,
-                                           224);
+                                           BIT_RATE_DEAFLUT);
 
     if (cfg->bit_pool > cfg->max_bitpool)
     {
@@ -596,11 +600,18 @@ U8 bt_avsrc_prepare_sbc(bts2s_av_inst_data *inst, U8 con_idx)
 
         cfg->samples_per_l2c_frm = cfg->frms_per_payload * (cfg->subbands * cfg->blocks);
         cfg->bytes_to_rd = (2 * cfg->chnls) * cfg->samples_per_l2c_frm;
-        inst->src_data.m_sec_per_pkt = ((cfg->samples_per_l2c_frm * 1000 * MILLISECOND) / cfg->sample_freq);
 
-        inst->src_data.u_sec_per_pkt = ((cfg->samples_per_l2c_frm * 1000000) / cfg->sample_freq) % 1000;
-        inst->src_data.m_sec_time_4_next_pkt = (S32)inst->src_data.m_sec_per_pkt;
-        inst->src_data.u_sec_per_pkt_sum = inst->src_data.u_sec_per_pkt;
+#ifdef CFG_AV_SHARING
+        if (bt_av_get_src_streaming_number() < 1)
+#endif
+        {
+            inst->src_data.m_sec_per_pkt = ((cfg->samples_per_l2c_frm * 1000 * MILLISECOND) / cfg->sample_freq);
+
+            inst->src_data.u_sec_per_pkt = ((cfg->samples_per_l2c_frm * 1000000) / cfg->sample_freq) % 1000;
+            inst->src_data.m_sec_time_4_next_pkt = (S32)inst->src_data.m_sec_per_pkt;
+            inst->src_data.u_sec_per_pkt_sum = inst->src_data.u_sec_per_pkt;
+            inst->src_data.u_sec_sync_pkt_sum = 0;
+        }
         return TRUE;
     }
     else
@@ -608,6 +619,16 @@ U8 bt_avsrc_prepare_sbc(bts2s_av_inst_data *inst, U8 con_idx)
         /* unable to cfg SBC with the given pars */
         return FALSE;
     }
+}
+
+void bt_avsrc_cal_time_next_pkt(bts2s_av_inst_data *inst, U8 con_idx, U8 frms, U32 *tmp_m_sec_per_pkt, U32 *tmp_u_sec_per_pkt)
+{
+    bts2_sbc_cfg *cfg = &inst->con[con_idx].act_cfg;
+
+    *tmp_m_sec_per_pkt = ((frms * (cfg->subbands * cfg->blocks) * 1000 * MILLISECOND) / cfg->sample_freq);
+    *tmp_u_sec_per_pkt = ((frms * (cfg->subbands * cfg->blocks) * 1000000) / cfg->sample_freq) % 1000;
+
+    return;
 }
 
 
@@ -633,12 +654,14 @@ void bt_avsrc_hdl_disc_handler(bts2s_av_inst_data *inst, uint8_t con_idx)
         fclose(stream);
     }
 #endif // AUDIO_DATA_TEST
-    inst->src_data.stream_frm_time_begin = 0;
-    inst->suspend_pending = FALSE;
+    inst->con[con_idx].suspend_pending = FALSE;
+    inst->con[con_idx].start_pending = FALSE;
+    inst->con[con_idx].pending_cmd = 0xff;
 
 #ifdef AUDIO_USING_MANAGER
-    if (send_timer_added == 1)
+    if ((send_timer_added == 1) && (bt_av_get_src_streaming_number() == 0))
     {
+        inst->src_data.stream_frm_time_begin = 0;
         bts2_timer_ev_cancel(inst->src_data.tid, NULL, NULL);
         inst->src_data.tid = 0;
         send_timer_added = 0;
@@ -716,7 +739,7 @@ int8_t bt_avsrc_hdl_start_cfm(bts2s_av_inst_data *inst, uint8_t con_idx)
         ret = 0;
     }
 
-#if defined(CFG_AV_SRC) && defined(AUDIO_USING_MANAGER)
+#if defined(CFG_AV_SRC) && defined(AUDIO_USING_MANAGER) && !defined(CFG_AV_SHARING)
     if (inst->src_data.audio_state != AVSRC_AUDIO_SER_OPEN)
     {
         ret = -1;
@@ -725,9 +748,7 @@ int8_t bt_avsrc_hdl_start_cfm(bts2s_av_inst_data *inst, uint8_t con_idx)
 
     if (!ret)
     {
-#if defined(CFG_AV)
         bt_interface_bt_event_notify(BT_NOTIFY_A2DP, BT_NOTIFY_A2DP_START_CFM, NULL, 0);
-#endif
     }
 
     return ret;
@@ -1060,7 +1081,7 @@ static uint16_t bt_avsrc_send_data(struct rt_ringbuffer32 *rb)
         return 0;
 
     //zhengyu:avoid timer timeout while waiting for suspend cfm
-    if (inst->con[con_idx].st == avconned_streaming && !inst->suspend_pending)
+    if (inst->con[con_idx].st == avconned_streaming && !inst->con[con_idx].suspend_pending)
     {
         do
         {
@@ -1195,7 +1216,7 @@ static uint16_t bt_avsrc_send_data(struct rt_ringbuffer32 *rb)
                 *payload_ptr = frms;
                 for (i = 0; i < MAX_CONNS; i++)
                 {
-                    if (inst->con[i].st == avconned_streaming)
+                    if (inst->con[i].st == avconned_streaming && inst->con[i].cfg == AV_AUDIO_SRC)
                     {
                         //U8 *send_pkt_ptr;
                         //send_pkt_ptr = bmalloc(payload_len);
@@ -1235,6 +1256,180 @@ static uint16_t bt_avsrc_send_data(struct rt_ringbuffer32 *rb)
     return bytes_rd;
 }
 
+
+#ifdef CFG_AV_SHARING
+static void bt_avsrc_sharing_cb(uint16_t m, void *para)
+{
+    struct rt_ringbuffer32 *rb = (struct rt_ringbuffer32 *)para;
+    send_timer_added = 0;
+    bt_avsrc_sharing(rb);
+}
+
+uint16_t bt_avsrc_sharing(struct rt_ringbuffer32 *rb)
+{
+    bts2s_av_inst_data *inst = bt_av_get_inst_data();
+
+    U8 *pkt_ptr = NULL;
+    size_t bytes_rd = 0;
+    U32 actual_time_expired;
+    U32 actual_timer_delay;
+    int con_idx;
+    bts2_sbc_cfg *act_cfg  = NULL;
+    U16 pkt_len;
+
+    uint8_t is_empty = 0;
+    uint8_t is_update_us = 0;
+
+    con_idx = bt_avsrc_get_plyback_conn(inst);
+
+
+    if (con_idx == - 1)
+        return 0;
+
+    if (inst->src_data.discard_data == NULL)
+    {
+        inst->src_data.discard_data = bmalloc(1024);
+    }
+
+    //zhengyu:avoid timer timeout while waiting for suspend cfm
+    if (inst->con[con_idx].st == avconned_streaming && !inst->con[con_idx].suspend_pending)
+    {
+        do
+        {
+            U16 buffer_count = av_get_stream_buffize();
+
+
+            if (inst->src_data.stream_frm_time_begin != 0)
+            {
+                inst->src_data.stream_frm_time_end = BTS2_GET_TIME();
+
+                actual_time_expired = inst->src_data.stream_frm_time_end - inst->src_data.stream_frm_time_begin;
+                actual_timer_delay = actual_time_expired - inst->src_data.m_sec_time_4_next_pkt;
+                inst->src_data.u_sec_per_pkt_sum += inst->src_data.u_sec_per_pkt;
+                inst->src_data.m_sec_time_4_next_pkt = inst->src_data.m_sec_per_pkt - actual_timer_delay;
+
+                if (inst->src_data.u_sec_per_pkt_sum >= (inst->src_data.m_sec_per_pkt * 1000))
+                {
+                    //USER_TRACE("Cal us %d, ori %d, target %d\n", inst->src_data.u_sec_per_pkt_sum, inst->src_data.m_sec_per_pkt, inst->src_data.m_sec_time_4_next_pkt);
+#if 0
+                    inst->src_data.m_sec_time_4_next_pkt += inst->src_data.m_sec_per_pkt - 1;
+                    inst->src_data.u_sec_per_pkt_sum = 0;
+#else
+                    inst->src_data.m_sec_time_4_next_pkt += inst->src_data.m_sec_per_pkt;
+                    inst->src_data.u_sec_per_pkt_sum = inst->src_data.u_sec_per_pkt_sum % 1000;
+#endif
+                    is_update_us = 1;
+                }
+            }
+
+            inst->src_data.stream_frm_time_begin = BTS2_GET_TIME();
+
+            if ((buffer_count >= av_get_max_stream_buffer_cnt() / 2) && (bt_av_get_src_streaming_number() == 1))
+            {
+                LOG_I("a2dp buffer more than half, should send buffered frames,count = %d\n", buffer_count);
+                break;
+            }
+
+            uint16_t len = rt_ringbuffer32_data_len((struct rt_ringbuffer32 *)rb);
+
+            act_cfg = &inst->con[con_idx].act_cfg;
+
+            // LOG_I("len = %d\n",len);
+
+            // Just return if length is not enough
+            if (len < act_cfg->frmsize * act_cfg->frms_per_payload + 13 + 2)
+            {
+                LOG_I("a2dp_transfor: buffer empty\n");
+
+                is_empty = 1;
+                send_timer_added = 1;
+                inst->src_data.tid = bts2_timer_ev_add(inst->src_data.m_sec_time_4_next_pkt, bt_avsrc_sharing_cb, 0, (void *)rb);
+                return 0;
+            }
+
+            if (!is_empty)
+            {
+                rt_ringbuffer32_get((struct rt_ringbuffer32 *)rb, (U8 *)&pkt_len, sizeof(pkt_len));
+
+                pkt_ptr = bmalloc(pkt_len);
+
+                if (!pkt_ptr)
+                {
+                    if (inst->src_data.discard_data)
+                        rt_ringbuffer32_get((struct rt_ringbuffer32 *)rb, inst->src_data.discard_data, pkt_len);
+                    break;
+                }
+
+                rt_ringbuffer32_get((struct rt_ringbuffer32 *)rb, pkt_ptr, pkt_len);
+            }
+
+
+            if (inst->con[con_idx].st == avconned_streaming)
+            {
+                bts2_sbc_cfg *cfg = &inst->con[con_idx].act_cfg;
+                U8 nb_sbc_frm = pkt_ptr[12];
+
+                if (nb_sbc_frm < cfg->frms_per_payload)
+                {
+                    U32 tmp_m_sec_per_pkt;
+                    U32 tmp_u_sec_per_pkt;
+                    bt_avsrc_cal_time_next_pkt(inst, con_idx, nb_sbc_frm, &tmp_m_sec_per_pkt, &tmp_u_sec_per_pkt);
+
+                    inst->src_data.u_sec_sync_pkt_sum += inst->src_data.m_sec_per_pkt * 1000 + inst->src_data.u_sec_per_pkt \
+                                                         - (tmp_m_sec_per_pkt * 1000 + tmp_u_sec_per_pkt);
+
+                    if (inst->src_data.u_sec_sync_pkt_sum >= (inst->src_data.m_sec_time_4_next_pkt * 1000))
+                    {
+                        inst->src_data.u_sec_sync_pkt_sum -= (inst->src_data.m_sec_time_4_next_pkt * 1000);
+                        inst->src_data.m_sec_time_4_next_pkt = 0;
+                        //LOG_D("synchronization time\n");
+                    }
+                }
+
+                inst->time_stamp += nb_sbc_frm * act_cfg->blocks * act_cfg->subbands;
+
+                for (U8 i = 0; i < MAX_CONNS; i++)
+                {
+                    if (inst->con[i].st == avconned_streaming && inst->con[i].cfg == AV_AUDIO_SRC)
+                    {
+                        U8 *stream_data  = bmalloc(pkt_len);
+
+                        if (stream_data)
+                        {
+                            memcpy(stream_data, pkt_ptr, pkt_len);
+                            av_stream_data_req(inst->con[i].stream_hdl,
+                                               FALSE,
+                                               FALSE,
+                                               96, //any dynamic PT in the range 96 - 127
+                                               inst->time_stamp,
+                                               pkt_len,
+                                               stream_data); /**/
+                        }
+                    }
+                }
+                bfree(pkt_ptr);
+            }
+        }
+        while (0);
+
+#ifdef AUDIO_USING_MANAGER
+        // LOG_D("m_sec_time_4_next_pkt = %d\n", inst->src_data.m_sec_time_4_next_pkt);
+        if (inst->src_data.m_sec_time_4_next_pkt > 0)
+        {
+            send_timer_added = 1;
+            inst->src_data.tid = bts2_timer_ev_add(inst->src_data.m_sec_time_4_next_pkt, bt_avsrc_sharing_cb, 0, (void *)rb);
+        }
+        else
+        {
+            send_timer_added = 1;
+            inst->src_data.tid = bts2_timer_ev_add(0, bt_avsrc_sharing_cb, 0, (void *)rb);
+        }
+#endif
+    }
+
+    return bytes_rd;
+}
+#endif
 
 BOOL bt_avrc_check_stream_state(void)
 {

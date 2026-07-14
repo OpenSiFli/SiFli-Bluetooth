@@ -41,14 +41,26 @@
     #define MAX_NUM_LOCAL_SRC_SEIDS 0
 #endif
 
+#define  FIXED_44_1_KHZ                        (0x2f)
 
+#ifndef CFG_AV_SHARING
+    #define  SINK_DATA_LIST_START_THRESHOLD    (5)
+    #define  SINK_DATA_LIST_MAX_THRESHOLD      (10)
+    #define  BIT_RATE_DEAFLUT                  (327)
+    #define  MAX_BIT_POOL                      (0x35)
+#else
+    #define  SINK_DATA_LIST_START_THRESHOLD    (30)
+    #define  SINK_DATA_LIST_MAX_THRESHOLD      (40)
+    #define  BIT_RATE_DEAFLUT                  (229)
+    #define  MAX_BIT_POOL                      (0x19)
+#endif
 
 #define MAX_NUM_LOCAL_SEIDS (MAX_NUM_LOCAL_SNK_SEIDS + MAX_NUM_LOCAL_SRC_SEIDS)
 
 #define ASSIGN_TLABEL ((U8)(inst->tlabel++ % 16))
 
-#define MAX_ACTS  2
-#define MAX_CONNS 2
+#define MAX_ACTS  3
+#define MAX_CONNS 3
 
 #define INITIATOR            (1)
 #define ACPTOR               (0)
@@ -81,6 +93,9 @@
 #define DECODE_BUF_LEN  (5120)
 
 #define BT_MUSIC_SAMPLERATE 44100
+
+#define A2DP_START_CMD            (0)
+#define A2DP_SUSPEND_CMD          (1)
 
 typedef enum
 {
@@ -266,6 +281,9 @@ typedef struct
 #ifdef CFG_AV_SNK
     bts2s_avsnk_inst_data snk_data;
 #endif
+    U8 pending_cmd;
+    BOOL suspend_pending;
+    BOOL start_pending;
 } bts2_av_conn;
 
 #ifdef CFG_AV_SRC
@@ -274,6 +292,7 @@ typedef struct
     U32 m_sec_per_pkt;
     U32 u_sec_per_pkt;
     U32 u_sec_per_pkt_sum;
+    U32 u_sec_sync_pkt_sum;
     S32 m_sec_time_4_next_pkt;
     U32 stream_frm_time_begin;
     U32 stream_frm_time_end;
@@ -281,6 +300,9 @@ typedef struct
     audio_device_input_callback input_cb;
     avsrc_audio_ser_st audio_state;
     U32 tid;
+#endif
+#ifdef CFG_AV_SHARING
+    U8 *discard_data;
 #endif
 } bts2s_avsrc_inst_data;
 #endif //CFG_AV_SRC
@@ -294,7 +316,6 @@ typedef struct
     U8  tlabel;
     U8  con_idx;
     BOOL close_pending;
-    BOOL suspend_pending;
     local_seid_info_t local_seid_info[MAX_NUM_LOCAL_SEIDS];
     U16 que_id;
 
@@ -327,6 +348,7 @@ typedef struct
 
 #ifdef CFG_AV_SRC
     extern U8 bt_avsrc_prepare_sbc(bts2s_av_inst_data *inst, U8 con_idx);
+    extern void bt_avsrc_cal_time_next_pkt(bts2s_av_inst_data *inst, U8 con_idx, U8 frms, U32 *tmp_m_sec_per_pkt, U32 *tmp_u_sec_per_pkt);
     extern void bt_avsrc_hdl_disc_handler(bts2s_av_inst_data *inst, uint8_t con_idx);
     extern int8_t bt_avsrc_hdl_start_cfm(bts2s_av_inst_data *inst, uint8_t con_idx);
     extern uint8_t bt_avsrc_hdl_start_ind(bts2s_av_inst_data *inst, BTS2S_AV_START_IND *msg, uint8_t con_idx);
@@ -369,6 +391,10 @@ void bt_av_hdl_set_bqb_test(U8 value);
 void bt_av_hdl_reset_bqb_test(void);
 U8 bt_av_get_idx_from_cid(bts2s_av_inst_data *inst, U16 sought_cid);
 U8 bt_av_get_sink_streaming_number(void);
+U8 bt_av_get_src_streaming_number(void);
+U8 bt_av_get_idx_from_shdl(bts2s_av_inst_data *inst, U8 shdl);
+U8 bt_av_get_idx_from_addr(bts2s_av_inst_data *inst, BTS2S_BD_ADDR *bd_addr);
+U8 bt_av_get_src_connected_number(void);
 
 #else
 

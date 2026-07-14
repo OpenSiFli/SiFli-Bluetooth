@@ -242,7 +242,11 @@ menu "Bluetooth"
         config CFG_AV_SRC
             depends on BT_PROFILE_CUSTOMIZE && CFG_AV
             bool "Enable A2DP source profile"
-            default n     
+            default n   
+        config CFG_AV_SHARING  
+            depends on BT_PROFILE_CUSTOMIZE && CFG_AV_SRC
+            bool "Enable A2DP share"
+            default n   
         config CFG_AV_SNK
             depends on BT_PROFILE_CUSTOMIZE && CFG_AV
             bool "Enable A2DP sink profile"

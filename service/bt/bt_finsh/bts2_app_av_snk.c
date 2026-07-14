@@ -61,14 +61,6 @@ static unsigned long  aac_samplerate[MAX_NUM_LOCAL_SNK_AAC_SEIDS] = {0};
 #endif
 
 
-#define  BIT_RATE_DEAFLUT                  (324)
-#define  SINK_DATA_LIST_START_THRESHOLD    (5)
-#define  SINK_DATA_LIST_MAX_THRESHOLD      (10)
-
-
-
-
-
 #if defined(AUDIO_USING_MANAGER) && defined(AUDIO_BT_AUDIO)
 static sifli_resample_t *resample;
 #if BT_BAP_BROADCAST_SOURCE
@@ -850,6 +842,7 @@ static void decode_playback_thread(void *args)
 }
 #endif
 
+#ifndef CFG_AV_SHARING
 #ifdef CFG_AV_AAC
     #define DEPLAYBACK_STACK_SIZE   (1024 * 16)
 #else
@@ -895,6 +888,7 @@ static int audio_decode_thread_init(void)
     return 0;
 }
 INIT_PRE_APP_EXPORT(audio_decode_thread_init);
+#endif
 
 
 static void stop_audio_playback(bts2s_av_inst_data *inst, U8 con_idx)
@@ -1489,6 +1483,8 @@ uint8_t bt_avsnk_hdl_start_ind(bts2s_av_inst_data *inst, BTS2S_AV_START_IND *msg
         USER_TRACE(">> (d%d)accept to start the stream\n", con_idx);
 
         inst->con[con_idx].snk_data.codec = codec;
+
+#ifndef CFG_AV_SHARING
 #ifdef A2DP_RELAY_SERVICE
         // 2 means stereo, 0 means left, 1 means right
         uint8_t target_channel = a2dp_relay_stereo_enable() ? (a2dp_relay_get_channel() == 0 ? 1 : 0) : 2;
@@ -1523,6 +1519,7 @@ uint8_t bt_avsnk_hdl_start_ind(bts2s_av_inst_data *inst, BTS2S_AV_START_IND *msg
             USER_TRACE("av_snk.c open a2dp\r\n");
             rt_event_send(g_playback_evt, 1 << (con_idx + PLAYBACK_START_EVENT_FLAG_IDX));
         }
+#endif
 #endif
     }
 

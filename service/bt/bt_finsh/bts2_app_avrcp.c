@@ -1982,20 +1982,19 @@ static void bt_avrcp_hdl_vendor_depend_cmd_cfm(bts2_app_stru *bts2_app_data)
 
                         if (!bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle)
                         {
-                            os_timer_create(bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle, bt_avrcp_vol_timeout_handler, (void *)&avrcmsg->bd, OS_TIMER_FLAG_SOFT);
+                            bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle = rt_timer_create("avrcp_vol_timeout", bt_avrcp_vol_timeout_handler, (void *)&bts2_app_data->avrcp_inst.conn[idx].rmt_bd, rt_tick_from_millisecond(500), RT_TIMER_FLAG_SOFT_TIMER);
                         }
                         else
                         {
-                            os_timer_stop(bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle);
+                            rt_timer_stop(bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle);
                         }
-                        os_timer_start(bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle, rt_tick_from_millisecond(500));
+                        rt_timer_start(bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle);
                     }
                     else if (avrcmsg->c_type == AVRCP_CR_INTERIM)
                     {
                         if (bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle)
                         {
-                            os_timer_stop(bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle);
-                            bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle = NULL;
+                            rt_timer_stop(bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle);
                         }
                     }
                     break;
@@ -2631,6 +2630,12 @@ void bt_avrcp_msg_handler(bts2_app_stru *bts2_app_data)
                 bts2_app_data->avrcp_inst.conn[idx].abs_vol_support = 0;
                 bts2_app_data->avrcp_inst.conn[idx].play_status_notify = 0;
                 bts2_app_data->avrcp_inst.conn[idx].rmt_abs_sup = 0;
+                if (bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle)
+                {
+                    rt_timer_stop(bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle);
+                    rt_timer_delete(bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle);
+                    bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle = RT_NULL;
+                }
                 break;
             }
         }

@@ -157,7 +157,11 @@ extern "C" {
  * @todo This macro presentation cannot be modified
  * @result 1005
  */
+#ifndef CFG_AV_SHARING
 #define AV_MTU_SIZE      (1005)          /* max frm size for L2C pkt */
+#else
+#define AV_MTU_SIZE      (672)          /* compatible earphone */
+#endif
 
 /**
  * @brief a2dp service capability type

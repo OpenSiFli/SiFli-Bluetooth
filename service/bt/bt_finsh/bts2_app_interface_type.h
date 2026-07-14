@@ -203,6 +203,8 @@ typedef enum
     BT_NOTIFY_A2DP_START_CFM,
     ///  receive a2dp suspend response from remote device indication event
     BT_NOTIFY_A2DP_SUSPEND_CFM,
+    ///  receive a2dp stream data from remote device indication event
+    BT_NOTIFY_A2DP_DATA_IND,
 } bt_notify_a2dp_event_id_t;
 
 typedef enum
@@ -210,6 +212,13 @@ typedef enum
     BT_NOTIFY_A2DP_ROLE_SINK,
     BT_NOTIFY_A2DP_ROLE_SOURCE
 } bt_notify_a2dp_role_t;
+
+typedef struct
+{
+    uint8_t *data;
+    uint16_t stream_handle;
+    uint16_t data_length;
+} bt_notify_a2dp_data_t;
 
 ///  these type are BT_NOTIFY_AVRCP event id
 typedef enum

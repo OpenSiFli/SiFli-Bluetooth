@@ -980,6 +980,30 @@ int bt_cm_gap_event_handler(uint16_t event_id, uint8_t *msg)
         }
         break;
     }
+    case BTS2MU_GAP_ROLE_DISCOV_CFM:
+    {
+        BTS2S_GAP_ROLE_DISCOV_CFM *ind = (BTS2S_GAP_ROLE_DISCOV_CFM *)msg;
+
+        bt_cm_dev_acl_info_t *conn = bt_cm_get_conn_by_addr(env, &ind->bd);
+        if (conn)
+        {
+            conn->info.role = ind->role;
+        }
+        break;
+    }
+    case BTS2MU_GAP_ROLE_SWITCH_CFM:
+    {
+        BTS2S_GAP_ROLE_SWITCH_CFM *ind = (BTS2S_GAP_ROLE_SWITCH_CFM *)msg;
+        if (ind->res == HCI_SUCC)
+        {
+            bt_cm_dev_acl_info_t *conn = bt_cm_get_conn_by_addr(env, &ind->bd);
+            if (conn)
+            {
+                conn->info.role = ind->role;
+            }
+        }
+        break;
+    }
     default:
         break;
     }

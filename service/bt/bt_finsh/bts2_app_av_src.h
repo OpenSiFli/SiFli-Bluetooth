@@ -181,6 +181,10 @@ void bt_avsrc_set_start_flag(BOOL flag);
 
 BOOL bt_avsrc_get_start_flag(void);
 
+#ifdef CFG_AV_SHARING
+uint16_t bt_avsrc_sharing(struct rt_ringbuffer32 *rb);
+#endif
+
 #else
 
 #define bt_avsrc_init(inst,bts2_app_data)

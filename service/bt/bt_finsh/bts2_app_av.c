@@ -30,7 +30,12 @@ const static U8 av_aac_capabilities[6] = {0x80, 0x01, 0x8C, 0x84, 0xE2, 0x00};
 
 static const U8 av_cap_rsp[2][AAC_MEDIA_CODEC_SC_SIZE] =
 {
+#ifndef CFG_AV_SHARING
     {AV_SC_MEDIA_CODEC, SBC_MEDIA_CODEC_SC_SIZE - 2, AV_AUDIO << 4, AV_SBC, 0x3F, 0xFF, 0x02, 0x35, 0x0, 0x0},
+#else
+    //!In order to connect headphones, the maximum fixed bitpool is 35
+    {AV_SC_MEDIA_CODEC, SBC_MEDIA_CODEC_SC_SIZE - 2, AV_AUDIO << 4, AV_SBC, 0x3F, 0xFF, 0x02, MAX_BIT_POOL, 0x0, 0x0},
+#endif
     {AV_SC_MEDIA_CODEC, AAC_MEDIA_CODEC_SC_SIZE - 2, AV_AUDIO << 4, AV_MPEG24_AAC, 0x80, 0x01, 0x8C, 0x84, 0xE2, 0x0}
 };
 
@@ -117,6 +122,9 @@ static void bt_av_init_data(bts2s_av_inst_data *inst, bts2_app_stru *bts2_app_da
         inst->con[i].local_seid_idx = 0xFF;
         inst->con[i].in_use = FALSE;
         inst->con[i].cfg = AV_AUDIO_NO_ROLE;
+        inst->con[i].suspend_pending = FALSE;
+        inst->con[i].start_pending = FALSE;
+        inst->con[i].pending_cmd = 0xff;
     }
 
 
@@ -124,7 +132,6 @@ static void bt_av_init_data(bts2s_av_inst_data *inst, bts2_app_stru *bts2_app_da
     inst->max_frm_size = 672; /*tmp. init. */
     inst->time_stamp = 0;
     inst->close_pending = FALSE;
-    inst->suspend_pending = FALSE;
 
 
 }
@@ -160,6 +167,18 @@ U8 bt_av_get_idx_from_shdl(bts2s_av_inst_data *inst, U8 shdl)
     for (iter = 0; iter < MAX_CONNS; ++ iter)
     {
         if (inst->con[iter].stream_hdl == shdl)
+            return iter;
+    }
+    return MAX_CONNS + 1;
+}
+
+U8 bt_av_get_idx_from_addr(bts2s_av_inst_data *inst, BTS2S_BD_ADDR *bd_addr)
+{
+    U8 iter;
+
+    for (iter = 0; iter < MAX_CONNS; ++ iter)
+    {
+        if (bd_eq(&inst->con[iter].av_rmt_addr, bd_addr))
             return iter;
     }
     return MAX_CONNS + 1;
@@ -346,11 +365,7 @@ static void bt_av_hdl_enb_cfm(bts2_app_stru *bts2_app_data)
     else if (msg->enable_role == AV_AUDIO_SNK)
     {
         INFO_TRACE(">> AUDIO SINK ENB\n");
-#if defined(CFG_AV)
         bt_interface_bt_event_notify(BT_NOTIFY_A2DP, BT_NOTIFY_AVSNK_OPEN_COMPLETE, NULL, 0);
-#else
-        LOG_I("URC BT avsnk open complete ind");
-#endif
     }
 }
 
@@ -559,7 +574,14 @@ static void bt_av_sbc_cfg_para_select(bts2s_av_inst_data *inst, uint16_t con_idx
 
     /*take the min/max bitpool from peer rsp */
     app_serv_cap[6] = inst->con[con_idx].act_cfg.min_bitpool;
+#ifndef CFG_AV_SHARING
     app_serv_cap[7] = inst->con[con_idx].act_cfg.max_bitpool;
+#else
+    if (inst->con[con_idx].act_cfg.max_bitpool >= MAX_BIT_POOL)
+    {
+        app_serv_cap[7] = MAX_BIT_POOL;
+    }
+#endif
 
     bt_av_store_sbc_cfg(&inst->con[con_idx].act_cfg, app_serv_cap + 4);
 
@@ -815,6 +837,12 @@ static void bt_av_hdl_get_cap_ind(bts2_app_stru *bts2_app_data)
 
                 bmemcpy(cap_data + 2, &av_cap_rsp[0], av_cap_rsp[0][1] + 2);
 
+                //!The sampling rate of fixed source is 44.1k
+                if (inst->local_seid_info[i].local_seid.sep_type == AV_SRC)
+                {
+                    cap_data[6] = FIXED_44_1_KHZ;
+                }
+
                 // *(cap_data + cap_len - 6) = AV_SC_CONT_PROTECTION;
                 // *(cap_data + cap_len - 5) = 2;
                 // *(cap_data + cap_len - 4) = 2;
@@ -964,6 +992,11 @@ static void bt_av_hdl_get_all_cap_ind(bts2_app_stru *bts2_app_data)
             cap_data[1] = 0;
 
             bmemcpy(cap_data + 2, &av_cap_rsp[codec_sel], av_cap_rsp[codec_sel][1] + 2);
+
+            if (inst->local_seid_info[i].local_seid.sep_type == AV_SRC)
+            {
+                cap_data[6] = FIXED_44_1_KHZ;
+            }
 
             // *(cap_data + cap_len - 6) = AV_SC_CONT_PROTECTION;
             // *(cap_data + cap_len - 5) = 2;
@@ -1737,6 +1770,8 @@ static void bt_av_hdl_start_cfm(bts2_app_stru *bts2_app_data)
         INFO_TRACE("connect index %d\n", con_idx);
     }
 
+    inst->con[con_idx].start_pending = FALSE;
+
     if (msg->res == AV_ACPT)
     {
         int8_t ret = -1;
@@ -1765,6 +1800,16 @@ static void bt_av_hdl_start_cfm(bts2_app_stru *bts2_app_data)
 #endif
 #endif
 #endif // CFG_AV_SRC
+        }
+
+        if (inst->con[con_idx].pending_cmd == A2DP_START_CMD)
+        {
+            inst->con[con_idx].pending_cmd = 0xff;
+        }
+        else if (inst->con[con_idx].pending_cmd == A2DP_SUSPEND_CMD)
+        {
+            bt_av_suspend_stream(con_idx);
+            inst->con[con_idx].pending_cmd = 0xff;
         }
     }
     else
@@ -1832,7 +1877,7 @@ static void bt_av_hdl_start_ind(bts2_app_stru *bts2_app_data)
 
 static void bt_av_hdl_streamdata_ind(bts2_app_stru *bts2_app_data)
 {
-
+#ifndef CFG_AV_SHARING
     bts2s_av_inst_data *inst = bt_av_get_inst_data();
     BTS2S_AV_STREAM_DATA_IND *msg;
     U8 con_idx;
@@ -1859,8 +1904,7 @@ static void bt_av_hdl_streamdata_ind(bts2_app_stru *bts2_app_data)
             bfree(msg->data);
         }
     }
-
-
+#endif
 }
 
 
@@ -1883,27 +1927,37 @@ static void bt_av_hdl_suspend_cfm(bts2_app_stru *bts2_app_data)
         INFO_TRACE("suspend connect index %d\n", con_idx);
     }
 
+    inst->con[con_idx].suspend_pending = FALSE;
+
     if (msg->res == AV_ACPT)
     {
         INFO_TRACE("<< (d%d)peer deviece agree to suspend stream\n", con_idx);
         inst->con[con_idx].st = avconned_open;
 #ifdef CFG_AV_SRC
-        inst->src_data.stream_frm_time_begin = 0;
+        if (bt_av_get_src_streaming_number() == 0)
+            inst->src_data.stream_frm_time_begin = 0;
         U8 play_status = bt_av_get_a2dp_stream_state(&inst->con[con_idx].av_rmt_addr);
 #ifdef  CFG_AVRCP
         bt_avrcp_change_play_status(bts2_app_data, &inst->con[con_idx].av_rmt_addr, play_status);
 #endif
 #endif
-#if defined(CFG_AV)
         bt_interface_bt_event_notify(BT_NOTIFY_A2DP, BT_NOTIFY_A2DP_SUSPEND_CFM, NULL, 0);
-#endif
+
+        if (inst->con[con_idx].pending_cmd == A2DP_START_CMD)
+        {
+            bt_av_start_stream(con_idx);
+            inst->con[con_idx].pending_cmd = 0xff;
+        }
+        else if (inst->con[con_idx].pending_cmd == A2DP_SUSPEND_CMD)
+        {
+            inst->con[con_idx].pending_cmd = 0xff;
+        }
     }
     else
     {
         INFO_TRACE("<< (d%d)peer deviece reject to suspend stream\n", con_idx);
     }
 
-    inst->suspend_pending = FALSE;
 #ifdef CFG_AV_SRC
     if (inst->con[con_idx].cfg == AV_AUDIO_SRC)
     {
@@ -2082,14 +2136,12 @@ static void bt_av_hdl_stream_mtu_size_ind(bts2_app_stru *bts2_app_data)
     }
 #endif
 
-#if defined(CFG_AV)
-    bt_notify_profile_state_info_t profile_state;
+    bt_notify_profile_state_info_t profile_state = {0};
     bt_addr_convert(&inst->con[con_idx].av_rmt_addr, profile_state.mac.addr);
     profile_state.profile_type = BT_NOTIFY_A2DP;
     profile_state.profile_role = inst->con[con_idx].cfg;
     profile_state.res = BTS2_SUCC;
     bt_profile_update_connection_state(BT_NOTIFY_A2DP, BT_NOTIFY_A2DP_PROFILE_CONNECTED, &profile_state);
-#endif
 }
 
 static void bt_av_hdl_delay_report_ind(bts2_app_stru *bts2_app_data)
@@ -2114,17 +2166,15 @@ static void bt_av_hdl_conn_cfm(bts2_app_stru *bts2_app_data)
     msg = (BTS2S_AV_CONN_CFM *)bts2_app_data->recv_msg;
     if (msg->res != AV_ACPT)
     {
-#if defined(CFG_AV)
         if (msg->res != AV_DUPLICATE_CONNECTING)
         {
-            bt_notify_profile_state_info_t profile_state;
+            bt_notify_profile_state_info_t profile_state = {0};
             bt_addr_convert(&msg->bd, profile_state.mac.addr);
             profile_state.profile_type = BT_NOTIFY_A2DP;
             profile_state.profile_role = AV_AUDIO_NO_ROLE;
             profile_state.res = msg->res;
             bt_profile_update_connection_state(BT_NOTIFY_A2DP, BT_NOTIFY_A2DP_PROFILE_DISCONNECTED, &profile_state);
         }
-#endif
         USER_TRACE(" -- a2dp connect failed %x\n", msg->res);
         return;
     }
@@ -2257,15 +2307,13 @@ static void bt_av_hdl_disc_ind(bts2_app_stru *bts2_app_data)
 #ifdef CFG_AV_SNK
         if (inst->con[con_idx].cfg == AV_AUDIO_SNK)
         {
-#if defined(CFG_AV)
-            bt_notify_profile_state_info_t profile_state;
+            bt_notify_profile_state_info_t profile_state = {0};
             bt_addr_convert(&msg->bd, profile_state.mac.addr);
             profile_state.profile_type = BT_NOTIFY_A2DP;
             profile_state.profile_role = inst->con[con_idx].cfg;
             profile_state.res = msg->res;
             bt_profile_update_connection_state(BT_NOTIFY_A2DP, BT_NOTIFY_A2DP_PROFILE_DISCONNECTED, &profile_state);
             USER_TRACE("<< urc av disc\n");
-#endif
             bt_avsnk_hdl_disc_handler(inst, con_idx);
         }
 #endif // CFG_AV_SNK
@@ -2275,15 +2323,13 @@ static void bt_av_hdl_disc_ind(bts2_app_stru *bts2_app_data)
 #ifdef CFG_AV_SRC
         if (inst->con[con_idx].cfg == AV_AUDIO_SRC)
         {
-#if defined(CFG_AV)
-            bt_notify_profile_state_info_t profile_state;
+            bt_notify_profile_state_info_t profile_state = {0};
             bt_addr_convert(&msg->bd, profile_state.mac.addr);
             profile_state.profile_type = BT_NOTIFY_A2DP;
             profile_state.profile_role = inst->con[con_idx].cfg;
             profile_state.res = msg->res;
             bt_profile_update_connection_state(BT_NOTIFY_A2DP, BT_NOTIFY_A2DP_PROFILE_DISCONNECTED, &profile_state);
             USER_TRACE("<< urc av disc\n");
-#endif
             bt_avsrc_hdl_disc_handler(inst, con_idx);
         }
 #endif // CFG_AV_SRC
@@ -2385,9 +2431,7 @@ void bt_av_snk_close_boundary_condition(U16 type)
     {
     case BTS2MU_AV_DISB_CFM:
     {
-#if defined(CFG_AV)
         bt_interface_bt_event_notify(BT_NOTIFY_A2DP, BT_NOTIFY_AVSNK_CLOSE_COMPLETE, NULL, 0);
-#endif
         INFO_TRACE("<< URC av had been disabled \n");
         bts2s_av_inst_data *inst = bt_av_get_inst_data();
         inst->close_pending = FALSE;
@@ -2516,11 +2560,9 @@ void bt_av_msg_handler(bts2_app_stru *bts2_app_data)
     }
     case BTS2MU_AV_START_IND:
     {
-#if defined(CFG_AV)
-        bt_interface_bt_event_notify(BT_NOTIFY_A2DP, BT_NOTIFY_A2DP_START_IND, NULL, 0);
-#endif
-
+        BTS2S_AV_START_IND *msg = (BTS2S_AV_START_IND *)bts2_app_data->recv_msg;
         bt_av_hdl_start_ind(bts2_app_data);
+        bt_interface_bt_event_notify(BT_NOTIFY_A2DP, BT_NOTIFY_A2DP_START_IND, &msg->first_shdl, sizeof(U8));
         break;
     }
     case BTS2MU_AV_QOS_IND:
@@ -2531,7 +2573,14 @@ void bt_av_msg_handler(bts2_app_stru *bts2_app_data)
     }
     case BTS2MU_AV_STREAM_DATA_IND:
     {
+        BTS2S_AV_STREAM_DATA_IND *msg = (BTS2S_AV_STREAM_DATA_IND *)bts2_app_data->recv_msg;
+
         bt_av_hdl_streamdata_ind(bts2_app_data);
+        bt_notify_a2dp_data_t media_data;
+        media_data.data = msg->data;
+        media_data.stream_handle = msg->shdl;
+        media_data.data_length = msg->len;
+        bt_interface_bt_event_notify(BT_NOTIFY_A2DP, BT_NOTIFY_A2DP_DATA_IND, &media_data, sizeof(bt_notify_a2dp_data_t));
         break;
     }
     case BTS2MU_AV_SUSPEND_CFM:
@@ -2541,10 +2590,9 @@ void bt_av_msg_handler(bts2_app_stru *bts2_app_data)
     }
     case BTS2MU_AV_SUSPEND_IND:
     {
-#if defined(CFG_AV)
-        bt_interface_bt_event_notify(BT_NOTIFY_A2DP, BT_NOTIFY_A2DP_SUSPEND_IND, NULL, 0);
-#endif
+        BTS2S_AV_SUSPEND_IND *msg = (BTS2S_AV_SUSPEND_IND *)bts2_app_data->recv_msg;
         bt_av_hdl_suspend_ind(bts2_app_data);
+        bt_interface_bt_event_notify(BT_NOTIFY_A2DP, BT_NOTIFY_A2DP_SUSPEND_IND, &msg->first_shdl, sizeof(U8));
         break;
     }
     case BTS2MU_AV_ABORT_CFM:
@@ -2696,16 +2744,33 @@ void bt_av_suspend_stream(uint8_t con_idx)
 #ifdef  TP_SIG_SMG_BI_26_C
     av_suspend_req((U8)1, inst->tlabel, &(inst->con[con_idx].stream_hdl));
 #else
+
+    if (inst->con[con_idx].suspend_pending)
+    {
+        USER_TRACE(" -- (%d)Suspend has been sent,waiting for reply!\n", con_idx);
+        inst->con[con_idx].pending_cmd = A2DP_SUSPEND_CMD;
+        return;
+    }
+
     if (inst->con[con_idx].st == avconned_streaming)
     {
-        USER_TRACE(">> suspend the av stream \n");
+        USER_TRACE(">> (%d)suspend the av stream \n", con_idx);
         ASSIGN_TLABEL;
         av_suspend_req((U8)1, inst->tlabel, &(inst->con[con_idx].stream_hdl));
-        inst->suspend_pending = TRUE;
+        inst->con[con_idx].suspend_pending = TRUE;
+        inst->con[con_idx].start_pending = FALSE;
     }
     else
     {
-        USER_TRACE(" -- the stream is not streaming, can not be suspend!\n");
+        if (inst->con[con_idx].start_pending)
+        {
+            USER_TRACE(" -- (%d)wait for the reply of the start command first!\n", con_idx);
+            inst->con[con_idx].pending_cmd = A2DP_SUSPEND_CMD;
+        }
+        else
+        {
+            USER_TRACE(" -- (%d)the stream is not streaming, can not be suspend!\n", con_idx);
+        }
     }
 #endif
 }
@@ -2714,17 +2779,26 @@ void bt_av_start_stream(uint8_t con_idx)
 {
     bts2s_av_inst_data *inst = bt_av_get_inst_data();
 
+    if (inst->con[con_idx].start_pending)
+    {
+        USER_TRACE(" -- (%d)Start has been sent,waiting for reply!\n", con_idx);
+        inst->con[con_idx].pending_cmd = A2DP_START_CMD;
+        return;
+    }
+
     if (inst->con[con_idx].st == avconned_open)
     {
-        USER_TRACE(">> start the av stream\n");
+        USER_TRACE(">> (%d)start the av stream\n", con_idx);
         av_start_req(1, ASSIGN_TLABEL, &inst->con[con_idx].stream_hdl);
-        inst->suspend_pending = FALSE;
+        inst->con[con_idx].suspend_pending = FALSE;
+        inst->con[con_idx].start_pending = TRUE;
     }
     else
     {
-        if (inst->con[con_idx].st == avconned_streaming)
+        if (inst->con[con_idx].st == avconned_streaming && inst->con[con_idx].suspend_pending == TRUE)
         {
-            USER_TRACE(" -- the stream is already started !\n");
+            USER_TRACE(" -- (%d)wait for the reply of the suspend command first!\n", con_idx);
+            inst->con[con_idx].pending_cmd = A2DP_START_CMD;
         }
         else
         {
@@ -2914,6 +2988,38 @@ U8 bt_av_get_sink_streaming_number(void)
     for (U8 i = 0; i < MAX_CONNS; i++)
     {
         if ((inst->con[i].st == avconned_streaming) && (inst->con[i].cfg == AV_AUDIO_SNK))
+        {
+            count++;
+        }
+    }
+
+    return count;
+}
+
+U8 bt_av_get_src_streaming_number(void)
+{
+    bts2s_av_inst_data *inst = bt_av_get_inst_data();
+    U8 count = 0;
+
+    for (U8 i = 0; i < MAX_CONNS; i++)
+    {
+        if ((inst->con[i].st == avconned_streaming) && (inst->con[i].cfg == AV_AUDIO_SRC))
+        {
+            count++;
+        }
+    }
+
+    return count;
+}
+
+U8 bt_av_get_src_connected_number(void)
+{
+    bts2s_av_inst_data *inst = bt_av_get_inst_data();
+    U8 count = 0;
+
+    for (U8 i = 0; i < MAX_CONNS; i++)
+    {
+        if ((inst->con[i].st > avconned) && (inst->con[i].cfg == AV_AUDIO_SRC))
         {
             count++;
         }
