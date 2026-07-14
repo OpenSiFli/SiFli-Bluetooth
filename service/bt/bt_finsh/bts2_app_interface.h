@@ -42,8 +42,9 @@ void bt_interface_close_bt(void);
 /**
  * @brief           Start device discovery/inquiry for BT_DEVCLS_AUDIO device
  *
+ * @return int8_t inquiry request result
  **/
-void bt_interface_start_inquiry(void);
+int8_t bt_interface_start_inquiry(void);
 
 /**
  * @brief           Read local device EIR data

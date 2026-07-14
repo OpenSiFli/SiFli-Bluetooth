@@ -40,11 +40,6 @@ extern "C" {
 #define FORWARD_PASS_THROUGH      (0x4b)
 #define BACKWARD_PASS_THROUGH     (0x4c)
 
-#define AVRCP_MAX_SONG_NAME_LEN    (128)
-#define AVRCP_MAX_SINGER_NAME_LEN  (128)
-#define AVRCP_MAX_ALBUM_INFO_LEN   (128)
-#define AVRCP_MAX_PLAY_TIME_LEN    (8)
-
 #ifdef CFG_MS
 _CTRLLER_EXPORT int AVRCP_ctrl_API(WORD n_cmd_code,  LPVOID lp_param);
 
@@ -52,56 +47,6 @@ typedef int (*PAVRCP_ctrl_API)(WORD n_cmd_code,  LPVOID lp_param);
 #endif
 
 #ifdef  CFG_AVRCP
-
-
-typedef enum
-{
-    AVRCP_TG_NFY_BV_05_C = 100,
-    AVRCP_TG_NFY_BV_08_C,
-} AVRCP_BQB_TEST;
-
-typedef struct
-{
-    uint32_t size;
-    uint8_t song_name[AVRCP_MAX_SONG_NAME_LEN];
-} bt_avrcp_music_song_name_t;
-
-typedef struct
-{
-    uint32_t size;
-    uint8_t singer_name[AVRCP_MAX_SINGER_NAME_LEN];
-} bt_avrcp_music_singer_name_t;
-
-
-typedef struct
-{
-    uint32_t size;
-    uint8_t album_name[AVRCP_MAX_ALBUM_INFO_LEN];
-} bt_avrcp_music_album_info_t;
-
-typedef struct
-{
-    uint32_t size;
-    uint8_t play_time[AVRCP_MAX_PLAY_TIME_LEN];//ascii code  ,unit:ms
-} bt_avrcp_music_play_time_t;
-
-typedef struct
-{
-    uint32_t  song_total_size;          /**< the song's total length */
-    bt_avrcp_music_play_time_t duration;                  /**< the song's total duration */
-    bt_avrcp_music_song_name_t song_name;          /**< the song's name */
-    bt_avrcp_music_singer_name_t singer_name;      /**< the song's singer name */
-    bt_avrcp_music_album_info_t album_info;        /**< the song's album name */
-    uint16_t          character_set_id;  //UTF-8 0x006A; other??
-} bt_avrcp_music_detail_info_t;
-
-typedef struct
-{
-    uint8_t  track_id;
-    uint32_t  attri_req;
-    bt_avrcp_music_detail_info_t detail_info;
-} bt_avrcp_music_detail_t;
-
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:

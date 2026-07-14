@@ -47,7 +47,7 @@ uint8_t   bts2s_avrcp_openFlag;//0x00:dont open avrcp profile; 0x01:open avrcp p
 // #define SDK_AVRCP_USE_PASS_THROUGH      1
 
 
-bt_avrcp_music_detail_t music_detail_info;
+bt_notify_avrcp_music_detail_t music_detail_info;
 
 
 /*----------------------------------------------------------------------------*
@@ -103,7 +103,7 @@ void bt_avrcp_init(bts2_app_stru *bts2_app_data)
         avrcp_enb_req(bts2_app_data->phdl, AVRCP_CT);
     }
 
-    memset(&music_detail_info, 0x00, sizeof(bt_avrcp_music_detail_t));
+    memset(&music_detail_info, 0x00, sizeof(bt_notify_avrcp_music_detail_t));
     music_detail_info.track_id = 0xff;
 }
 
@@ -2086,7 +2086,7 @@ static void bt_avrcp_hdl_vendor_depend_cmd_cfm(bts2_app_stru *bts2_app_data)
                     if (identifier_result != 1 && avrcmsg->c_type == AVRCP_CR_INTERIM)
                     {
                         // playing, should get element attributes
-                        memset(&music_detail_info, 0x00, sizeof(bt_avrcp_music_detail_t));
+                        memset(&music_detail_info, 0x00, sizeof(bt_notify_avrcp_music_detail_t));
                         music_detail_info.track_id = value;
                         music_detail_info.attri_req = bts2_app_data->avrcp_inst.conn[idx].element_support;
                         U8 attribute_val = __builtin_ctz(music_detail_info.attri_req);

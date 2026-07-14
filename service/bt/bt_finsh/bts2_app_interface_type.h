@@ -16,6 +16,11 @@ extern "C" {
 #define BT_NOTIFY_MAX_FRIENDLY_NAME_LEN               (60)
 #define BT_NOTIFY_PBAP_MAX_VCARD_SIZE                 (20)
 
+#define AVRCP_MAX_SONG_NAME_LEN    (128)
+#define AVRCP_MAX_SINGER_NAME_LEN  (128)
+#define AVRCP_MAX_ALBUM_INFO_LEN   (128)
+#define AVRCP_MAX_PLAY_TIME_LEN    (8)
+
 /**
  * @defgroup BT_interface_type BT interface type define
  * @ingroup  BT_interface
@@ -625,6 +630,8 @@ typedef struct
     uint8_t sco_res;
     ///  profile channel
     uint16_t profile_channel;
+    ///  connection index, used to find the device in the device list
+    uint8_t conn_idx;
     bt_device_sco_conn_para_t para;
 } bt_notify_device_sco_info_t;
 

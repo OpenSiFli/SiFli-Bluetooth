@@ -59,10 +59,10 @@ void bt_interface_close_bt(void)
     bt_close_bt_request();
 }
 
-void bt_interface_start_inquiry(void)
+int8_t bt_interface_start_inquiry(void)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
-    bt_start_inquiry(bts2_app_data, BT_DEVCLS_AUDIO, 60, MAX_DISCOV_RESS);
+    return bt_start_inquiry(bts2_app_data, BT_DEVCLS_AUDIO, 60, MAX_DISCOV_RESS);
 }
 
 int8_t bt_interface_start_inquiry_ex(bt_start_inquiry_ex_t *param)
