@@ -1916,61 +1916,61 @@ bt_err_t bt_interface_hfp_hf_start_connecting(unsigned char *mac)
     return BT_ERROR_INPARAM;
 }
 
-bt_err_t  bt_interface_get_ph_num(void)
+bt_err_t bt_interface_get_ph_num(uint8_t mux_id)
 {
-    bt_err_t ret = bt_hfp_hf_at_cnum_send();
+    bt_err_t ret = bt_hfp_hf_at_cnum_request(mux_id);
     return ret;
 }
 
-bt_err_t bt_interface_get_remote_ph_num(void)
-{
-    bt_err_t ret = BT_EOK;
-    ret = bt_hfp_hf_at_clcc_send();
-    return ret;
-}
-
-bt_err_t bt_interface_get_remote_call_status(void)
-{
-    bt_err_t ret = hfp_hf_get_at_cind_status();
-    return ret;
-}
-
-bt_err_t bt_interface_hf_out_going_call(int len, void *data)
+bt_err_t bt_interface_get_remote_ph_num(uint8_t mux_id)
 {
     bt_err_t ret = BT_EOK;
-    ret = bt_hfp_hf_make_call_by_number_send((uint8_t *)data, (uint8_t)len);
+    ret = bt_hfp_hf_at_clcc_request(mux_id);
     return ret;
 }
 
-bt_err_t bt_interface_start_last_num_dial_req_send(void)
+bt_err_t bt_interface_get_remote_call_status(uint8_t mux_id)
+{
+    bt_err_t ret = hfp_hf_get_at_cind_status_ext(mux_id);
+    return ret;
+}
+
+bt_err_t bt_interface_hf_out_going_call(uint8_t mux_id, int len, void *data)
 {
     bt_err_t ret = BT_EOK;
-    ret = bt_hfp_hf_last_num_dial_send();
+    ret = bt_hfp_hf_make_call_by_number_request(mux_id, (uint8_t *)data, (uint8_t)len);
     return ret;
 }
 
-bt_err_t bt_interface_start_hf_answer_req_send(void)
+bt_err_t bt_interface_start_last_num_dial_req_send(uint8_t mux_id)
 {
     bt_err_t ret = BT_EOK;
-    ret = bt_hfp_hf_answer_call_send();
+    ret = bt_hfp_hf_last_num_dial_request(mux_id, 0);
     return ret;
 }
 
-bt_err_t bt_interface_handup_call(void)
+bt_err_t bt_interface_start_hf_answer_req_send(uint8_t mux_id)
 {
     bt_err_t ret = BT_EOK;
-    ret = bt_hfp_hf_hangup_call_send();
+    ret = bt_hfp_hf_answer_call_request(mux_id);
     return ret;
 }
 
-bt_err_t bt_interface_start_dtmf_req_send(char key)
+bt_err_t bt_interface_handup_call(uint8_t mux_id)
 {
     bt_err_t ret = BT_EOK;
-    ret = bt_hfp_hf_at_dtmf_send(key);
+    ret = bt_hfp_hf_hangup_call_request(mux_id);
     return ret;
 }
 
-bt_err_t bt_interface_hf_3way_hold(bt_3way_coded_t cmd, int idx)
+bt_err_t bt_interface_start_dtmf_req_send(uint8_t mux_id, char key)
+{
+    bt_err_t ret = BT_EOK;
+    ret = bt_hfp_hf_at_dtmf_request(mux_id, key);
+    return ret;
+}
+
+bt_err_t bt_interface_hf_3way_hold(uint8_t mux_id, bt_3way_coded_t cmd, int idx)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
     bt_err_t ret = BT_EOK;
@@ -2025,66 +2025,66 @@ bt_err_t bt_interface_hf_3way_hold(bt_3way_coded_t cmd, int idx)
 
     }
 
-    ret = bt_hfp_hf_at_chld_send(bts2_app_data->input_str, bts2_app_data->input_str_len);
+    ret = bt_hfp_hf_at_chld_request(mux_id, bts2_app_data->input_str, bts2_app_data->input_str_len);
     return ret;
 }
 
-bt_err_t bt_interface_hf_3way_btrh(bt_3way_incom_t cmd)
+bt_err_t bt_interface_hf_3way_btrh(uint8_t mux_id, bt_3way_incom_t cmd)
 {
     bt_err_t ret = BT_EOK;
-    ret = bt_hfp_hf_at_btrh_cmd_send(cmd);
+    ret = bt_hfp_hf_at_btrh_cmd_request(mux_id, cmd);
     return ret;
 }
 
-bt_err_t bt_interface_hf_3way_ccwa(unsigned int enable)
+bt_err_t bt_interface_hf_3way_ccwa(uint8_t mux_id, unsigned int enable)
 {
     bt_err_t ret = BT_EOK;
-    ret = bt_hfp_hf_at_ccwa_send((uint8_t)enable);
+    ret = bt_hfp_hf_at_ccwa_request(mux_id, (uint8_t)enable);
     return ret;
 }
 
-bt_err_t bt_interface_voice_recog(uint8_t flag)
+bt_err_t bt_interface_voice_recog(uint8_t mux_id, uint8_t flag)
 {
     USER_TRACE("set voice reg %d\n", flag);
     bt_err_t ret = BT_EOK;
-    ret = bt_hfp_hf_voice_recog_send(flag);
+    ret = bt_hfp_hf_voice_recog_request(mux_id, flag);
     return ret;
 }
 
-bt_err_t bt_interface_audio_switch(uint8_t type)
+bt_err_t bt_interface_audio_switch(uint8_t mux_id, uint8_t type)
 {
     bt_err_t ret = BT_EOK;
-    ret = bt_hfp_hf_audio_transfer(type);
+    ret = bt_hfp_hf_audio_transfer_request(mux_id, type);
     return ret;
 }
 
-bt_err_t bt_interface_set_speaker_volume(int volume)
+bt_err_t bt_interface_set_speaker_volume(uint8_t mux_id, uint8_t volume)
 {
-    USER_TRACE(">> set volume %d\n", volume);
+    USER_TRACE(">> set volume(%d) %d\n", mux_id, volume);
     bt_err_t ret = BT_EOK;
-    ret = bt_hfp_hf_update_spk_vol(volume); //the volume set by solution should be 0-15 .
+    ret = bt_hfp_hf_update_spk_vol_ext(mux_id, volume); //the volume set by solution should be 0-15 .
     return ret;
 }
 
 //batt_val: 0 ~ 9  are effected.
-bt_err_t bt_interface_hf_update_battery(uint8_t batt_val)
+bt_err_t bt_interface_hf_update_battery(uint8_t mux_id, uint8_t batt_val)
 {
     bt_err_t ret = BT_EOK;
-    ret = bt_hfp_hf_update_batt_send(batt_val);
+    ret = bt_hfp_hf_update_batt_request(mux_id, batt_val);
     return ret;
 }
 
-bt_err_t bt_interface_set_wbs_status(uint8_t status)
+bt_err_t bt_interface_set_wbs_status(uint8_t mux_id, uint8_t status)
 {
     bt_err_t ret = BT_EOK;
-    hfp_hf_set_wbs(0, HF_CONN, status);
+    hfp_hf_set_wbs(mux_id, HF_CONN, status);
     return ret;
 }
 
-bt_err_t bt_interface_hfp_set_extern_cmd(uint8_t *payload, uint16_t payload_len)
+bt_err_t bt_interface_hfp_set_extern_cmd(uint8_t mux_id, uint8_t *payload, uint16_t payload_len)
 {
     bt_err_t ret = BT_EOK;
-    hfp_hf_at_data_req(0, HF_CONN, payload, payload_len);
+    hfp_hf_at_data_req(mux_id, HF_CONN, payload, payload_len);
     return ret;
 }
 

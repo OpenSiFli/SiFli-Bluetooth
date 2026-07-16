@@ -278,7 +278,7 @@ bt_cm_dev_info_t *bt_cm_get_bonded_dev_by_addr(uint8_t *addr)
 
 uint8_t bt_cm_get_bond_index_by_addr(uint8_t *addr)
 {
-#if defined(BT_CONNECT_SUPPORT_MULTI_LINK) && (BT_CM_MAX_CONN > 1)
+#if defined(BT_CONNECT_SUPPORT_MULTI_LINK) && (BT_CM_MAX_BOND > 1)
     uint8_t i;
     BTS2S_BD_ADDR     bd_addr;
     bt_addr_convert_to_bts((bd_addr_t *)addr, &bd_addr);

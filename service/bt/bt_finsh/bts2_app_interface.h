@@ -1108,21 +1108,21 @@ bt_err_t bt_interface_hfp_hf_start_connecting(unsigned char *mac);
  *
  * @return                       bt_err_t
  **/
-bt_err_t bt_interface_get_ph_num(void);
+bt_err_t bt_interface_get_ph_num(uint8_t mux_id);
 
 /**
  * @brief                        Get all call information request
  *
  * @return                       bt_err_t
  **/
-bt_err_t bt_interface_get_remote_ph_num(void);
+bt_err_t bt_interface_get_remote_ph_num(uint8_t mux_id);
 
 /**
  * @brief                        Get current call status (only CIEV) request
  *
  * @return                       bt_err_t
  **/
-bt_err_t bt_interface_get_remote_call_status(void);
+bt_err_t bt_interface_get_remote_call_status(uint8_t mux_id);
 
 /**
  * @brief                        Place a call using number
@@ -1131,28 +1131,28 @@ bt_err_t bt_interface_get_remote_call_status(void);
  *
  * @return                       bt_err_t
  **/
-bt_err_t bt_interface_hf_out_going_call(int len, void *data);
+bt_err_t bt_interface_hf_out_going_call(uint8_t mux_id, int len, void *data);
 
 /**
  * @brief                        Place call to last dialed number
  *
  * @return                       bt_err_t
  **/
-bt_err_t bt_interface_start_last_num_dial_req_send(void);
+bt_err_t bt_interface_start_last_num_dial_req_send(uint8_t mux_id);
 
 /**
  * @brief                        Answer a call
  *
  * @return                       bt_err_t
  **/
-bt_err_t bt_interface_start_hf_answer_req_send(void);
+bt_err_t bt_interface_start_hf_answer_req_send(uint8_t mux_id);
 
 /**
  * @brief                        Hang up a call
  *
  * @return                       bt_err_t
  **/
-bt_err_t bt_interface_handup_call(void);
+bt_err_t bt_interface_handup_call(uint8_t mux_id);
 
 /**
  * @brief                        Transmit DTMF tone
@@ -1160,7 +1160,7 @@ bt_err_t bt_interface_handup_call(void);
  *
  * @return                       bt_err_t
  **/
-bt_err_t bt_interface_start_dtmf_req_send(char key);
+bt_err_t bt_interface_start_dtmf_req_send(uint8_t mux_id, char key);
 
 /**
  * @brief                        Call hold and multiparty handling AT command.
@@ -1187,7 +1187,7 @@ bt_err_t bt_interface_start_dtmf_req_send(char key);
  * @param[in] idx                current call index
  * @return                       bt_err_t
  **/
-bt_err_t bt_interface_hf_3way_hold(bt_3way_coded_t cmd, int idx);
+bt_err_t bt_interface_hf_3way_hold(uint8_t mux_id, bt_3way_coded_t cmd, int idx);
 
 /**
  * @brief                        Query response and hold status.
@@ -1195,7 +1195,7 @@ bt_err_t bt_interface_hf_3way_hold(bt_3way_coded_t cmd, int idx);
  *
  * @return                       bt_err_t
  **/
-bt_err_t bt_interface_hf_3way_btrh(bt_3way_incom_t cmd);
+bt_err_t bt_interface_hf_3way_btrh(uint8_t mux_id, bt_3way_incom_t cmd);
 
 /**
  * @brief                        Call waiting notification control
@@ -1203,7 +1203,7 @@ bt_err_t bt_interface_hf_3way_btrh(bt_3way_incom_t cmd);
  *
  * @return                       bt_err_t
  **/
-bt_err_t bt_interface_hf_3way_ccwa(unsigned int enable);
+bt_err_t bt_interface_hf_3way_ccwa(uint8_t mux_id, unsigned int enable);
 
 /**
  * @brief                        Voice recognition control
@@ -1211,7 +1211,7 @@ bt_err_t bt_interface_hf_3way_ccwa(unsigned int enable);
  *
  * @return                       bt_err_t
  **/
-bt_err_t bt_interface_voice_recog(uint8_t flag);
+bt_err_t bt_interface_voice_recog(uint8_t mux_id, uint8_t flag);
 
 
 /**
@@ -1220,7 +1220,7 @@ bt_err_t bt_interface_voice_recog(uint8_t flag);
  *
  * @return                       bt_err_t
  **/
-bt_err_t bt_interface_audio_switch(uint8_t type);
+bt_err_t bt_interface_audio_switch(uint8_t mux_id, uint8_t type);
 
 /**
  * @brief                        Speaker volume control
@@ -1228,7 +1228,7 @@ bt_err_t bt_interface_audio_switch(uint8_t type);
  *
  * @return                       bt_err_t
  **/
-bt_err_t bt_interface_set_speaker_volume(int volume);
+bt_err_t bt_interface_set_speaker_volume(uint8_t mux_id, uint8_t volume);
 
 /**
  * @brief                        Update device battery value
@@ -1236,7 +1236,7 @@ bt_err_t bt_interface_set_speaker_volume(int volume);
  *
  * @return                       bt_err_t
  **/
-bt_err_t bt_interface_hf_update_battery(uint8_t batt_val);
+bt_err_t bt_interface_hf_update_battery(uint8_t mux_id, uint8_t batt_val);
 
 /**
  * @brief                         Codec negotiation control
@@ -1245,7 +1245,7 @@ bt_err_t bt_interface_hf_update_battery(uint8_t batt_val);
  *
  * @return                       bt_err_t
  **/
-bt_err_t bt_interface_set_wbs_status(uint8_t status);
+bt_err_t bt_interface_set_wbs_status(uint8_t mux_id, uint8_t status);
 
 /**
  * @brief                        Send extern AT command.
@@ -1256,7 +1256,7 @@ bt_err_t bt_interface_set_wbs_status(uint8_t status);
  *
  * @return                       bt_err_t
  **/
-bt_err_t bt_interface_hfp_set_extern_cmd(uint8_t *payload, uint16_t payload_len);
+bt_err_t bt_interface_hfp_set_extern_cmd(uint8_t mux_id, uint8_t *payload, uint16_t payload_len);
 
 /// @}  HFP_HF
 
