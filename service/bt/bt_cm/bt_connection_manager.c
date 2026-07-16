@@ -1704,7 +1704,41 @@ static void bt_fsm_hook_fun(const uint8_t *string, uint8_t state, uint8_t evt)
 
     LOG_D("fsm: %s st:%d evt:%d", string, state, evt);
 }
+#ifdef SOC_SF32LB57X
+void rf_test_optimization()
+{
+#ifdef RT_USING_PM
+    rt_pm_request(PM_SLEEP_MODE_IDLE);
+    rt_pm_hw_device_start();
 
+    HAL_HPAON_WakeCore(CORE_ID_LCPU);
+    rt_thread_delay(500);
+
+#endif
+    hwp_hpsys_rcc->ENR1 = 0x12;
+    rt_thread_delay(20);
+    hwp_hpsys_rcc->ENR2 = 0x40100E;
+    rt_thread_delay(20);
+    hwp_hpsys_rcc->CSR &= ~(HPSYS_RCC_CSR_SEL_SYS_Msk);
+    hwp_hpsys_rcc->CSR |= (0x0 << HPSYS_RCC_CSR_SEL_SYS_Pos);
+    rt_thread_delay(20);
+    hwp_pmuc->HRC_CR1 &= ~(PMUC_HRC_CR1_FREQ_TRIM_Msk);
+    hwp_pmuc->HRC_CR1 |= (0x250 << PMUC_HRC_CR1_FREQ_TRIM_Pos);
+    rt_thread_delay(20);
+    hwp_pmuc->HPSYS_VOUT = 0x8;
+    rt_thread_delay(20);
+    hwp_pmuc->AON_LDO &= ~(PMUC_AON_LDO_VBAT_LDO_SET_VOUT_Msk);
+    hwp_pmuc->AON_LDO |= (0xC << PMUC_AON_LDO_VBAT_LDO_SET_VOUT_Pos);
+    rt_thread_delay(20);
+    hwp_bt_phy->TX_LFP_CFG &= ~(BT_PHY_TX_LFP_CFG_TX_SDM_SEL_Msk);
+    hwp_bt_phy->TX_LFP_CFG |= (0x3 << BT_PHY_TX_LFP_CFG_TX_SDM_SEL_Pos);
+    rt_thread_delay(20);
+    hwp_pmuc->HXT_CR1 &= ~(PMUC_HXT_CR1_LDO_VREF_Msk);
+    hwp_pmuc->HXT_CR1 |= (0x6 << PMUC_HXT_CR1_LDO_VREF_Pos);
+    rt_thread_delay(20);
+
+}
+#endif
 void bt_cm(uint8_t argc, char **argv)
 {
     if (argc > 1)
@@ -1805,6 +1839,9 @@ void bt_cm(uint8_t argc, char **argv)
         else if (strcmp(argv[1], "dut") == 0)
         {
             gap_enb_dut_mode_req(bts2_task_get_app_task_id());
+#if  defined(SOC_SF32LB57X) && defined(BSP_BQB_TEST)
+            rf_test_optimization();
+#endif
         }
         else if (strcmp(argv[1], "sleep") == 0)
         {
