@@ -11,7 +11,7 @@
 
 #include "audio_server.h"
 #include "bts2_app_inc.h"
-#ifdef BT_VOICE_RELAY
+#ifdef CFG_BT_VOICE_RELAY
     #include "audio_bt_voice_rely.h"
 #endif
 
@@ -34,8 +34,8 @@ void hfp_audio_set_default_para(void);
 void hfp_set_audio_voice_para(bt_device_sco_conn_para_t *msg, BOOL audio_on, U8 direct_audio_on);
 void hfp_aduio_open_path(hfp_audio_type_t audioType);
 void hfp_audio_close_path(void);
-#ifdef BT_VOICE_RELAY
-    int hfp_audio_rely_option(BTS2S_HF_AUDIO_INFO *msg, BOOL audio_on);
+#ifdef CFG_BT_VOICE_RELAY
+    int hfp_audio_rely_option(bt_device_sco_conn_para_t *msg, BOOL audio_on);
 #endif
 /*for hfp ag & audio box*/
 #define  AUDIO_BOX_EN   1

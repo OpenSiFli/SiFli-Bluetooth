@@ -290,6 +290,10 @@ menu "Bluetooth"
                 default n
             endif
 
+        config CFG_BT_VOICE_RELAY
+            bool "call Audio Relay Feature"
+            default n
+
         config BSP_BT_APP
             bool "Enable bt app in watch-demo"
             depends on BT_FINSH

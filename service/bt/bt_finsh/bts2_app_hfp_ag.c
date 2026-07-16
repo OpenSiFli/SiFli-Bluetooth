@@ -9,6 +9,7 @@
 
 #include "bts2_app_inc.h"
 #include "hfp_ag_api.h"
+#include "bf0_sibles.h"
 
 #define LOG_TAG         "btapp_ag"
 #include "log.h"
@@ -350,7 +351,7 @@ static void bt_hfp_ag_app_device_state_changed(bts2_app_stru *bts2_app_data, BTS
                 bt_hfp_ag_app_dealloc_device(device_info);
             }
 
-#ifdef AUDIO_USING_MANAGER
+#if defined(AUDIO_USING_MANAGER) && !defined(CFG_BT_VOICE_RELAY)
             BTS2S_HF_AUDIO_INFO msg;
             hfp_ag_audio_opt(&msg, 0);
 #endif // AUDIO_USING_MANAGER
@@ -703,6 +704,16 @@ void bt_hfp_ag_msg_hdl(bts2_app_stru *bts2_app_data)
             sco_info.sco_type = BT_NOTIFY_HFP_AG;
             sco_info.sco_res = BTS2_SUCC;
             sco_info.profile_channel = msg->mux_id;
+            sco_info.para.type = msg->type;
+            bt_addr_convert_to_general(&msg->bd, (bd_addr_t *)sco_info.para.bd.addr);
+            sco_info.para.audio_on = msg->audio_on;
+            sco_info.para.sco_hdl = msg->sco_hdl;
+            sco_info.para.profile_type = msg->profile_type;
+            sco_info.para.tx_intvl = msg->tx_intvl;
+            sco_info.para.we_sco = msg->we_sco;
+            sco_info.para.rx_pkt_len = msg->rx_pkt_len;
+            sco_info.para.tx_pkt_len = msg->tx_pkt_len;
+            sco_info.para.air_mode = msg->air_mode;
             bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_SCO_CONNECTED,
                                          &sco_info, sizeof(bt_notify_device_sco_info_t));
         }
@@ -713,11 +724,21 @@ void bt_hfp_ag_msg_hdl(bts2_app_stru *bts2_app_data)
             sco_info.sco_type = BT_NOTIFY_HFP_AG;
             sco_info.sco_res = BTS2_SUCC;
             sco_info.profile_channel = msg->mux_id;
+            sco_info.para.type = msg->type;
+            bt_addr_convert_to_general(&msg->bd, (bd_addr_t *)sco_info.para.bd.addr);
+            sco_info.para.audio_on = msg->audio_on;
+            sco_info.para.sco_hdl = msg->sco_hdl;
+            sco_info.para.profile_type = msg->profile_type;
+            sco_info.para.tx_intvl = msg->tx_intvl;
+            sco_info.para.we_sco = msg->we_sco;
+            sco_info.para.rx_pkt_len = msg->rx_pkt_len;
+            sco_info.para.tx_pkt_len = msg->tx_pkt_len;
+            sco_info.para.air_mode = msg->air_mode;
             bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_SCO_DISCONNECTED,
                                          &sco_info, sizeof(bt_notify_device_sco_info_t));
         }
 
-#ifdef AUDIO_USING_MANAGER
+#if defined(AUDIO_USING_MANAGER) && !defined(CFG_BT_VOICE_RELAY)
         hfp_ag_audio_opt(msg, msg->audio_on);
 #endif // AUDIO_USING_MANAGER
         break;
@@ -742,7 +763,25 @@ void bt_hfp_ag_msg_hdl(bts2_app_stru *bts2_app_data)
         BTS2S_HF_AUDIO_INFO *msg;
         msg = (BTS2S_HF_AUDIO_INFO *)bts2_app_data->recv_msg;
         USER_TRACE("<< BTS2MU_AG_AUDIO_DISC_CFM\n");
-#ifdef AUDIO_USING_MANAGER
+
+        bt_notify_device_sco_info_t sco_info;
+        sco_info.sco_type = BT_NOTIFY_HFP_AG;
+        sco_info.sco_res = BTS2_SUCC;
+        sco_info.profile_channel = msg->mux_id;
+        sco_info.para.type = msg->type;
+        bt_addr_convert_to_general(&msg->bd, (bd_addr_t *)sco_info.para.bd.addr);
+        sco_info.para.audio_on = msg->audio_on;
+        sco_info.para.sco_hdl = msg->sco_hdl;
+        sco_info.para.profile_type = msg->profile_type;
+        sco_info.para.tx_intvl = msg->tx_intvl;
+        sco_info.para.we_sco = msg->we_sco;
+        sco_info.para.rx_pkt_len = msg->rx_pkt_len;
+        sco_info.para.tx_pkt_len = msg->tx_pkt_len;
+        sco_info.para.air_mode = msg->air_mode;
+        bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_SCO_DISCONNECTED,
+                                     &sco_info, sizeof(bt_notify_device_sco_info_t));
+
+#if defined(AUDIO_USING_MANAGER) && !defined(CFG_BT_VOICE_RELAY)
         hfp_ag_audio_opt(msg, msg->audio_on);
 #endif // AUDIO_USING_MANAGER
         break;
@@ -752,7 +791,25 @@ void bt_hfp_ag_msg_hdl(bts2_app_stru *bts2_app_data)
         BTS2S_HF_AUDIO_INFO *msg;
         msg = (BTS2S_HF_AUDIO_INFO *)bts2_app_data->recv_msg;
         USER_TRACE("<< BTS2MU_AG_AUDIO_DISC_IND hdl 0x%2x\n", msg->sco_hdl);
-#ifdef AUDIO_USING_MANAGER
+
+        bt_notify_device_sco_info_t sco_info;
+        sco_info.sco_type = BT_NOTIFY_HFP_AG;
+        sco_info.sco_res = BTS2_SUCC;
+        sco_info.profile_channel = msg->mux_id;
+        sco_info.para.type = msg->type;
+        bt_addr_convert_to_general(&msg->bd, (bd_addr_t *)sco_info.para.bd.addr);
+        sco_info.para.audio_on = msg->audio_on;
+        sco_info.para.sco_hdl = msg->sco_hdl;
+        sco_info.para.profile_type = msg->profile_type;
+        sco_info.para.tx_intvl = msg->tx_intvl;
+        sco_info.para.we_sco = msg->we_sco;
+        sco_info.para.rx_pkt_len = msg->rx_pkt_len;
+        sco_info.para.tx_pkt_len = msg->tx_pkt_len;
+        sco_info.para.air_mode = msg->air_mode;
+        bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_SCO_DISCONNECTED,
+                                     &sco_info, sizeof(bt_notify_device_sco_info_t));
+
+#if defined(AUDIO_USING_MANAGER) && !defined(CFG_BT_VOICE_RELAY)
         hfp_ag_audio_opt(msg, msg->audio_on);
 #endif // AUDIO_USING_MANAGER
         break;
@@ -787,7 +844,7 @@ void bt_hfp_ag_app_init(bts2_app_stru *bts2_app_data)
         bt_hfp_ag_app_init_device_info(&bts2_app_data->hfp_ag_inst);
         bt_hfp_ag_app_profile_service_update(&bts2_app_data->hfp_ag_inst, HFP_AG_APP_INIT);
         bmemset(&g_remote_calls_info, 0x00, sizeof(hfp_phone_call_info_t));
-#ifdef AUDIO_USING_MANAGER
+#if defined(AUDIO_USING_MANAGER) && !defined(CFG_BT_VOICE_RELAY)
         hfp_ag_audio_register();
 #endif // AUDIO_USING_MANAGER
     }
@@ -889,7 +946,7 @@ void bt_hfp_connect_audio(BTS2S_BD_ADDR *bd)
 void bt_hfp_disconnect_audio(BTS2S_BD_ADDR *bd)
 {
 
-#ifdef AUDIO_USING_MANAGER
+#if defined(AUDIO_USING_MANAGER) && !defined(CFG_BT_VOICE_RELAY)
     BTS2S_HF_AUDIO_INFO msg;
     hfp_ag_audio_opt(&msg, 0);
 #endif // AUDIO_USING_MANAGER

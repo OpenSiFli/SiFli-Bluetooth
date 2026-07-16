@@ -430,8 +430,8 @@ int abox_delay(int argc, char *argv[])
 
 MSH_CMD_EXPORT(abox_delay,  set audio box delay);
 
-#ifdef BT_VOICE_RELAY
-int hfp_audio_rely_option(BTS2S_HF_AUDIO_INFO *msg, BOOL audio_on)
+#ifdef CFG_BT_VOICE_RELAY
+int hfp_audio_rely_option(bt_device_sco_conn_para_t *msg, BOOL audio_on)
 {
     if (audio_on)
     {

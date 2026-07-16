@@ -1835,7 +1835,7 @@ void bt_cm(uint8_t argc, char **argv)
         {
             uint8_t mod_str[3][7] = {"Active", "Hold", "Sniff"};
             bt_cm_device_manager_t *env = bt_cm_get_env();
-            for (uint8_t i = 0; i < BT_CM_MAX_BOND; i++)
+            for (uint8_t i = 0; i < BT_CM_DEVICE_MAX_CONN; i++)
             {
                 bt_cm_dev_acl_info_t *conn = &env->bt_devices[i];
                 if (conn->state >= BT_CM_ACL_STATE_CONNECTED)
