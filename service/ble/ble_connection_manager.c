@@ -870,6 +870,28 @@ uint8_t connection_manager_delete_all_bond()
 #endif //BLE_CM_BOND_DISABLE
 
 #ifndef BLE_CM_BOND_DISABLE
+static void connection_manager_mask_ltk(ble_gap_ltk_t *ltk)
+{
+    uint8_t key_size;
+
+    if (!ltk)
+    {
+        return;
+    }
+
+    key_size = ltk->key_size;
+    if ((key_size < 7) || (key_size > GAP_KEY_LEN))
+    {
+        key_size = GAP_KEY_LEN;
+        ltk->key_size = key_size;
+    }
+
+    if (key_size < GAP_KEY_LEN)
+    {
+        rt_memset(&ltk->ltk.key[key_size], 0, GAP_KEY_LEN - key_size);
+    }
+}
+
 static void update_pair_infor(ble_gap_bond_ind_t *ind, uint8_t manager_index)
 {
     int i;
@@ -896,7 +918,10 @@ static void update_pair_infor(ble_gap_bond_ind_t *ind, uint8_t manager_index)
 
                 g_bond_info.fixed[i] = 0;
                 g_bond_info.local_irk[i] = g_bonding_info.local_irk;
-                g_bond_info.ltk[i] = g_bonding_info.ltk;
+                if (g_bonding_info.ltk_present)
+                {
+                    g_bond_info.ltk[i] = g_bonding_info.ltk;
+                }
                 g_bond_info.peer_addr[i] = g_bonding_info.peer_addr;
                 g_bond_info.peer_irk[i] = g_bonding_info.peer_irk;
                 g_bond_info.priority[i] = 1;
@@ -928,7 +953,10 @@ static void update_pair_infor(ble_gap_bond_ind_t *ind, uint8_t manager_index)
 
                 g_bond_info.fixed[i] = 0;
                 g_bond_info.local_irk[i] = g_bonding_info.local_irk;
-                g_bond_info.ltk[i] = g_bonding_info.ltk;
+                if (g_bonding_info.ltk_present)
+                {
+                    g_bond_info.ltk[i] = g_bonding_info.ltk;
+                }
                 g_bond_info.peer_addr[i] = g_bonding_info.peer_addr;
                 g_bond_info.peer_irk[i] = g_bonding_info.peer_irk;
                 g_bond_info.priority[i] = 1;
@@ -961,7 +989,10 @@ static void update_pair_infor(ble_gap_bond_ind_t *ind, uint8_t manager_index)
                 // replace the oldest bonded device
                 g_bond_info.fixed[i] = 0;
                 g_bond_info.local_irk[i] = g_bonding_info.local_irk;
-                g_bond_info.ltk[i] = g_bonding_info.ltk;
+                if (g_bonding_info.ltk_present)
+                {
+                    g_bond_info.ltk[i] = g_bonding_info.ltk;
+                }
                 g_bond_info.peer_addr[i] = g_bonding_info.peer_addr;
                 g_bond_info.peer_irk[i] = g_bonding_info.peer_irk;
                 g_bond_info.priority[i] = 1;
@@ -1006,6 +1037,8 @@ static void process_bond_event(ble_gap_bond_ind_t *ind, uint16_t command)
     {
         LOG_I("GAPC_PAIRING_SUCCEED");
 
+        g_bonding_info.auth = ind->data.auth.info;
+        g_bonding_info.ltk_present = ind->data.auth.ltk_present;
         update_pair_infor(ind, manager_index);
         update_resolving_list();
 
@@ -1035,11 +1068,24 @@ static void process_bond_event(ble_gap_bond_ind_t *ind, uint16_t command)
         g_conn_manager[manager_index].enc_state = ENC_STATE_ON;
         g_conn_manager[manager_index].first_bond = 1;
 
+        connection_manager_mask_ltk(&ind->data.ltk);
+
         if (g_conn_manager[manager_index].sec_con_enabled)
         {
             LOG_I("store LTK when sec connection enabled");
             // Store LTK in NVDS
             g_bonding_info.ltk = ind->data.ltk;
+        }
+        else if (g_conn_manager[manager_index].role == 0)
+        {
+            LOG_I("store peer LTK when local role is master");
+            // As LE master, the peer-distributed LTK is used to start future encryption.
+            g_bonding_info.ltk = ind->data.ltk;
+        }
+        else
+        {
+            LOG_I("keep local LTK when local role is slave");
+            // As LE slave, future LTK request must be answered with the local LTK that was distributed to peer.
         }
         break;
     }
@@ -1380,6 +1426,7 @@ static void process_bond_req_ind(ble_gap_bond_req_ind_t *ind)
 
         cfm->request = GAPC_PAIRING_RSP;
         cfm->conn_idx = connection_index;
+        env->remote_auth = ind->data.auth_req;
 
         cfm->cfm_data.pairing_feat.auth      = env->bond_cnf_info.auth;
         cfm->cfm_data.pairing_feat.iocap     = env->bond_cnf_info.iocap;
@@ -1417,6 +1464,7 @@ static void process_bond_req_ind(ble_gap_bond_req_ind_t *ind)
 
         // Generate all the values
         cfm->cfm_data.ltk.ediv = (uint16_t)cm_rand_word();
+        cfm->cfm_data.ltk.key_size = ind->data.key_size;
 
         for (counter = 0; counter < GAP_RAND_NB_LEN; counter++)
         {
@@ -1429,11 +1477,19 @@ static void process_bond_req_ind(ble_gap_bond_req_ind_t *ind)
             cfm->cfm_data.ltk.ltk.key[counter]    = (uint8_t)cm_rand_word();
         }
 
-        // store ltk
+        connection_manager_mask_ltk(&cfm->cfm_data.ltk);
+
+        // This is the local distributed LTK. As LE slave, it is the key that
+        // the master will request on future encryption procedures.
         if (!env->bond_role_master)
         {
-            g_bond_info.ltk[g_conn_manager[manager_index].bond_index] = cfm->cfm_data.ltk;
             g_bonding_info.ltk = cfm->cfm_data.ltk;
+            if ((g_conn_manager[manager_index].bond_state == BOND_STATE_BONDED) &&
+                    (g_conn_manager[manager_index].bond_index < MAX_PAIR_DEV))
+            {
+                g_bond_info.ltk[g_conn_manager[manager_index].bond_index] = cfm->cfm_data.ltk;
+                // set_bond_infor_to_flash();
+            }
         }
         else
         {
@@ -2021,7 +2077,33 @@ int ble_connection_manager_handler(uint16_t event_id, uint8_t *data, uint16_t le
 
 
         // LTK value
-        ble_gap_ltk_t ltk = g_bond_info.ltk[g_conn_manager[manager_index].bond_index];
+        ble_gap_ltk_t ltk = {0};
+        bool ltk_matched = false;
+        if (g_conn_manager[manager_index].bond_index < MAX_PAIR_DEV)
+        {
+            ltk = g_bond_info.ltk[g_conn_manager[manager_index].bond_index];
+            if ((ind->ediv == ltk.ediv) &&
+                    !rt_memcmp(&ind->rand_nb.nb[0], &ltk.randnb.nb[0], sizeof(ble_gap_rand_nb_t)))
+            {
+                ltk_matched = true;
+            }
+        }
+
+        if (!ltk_matched)
+        {
+            for (uint8_t i = 0; i < MAX_PAIR_DEV; i++)
+            {
+                if ((g_bond_info.priority[i] != 0) &&
+                        (ind->ediv == g_bond_info.ltk[i].ediv) &&
+                        !rt_memcmp(&ind->rand_nb.nb[0], &g_bond_info.ltk[i].randnb.nb[0], sizeof(ble_gap_rand_nb_t)))
+                {
+                    ltk = g_bond_info.ltk[i];
+                    g_conn_manager[manager_index].bond_index = i;
+                    ltk_matched = true;
+                    break;
+                }
+            }
+        }
 
         struct gapc_encrypt_cfm *cfm = sifli_msg_alloc(GAPC_ENCRYPT_CFM,
                                        TASK_BUILD_ID(TASK_ID_GAPC, ind->conn_idx), sifli_get_stack_id(),
@@ -2033,36 +2115,37 @@ int ble_connection_manager_handler(uint16_t event_id, uint8_t *data, uint16_t le
         {
             // Retrieve the required informations from NVDS
 
-            if (true)
+            if (ltk_matched)
             {
                 // Check if the provided EDIV and Rand Nb values match with the stored values
-                if ((ind->ediv == ltk.ediv) &&
-                        !rt_memcmp(&ind->rand_nb.nb[0], &ltk.randnb.nb[0], sizeof(ble_gap_rand_nb_t)))
-                {
-                    cfm->found = true;
-                    cfm->key_size = 16;
+                connection_manager_mask_ltk(&ltk);
+                cfm->found = true;
+                cfm->key_size = ltk.key_size;
 #ifdef PKG_USING_FMNA
-                    extern bool fmna_connection_is_fmna_paired(void);
-                    if (fmna_connection_is_fmna_paired())
-                    {
-                        bd_addr_t fmna_addr = fmna_get_paired_addr();
+                extern bool fmna_connection_is_fmna_paired(void);
+                if (fmna_connection_is_fmna_paired())
+                {
+                    bd_addr_t fmna_addr = fmna_get_paired_addr();
 
-                        if (memcmp(fmna_addr.addr, g_bond_info.peer_addr[g_conn_manager[manager_index].bond_index].addr.addr, BD_ADDR_LEN) == 0)
-                        {
-                            LOG_I("USING NEW LTK");
-
-                            extern uint8_t *fmna_connection_get_active_ltk(void);
-                            rt_memcpy(&cfm->ltk, fmna_connection_get_active_ltk(), sizeof(ble_gap_sec_key_t));
-                        }
-                    }
-                    else
+                    if (memcmp(fmna_addr.addr, g_bond_info.peer_addr[g_conn_manager[manager_index].bond_index].addr.addr, BD_ADDR_LEN) == 0)
                     {
-                        rt_memcpy(&cfm->ltk, &ltk.ltk, sizeof(ble_gap_sec_key_t));
+                        LOG_I("USING NEW LTK");
+
+                        extern uint8_t *fmna_connection_get_active_ltk(void);
+                        rt_memcpy(&cfm->ltk, fmna_connection_get_active_ltk(), sizeof(ble_gap_sec_key_t));
                     }
-#else
-                    rt_memcpy(&cfm->ltk, &ltk.ltk, sizeof(ble_gap_sec_key_t));
-#endif
                 }
+                else
+                {
+                    rt_memcpy(&cfm->ltk, &ltk.ltk, sizeof(ble_gap_sec_key_t));
+                }
+#else
+                rt_memcpy(&cfm->ltk, &ltk.ltk, sizeof(ble_gap_sec_key_t));
+#endif
+            }
+            else
+            {
+                LOG_E("LTK not found for ediv: 0x%04x", ind->ediv);
             }
         }
         // Send the message

@@ -90,6 +90,8 @@ typedef struct
     ble_gap_ltk_t ltk;
     ble_gap_sec_key_t local_irk;
     ble_gap_sec_key_t peer_irk;
+    uint8_t auth;
+    bool ltk_present;
 } conn_manager_bonding_dev_t;
 
 typedef struct
