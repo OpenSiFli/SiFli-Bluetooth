@@ -239,6 +239,7 @@ static uint8_t *ble_dis_get_cbk(uint8_t conn_idx, uint8_t idx, uint16_t *len)
             *len = SIBLES_DIS_PNP_ID_LEN;
             data = (uint8_t *)SIBLES_DIS_PNP_ID;
         }
+        break;
     }
     default:
         *len = 0;
