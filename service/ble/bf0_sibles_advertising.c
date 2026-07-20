@@ -290,7 +290,7 @@ uint8_t sibles_advertising_init(sibles_advertising_context_t *context, sibles_ad
             context->periodic_data = bt_mem_alloc(sizeof(ble_gap_adv_data_t) + para->periodic_data->len);
             BT_OOM_ASSERT(context->periodic_data);
             context->periodic_data->length = para->periodic_data->len;
-            memcpy(context->periodic_data->data, context->periodic_data->data, para->periodic_data->len);
+            memcpy(context->periodic_data->data, para->periodic_data->data, para->periodic_data->len);
         }
 
     }
