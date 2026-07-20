@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+
+#include <stdint.h>
 #include "bf0_ble_gap.h"
 #include "bf0_sibles_internal.h"
 
@@ -1147,6 +1149,13 @@ struct gapm_aes_h6_cmd
     uint8_t   key_id[KEY_ID_LEN];
     uint32_t  cb_request;
 };
+
+struct gapm_aes_h7_cmd
+{
+    uint8_t   salt[GAP_KEY_LEN];
+    uint8_t   w[GAP_KEY_LEN];
+    uint32_t  cb_request;
+};
 /// Indication of ongoing connection Channel Map
 /*@TRACE*/
 struct gapc_con_channel_map_ind
@@ -1442,6 +1451,13 @@ struct gapm_aes_h6_ind
     uint8_t aes_res[GAP_KEY_LEN];
     uint32_t metainfo;
 };
+
+struct gapm_aes_h7_ind
+{
+    uint8_t aes_res[GAP_KEY_LEN];
+    uint32_t metainfo;
+};
+
 struct gattc_svc_changed_cfg
 {
     /**

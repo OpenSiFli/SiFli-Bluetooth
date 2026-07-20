@@ -15,6 +15,9 @@
 #include "bts2_app_inc.h"
 #include "bf0_sibles_nvds.h"
 #include "bt_connection_manager.h"
+#ifdef BLE_CTKD_BREDR_LK_TO_LE_LTK
+    #include "ble_connection_manager.h"
+#endif
 
 #ifdef RT_USING_ULOG
     #include "ulog.h"
@@ -1238,6 +1241,9 @@ int bt_cm_sc_event_handler(uint16_t event_id, uint8_t *msg)
         if (ind->res == 0)
         {
             LOG_HEX("Key :", 16, ind->link_key, LINK_KEY_SIZE);
+#ifdef BLE_CTKD_BREDR_LK_TO_LE_LTK
+            connection_manager_ctkd_bredr_link_key_ind(ind->bd.lap, ind->bd.uap, ind->bd.nap, ind->link_key);
+#endif
         }
         break;
     }

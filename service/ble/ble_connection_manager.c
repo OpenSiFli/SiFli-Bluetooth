@@ -48,6 +48,12 @@
 
 connection_para_updata_ind_t ble_connect_para_ind = {LOW_POWER_INTERVAL_MIN, LOW_POWER_INTERVAL_MAX, LOW_POWER_LATENCY, CONNECTION_MANAGER_INTERVAL_LOW_POWER};
 
+#ifdef BLE_CTKD_ENABLE
+    #define CM_CTKD_AUTH_CT2_BIT        (0x20)
+    static ble_gap_ltk_t g_ctkd_raw_ltk[MAX_CONNECTION_LINK_NUM];
+    static bool g_ctkd_raw_ltk_valid[MAX_CONNECTION_LINK_NUM];
+#endif
+
 void connection_manager_connection_state_change(uint8_t manager_index, uint8_t new_states, uint16_t event);
 
 // get bonded dev from nv
@@ -72,16 +78,102 @@ static connection_manager_env_t *cm_get_env()
 int connection_manager_event_process(uint8_t command, uint16_t len, void *data);
 static uint8_t get_manager_index_by_connection_index(uint8_t conn_idx);
 
+#ifdef BLE_CTKD_ENABLE
+static void connection_manager_store_ctkd_ltk(int i, uint8_t *ltk);
+void connection_manager_convert_ilk_to_ltk(int i);
+void connection_manager_convert_raw_ltk_to_ilk(int i);
+void connection_manager_ctkd_raw_ltk_ind(uint8_t conidx, uint8_t *ltk, uint8_t key_size);
+static bool connection_manager_ctkd_raw_ltk_get(uint8_t conidx, ble_gap_ltk_t *ltk);
+
+typedef struct
+{
+    bool valid;
+    uint8_t conidx;
+    uint8_t bond_index;
+    ble_gap_addr_t peer_addr;
+    bool use_h7;
+} cm_ctkd_lk_to_ltk_ctx_t;
+
+static cm_ctkd_lk_to_ltk_ctx_t g_ctkd_lk_to_ltk_ctx;
+
+#if defined(BLE_CTKD_BREDR_LK_TO_LE_LTK) && defined(BT_FINSH)
+extern uint8_t is_gatt_over_bredr_conidx(uint8_t conidx) RT_WEAK;
+static uint8_t connection_manager_can_derive_lk_from_ltk(uint8_t conidx, connection_manager_env_t *env)
+{
+    if (is_gatt_over_bredr_conidx)
+    {
+        if ((is_gatt_over_bredr_conidx(conidx)) &&
+                (env->key_dist & GAP_KDIST_LINKKEY) && (env->key_dist & GAP_KDIST_ENCKEY))
+        {
+            return 1;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+    else
+    {
+        LOG_W("is_gatt_over_bredr_conidx function not available");
+        return 0;
+    }
+}
+
+extern void bt_gatt_over_bredr_register_ctkd_rsp_cb(void (*cb)(uint8_t conidx)) RT_WEAK;
+extern U16 bts2_task_get_app_task_id();
+
+void connection_manager_ctkd_pairing_rsp_ind(uint8_t conidx);
+
+extern void sc_rd_paired_dev_link_key_req(uint16_t tid, BTS2S_BD_ADDR *bd) RT_WEAK;
+static void connection_manager_request_bredr_link_key(uint16_t tid, BTS2S_BD_ADDR *bd)
+{
+    if (sc_rd_paired_dev_link_key_req)
+    {
+        sc_rd_paired_dev_link_key_req(tid, bd);
+    }
+    else
+    {
+        LOG_W("BT library does not support sc_rd_paired_dev_link_key_req");
+    }
+}
+
+extern void smpc_ctkd_pairing_complete(uint8_t conidx, bool success) RT_WEAK;
+static void connection_manager_ctkd_pairing_complete(uint8_t conidx, bool success)
+{
+    if (smpc_ctkd_pairing_complete)
+    {
+        smpc_ctkd_pairing_complete(conidx, success);
+    }
+    else
+    {
+        LOG_W("BLE library does not support smpc_ctkd_pairing_complete");
+    }
+}
+#endif
+#endif
+
+
 
 int cm_env_init(void)
 {
     connection_manager_env_t *env = cm_get_env();
+#if defined(BLE_CTKD_BREDR_LK_TO_LE_LTK) && defined(BT_FINSH)
+    if (bt_gatt_over_bredr_register_ctkd_rsp_cb)
+    {
+        bt_gatt_over_bredr_register_ctkd_rsp_cb(connection_manager_ctkd_pairing_rsp_ind);
+    }
+    else
+    {
+        LOG_W("BT library does not support bt_gatt_over_bredr_register_ctkd_rsp_cb");
+    }
+#endif
+
     env->update_after_read = true;
     env->bond_role_master = false;
     env->bond_ack = BOND_ACCEPT;
     env->set_app_bd_addr = 0;
     env->is_rslv_update_succ = 0;
-#ifdef BLE_CTKD_ENABLE
+#if defined(BLE_CTKD_ENABLE) && defined(BT_FINSH)
     env->key_dist = GAP_KDIST_ENCKEY | GAP_KDIST_IDKEY | GAP_KDIST_SIGNKEY | GAP_KDIST_LINKKEY;
 #else
     env->key_dist = GAP_KDIST_ENCKEY | GAP_KDIST_IDKEY | GAP_KDIST_SIGNKEY;
@@ -1039,7 +1131,41 @@ static void update_pair_infor(ble_gap_bond_ind_t *ind, uint8_t manager_index)
     {
 #ifndef SOC_SF32LB55X
 #ifdef BLE_CTKD_ENABLE
-        connection_manager_convert_ltk_to_ilk(i);
+        if (g_bonding_info.raw_ltk_valid)
+        {
+            //g_bond_info.raw_ltk[i] = g_bonding_info.raw_ltk;
+            //g_bond_info.raw_ltk_valid[i] = true;
+
+            LOG_HEX("CTKD raw F5 LTK", GAP_KEY_LEN,
+                    g_bonding_info.raw_ltk.ltk.key,
+                    GAP_KEY_LEN);
+
+            /*
+             * CTKD input selection:
+             * - Key Size < 16: use the complete F5 LTK.  The negotiated
+             *   key-size mask is only for the LE encryption LTK.
+             * - Key Size == 16: retain the original masked-LTK path.
+             */
+            if (g_bonding_info.raw_ltk.key_size < GAP_KEY_LEN)
+            {
+                LOG_I("CTKD use complete F5 LTK idx=%d key_size=%d",
+                      i,
+                      g_bonding_info.raw_ltk.key_size);
+                connection_manager_convert_raw_ltk_to_ilk(i);
+            }
+            else
+            {
+                LOG_I("CTKD keep original LTK path idx=%d key_size=%d",
+                      i,
+                      g_bonding_info.raw_ltk.key_size);
+                connection_manager_convert_ltk_to_ilk(i);
+            }
+        }
+        else
+        {
+            connection_manager_convert_ltk_to_ilk(i);
+            LOG_I("CTKD raw F5 LTK unavailable idx=%d", i);
+        }
 #endif
 #endif
     }
@@ -1097,6 +1223,20 @@ static void process_bond_event(ble_gap_bond_ind_t *ind, uint16_t command)
         // when first bond, encrypt on event comes from here.
         g_conn_manager[manager_index].enc_state = ENC_STATE_ON;
         g_conn_manager[manager_index].first_bond = 1;
+
+        LOG_HEX("LTK", 16, ind->data.ltk.ltk.key, GAP_KEY_LEN);
+#ifdef BLE_CTKD_ENABLE
+        if (g_conn_manager[manager_index].sec_con_enabled &&
+                connection_manager_ctkd_raw_ltk_get(ind->conn_idx, &g_bonding_info.raw_ltk))
+        {
+            LOG_I("save complete F5 LTK for CTKD A/B idx=%d", manager_index);
+            g_bonding_info.raw_ltk_valid = true;
+        }
+        else
+        {
+            g_bonding_info.raw_ltk_valid = false;
+        }
+#endif
 
         connection_manager_mask_ltk(&ind->data.ltk);
 
@@ -1480,6 +1620,28 @@ static void process_bond_req_ind(ble_gap_bond_req_ind_t *ind)
 
         cfm->cfm_data.pairing_feat.ikey_dist = env->key_dist;
         cfm->cfm_data.pairing_feat.rkey_dist = env->key_dist;
+
+#if defined(BLE_CTKD_BREDR_LK_TO_LE_LTK) && defined(BT_FINSH)
+        g_ctkd_lk_to_ltk_ctx.valid = false;
+        g_ctkd_lk_to_ltk_ctx.use_h7 = ((cfm->cfm_data.pairing_feat.auth & CM_CTKD_AUTH_CT2_BIT) &&
+                                       (ind->data.auth_req & CM_CTKD_AUTH_CT2_BIT));
+        LOG_I("CTKD negotiated ct2 local=%d remote=%d use_h7=%d",
+              !!(cfm->cfm_data.pairing_feat.auth & CM_CTKD_AUTH_CT2_BIT),
+              !!(ind->data.auth_req & CM_CTKD_AUTH_CT2_BIT),
+              g_ctkd_lk_to_ltk_ctx.use_h7);
+        if (connection_manager_can_derive_lk_from_ltk(connection_index, env))
+        {
+            BTS2S_BD_ADDR bd;
+            bd.lap = ((uint32_t)g_conn_manager[manager_index].peer_addr.addr[2] << 16) |
+                     ((uint32_t)g_conn_manager[manager_index].peer_addr.addr[1] << 8) |
+                     ((uint32_t)g_conn_manager[manager_index].peer_addr.addr[0]);
+            bd.uap = g_conn_manager[manager_index].peer_addr.addr[3];
+            bd.nap = ((uint16_t)g_conn_manager[manager_index].peer_addr.addr[5] << 8) |
+                     ((uint16_t)g_conn_manager[manager_index].peer_addr.addr[4]);
+            LOG_I("CTKD request BR/EDR LK for %04x-%02x-%06x", bd.nap, bd.uap, bd.lap);
+            connection_manager_request_bredr_link_key(bts2_task_get_app_task_id(), &bd);
+        }
+#endif
 
         if ((cfm->cfm_data.pairing_feat.auth & GAP_AUTH_SEC_CON) && (ind->data.auth_req & GAP_AUTH_SEC_CON))
         {
@@ -3019,18 +3181,76 @@ MSH_CMD_EXPORT(cm_cmd, cm command);
 
 #ifndef BLE_CM_BOND_DISABLE
 #define KEY_ID_LEN 4
+
+#ifdef BLE_CTKD_ENABLE
+void connection_manager_ctkd_raw_ltk_ind(uint8_t conidx, uint8_t *ltk, uint8_t key_size)
+{
+    if ((conidx >= MAX_CONNECTION_LINK_NUM) || (ltk == NULL))
+    {
+        return;
+    }
+
+    memset(&g_ctkd_raw_ltk[conidx], 0, sizeof(g_ctkd_raw_ltk[conidx]));
+    memcpy(g_ctkd_raw_ltk[conidx].ltk.key, ltk, GAP_KEY_LEN);
+    g_ctkd_raw_ltk[conidx].key_size = key_size;
+    g_ctkd_raw_ltk_valid[conidx] = true;
+    LOG_HEX("CTKD raw F5 LTK cached", 16, ltk, GAP_KEY_LEN);
+}
+
+static bool connection_manager_ctkd_raw_ltk_get(uint8_t conidx, ble_gap_ltk_t *ltk)
+{
+    if ((conidx >= MAX_CONNECTION_LINK_NUM) || (ltk == NULL) || !g_ctkd_raw_ltk_valid[conidx])
+    {
+        return false;
+    }
+
+    *ltk = g_ctkd_raw_ltk[conidx];
+    g_ctkd_raw_ltk_valid[conidx] = false;
+    return true;
+}
+
 void connection_manager_h6_result_cb(uint8_t *aes_res, uint32_t metainfo)
 {
     int i;
     uint32_t  requestType;
+    uint32_t cb_request;
+    uint8_t keyid_labr[KEY_ID_LEN] = {0x72, 0x62, 0x65, 0x6c};
     i = (metainfo & 0x000000ff);
     LOG_I("h6 cb: i%x \n", i);
     requestType = metainfo >> 8;
     LOG_I("h6 cb: requestType%x metainfo%x  \n", requestType, metainfo);
-    if (REQUST_LTK_ILK_H6 == requestType)
+    if (REQUST_RAW_LTK_ILK_H6 == requestType)
+    {
+        memcpy(g_bond_map_info.raw_ilk[i].ilk, aes_res, GAP_KEY_LEN);
+        LOG_HEX("CTKD raw LTK->ILK H6 ILK", GAP_KEY_LEN, aes_res, GAP_KEY_LEN);
+        cb_request = ((REQUST_RAW_ILK_LK_H6 << 8) | i);
+        ble_gap_aes_h6(g_bond_map_info.raw_ilk[i].ilk, keyid_labr, cb_request);
+    }
+    else if (REQUST_LTK_ILK_H6 == requestType)
     {
         memcpy(g_bond_map_info.ilk[i].ilk, aes_res, GAP_KEY_LEN);
+        LOG_HEX("CTKD LTK->ILK H6 ILK", 16, aes_res, GAP_KEY_LEN);
         connection_manager_convert_ilk_to_lk(i);
+    }
+    else if (REQUST_RAW_ILK_LK_H6 == requestType)
+    {
+        uint8_t link_key[GAP_KEY_LEN];
+
+        memcpy(g_bond_map_info.raw_lk[i].lk, aes_res, GAP_KEY_LEN);
+        LOG_HEX("CTKD raw ILK->LK H6 Link Key", GAP_KEY_LEN, aes_res, GAP_KEY_LEN);
+#ifdef BT_FINSH
+        if (g_bonding_info.raw_ltk.key_size < GAP_KEY_LEN)
+        {
+            uint8_t key_type = 0;
+            memcpy(g_bond_map_info.raw_lk[i].lk, link_key, GAP_KEY_LEN);
+            LOG_HEX("CTKD raw Link Key reordered", GAP_KEY_LEN,
+                    link_key,
+                    GAP_KEY_LEN);
+            sc_ble_bt_link_key_ind(g_bond_info.peer_addr[i].addr.addr,
+                                   key_type,
+                                   link_key);
+        }
+#endif
     }
     else if (REQUST_ILK_LK_H6 == requestType)
     {
@@ -3039,29 +3259,87 @@ void connection_manager_h6_result_cb(uint8_t *aes_res, uint32_t metainfo)
               aes_res[0], aes_res[1], aes_res[2], aes_res[3], aes_res[4], aes_res[5],
               aes_res[6], aes_res[7], aes_res[8], aes_res[9], aes_res[10], aes_res[11],
               aes_res[12], aes_res[13], aes_res[14], aes_res[15]);
+        LOG_HEX("CTKD ILK->LK H6 Link Key", 16, aes_res, GAP_KEY_LEN);
 //#if defined(SOC_SF32LB58X) && defined(BT_FINSH)
 #ifdef BT_FINSH
         uint8_t        key_type = 0;
         sc_ble_bt_link_key_ind(g_bond_info.peer_addr[i].addr.addr, key_type, g_bond_map_info.lk[i].lk);
 #endif
     }
+#if BLE_CTKD_BREDR_LK_TO_LE_LTK
+    else if (REQUST_LK_ILK_H6 == requestType)
+    {
+        LOG_I("CTKD LK->ILK h6 done, idx=%d", i);
+        memcpy(g_bond_map_info.ilk[i].ilk, aes_res, GAP_KEY_LEN);
+        LOG_HEX("CTKD LK->ILK H6 ILK", 16, aes_res, GAP_KEY_LEN);
+        connection_manager_convert_ilk_to_ltk(i);
+    }
+    else if (REQUST_ILK_LTK_H6 == requestType)
+    {
+        LOG_I("CTKD ILK->LTK h6 done, idx=%d", i);
+        LOG_HEX("CTKD ILK->LTK H6 LTK", 16, aes_res, GAP_KEY_LEN);
+        connection_manager_store_ctkd_ltk(i, aes_res);
+    }
+#endif
 }
+
 void connection_manager_h7_result_cb(uint8_t *aes_res, uint32_t metainfo)
 {
     int i;
     uint32_t  requestType;
+    uint32_t cb_request;
+    uint8_t keyid_labr[KEY_ID_LEN] = {0x72, 0x62, 0x65, 0x6c};
     i = (metainfo & 0x000000ff);
     requestType = metainfo >> 8;
-    if (REQUST_LTK_ILK_H7 == requestType)
+    LOG_I("h7 cb: requestType%x metainfo%x idx=%d", requestType, metainfo, i);
+    if (REQUST_RAW_LTK_ILK_H7 == requestType)
+    {
+        memcpy(g_bond_map_info.raw_ilk[i].ilk, aes_res, GAP_KEY_LEN);
+        LOG_HEX("CTKD raw LTK->ILK H7 ILK", GAP_KEY_LEN, aes_res, GAP_KEY_LEN);
+        cb_request = ((REQUST_RAW_ILK_LK_H6 << 8) | i);
+        ble_gap_aes_h6(g_bond_map_info.raw_ilk[i].ilk, keyid_labr, cb_request);
+    }
+    else if (REQUST_RAW_ILK_LK_H6 == requestType)
+    {
+        uint8_t link_key[GAP_KEY_LEN];
+
+        memcpy(g_bond_map_info.raw_lk[i].lk, aes_res, GAP_KEY_LEN);
+        LOG_HEX("CTKD raw ILK->LK H6 Link Key", GAP_KEY_LEN, aes_res, GAP_KEY_LEN);
+#ifdef BT_FINSH
+        if (g_bonding_info.raw_ltk.key_size < GAP_KEY_LEN)
+        {
+            uint8_t key_type = 0;
+            memcpy(g_bond_map_info.raw_lk[i].lk, link_key, GAP_KEY_LEN);
+            LOG_HEX("CTKD raw Link Key reordered", GAP_KEY_LEN,
+                    link_key,
+                    GAP_KEY_LEN);
+            sc_ble_bt_link_key_ind(g_bond_info.peer_addr[i].addr.addr,
+                                   key_type,
+                                   link_key);
+        }
+#endif
+    }
+    else if (REQUST_LTK_ILK_H7 == requestType)
     {
         memcpy(g_bond_map_info.ilk[i].ilk, aes_res, GAP_KEY_LEN);
+        LOG_HEX("CTKD LTK->ILK H7 ILK", 16, aes_res, GAP_KEY_LEN);
         connection_manager_convert_ilk_to_lk(i);
     }
+#if defined(BLE_CTKD_BREDR_LK_TO_LE_LTK) && defined(BT_FINSH)
+    else if (REQUST_LK_ILK_H7 == requestType)
+    {
+        LOG_I("CTKD LK->ILK h7 done, idx=%d", i);
+        memcpy(g_bond_map_info.ilk[i].ilk, aes_res, GAP_KEY_LEN);
+        LOG_HEX("CTKD LK->ILK H7 ILK", 16, aes_res, GAP_KEY_LEN);
+        connection_manager_convert_ilk_to_ltk(i);
+    }
+#endif
     else
     {
         LOG_E(" aes_cmac h7 requestType error \n");
     }
 }
+
 void connection_manager_convert_ilk_to_lk(int i)
 {
     uint32_t cb_request;
@@ -3071,6 +3349,35 @@ void connection_manager_convert_ilk_to_lk(int i)
     LOG_D("ilk to lk: cb_request%x \n", cb_request);
     result = ble_gap_aes_h6(g_bond_map_info.ilk[i].ilk, keyid_labr, cb_request);
 }
+
+void connection_manager_convert_raw_ltk_to_ilk(int i)
+{
+    uint8_t keyid_tmp1[KEY_ID_LEN] = {0x31, 0x70, 0x6d, 0x74};
+    uint32_t cb_request;
+
+    if ((i < 0) || (i >= MAX_PAIR_DEV) || !g_bonding_info.raw_ltk_valid)
+    {
+        LOG_E("CTKD raw LTK invalid idx=%d", i);
+        return;
+    }
+
+    LOG_HEX("CTKD raw LTK input", GAP_KEY_LEN, g_bonding_info.raw_ltk.ltk.key, GAP_KEY_LEN);
+    LOG_HEX("CTKD raw LTK->ILK key_id", KEY_ID_LEN, keyid_tmp1, KEY_ID_LEN);
+
+    if (g_bond_info.auth[i] & CM_CTKD_AUTH_CT2_BIT)
+    {
+        uint8_t salt[GAP_KEY_LEN] = {0};
+        memcpy(salt, keyid_tmp1, KEY_ID_LEN);
+        cb_request = ((REQUST_RAW_LTK_ILK_H7 << 8) | i);
+        ble_gap_aes_h7(salt, g_bonding_info.raw_ltk.ltk.key, cb_request);
+    }
+    else
+    {
+        cb_request = ((REQUST_RAW_LTK_ILK_H6 << 8) | i);
+        ble_gap_aes_h6(g_bonding_info.raw_ltk.ltk.key, keyid_tmp1, cb_request);
+    }
+}
+
 void connection_manager_convert_ltk_to_ilk(int i)
 {
     uint8_t w_ltk[GAP_KEY_LEN];
@@ -3097,6 +3404,184 @@ void connection_manager_convert_ltk_to_ilk(int i)
         result = ble_gap_aes_h6(w_ltk, keyid_tmp1, cb_request);
     }
 }
+
+#if defined(BLE_CTKD_BREDR_LK_TO_LE_LTK) && defined(BT_FINSH)
+void connection_manager_convert_ilk_to_ltk(int i)
+{
+    uint32_t cb_request;
+    uint8_t keyid_brle[KEY_ID_LEN] = {0x65, 0x6c, 0x72, 0x62};
+
+    cb_request = ((REQUST_ILK_LTK_H6 << 8) | i);
+    LOG_HEX("CTKD ILK->LTK ILK input", 16, g_bond_map_info.ilk[i].ilk, GAP_KEY_LEN);
+    LOG_HEX("CTKD ILK->LTK key_id", 4, keyid_brle, KEY_ID_LEN);
+    ble_gap_aes_h6(g_bond_map_info.ilk[i].ilk, keyid_brle, cb_request);
+}
+
+static void connection_manager_store_ctkd_ltk(int i, uint8_t *ltk)
+{
+    ble_gap_ltk_t ctkd_ltk;
+
+    if ((i < 0) || (i >= MAX_PAIR_DEV) || (ltk == NULL))
+    {
+        LOG_E("CTKD store LTK invalid param idx=%d ltk=%p", i, ltk);
+        return;
+    }
+
+    memset(&ctkd_ltk, 0, sizeof(ctkd_ltk));
+    memcpy(ctkd_ltk.ltk.key, ltk, GAP_KEY_LEN);
+    ctkd_ltk.key_size = GAP_KEY_LEN;
+
+    g_bond_info.ltk[i] = ctkd_ltk;
+    g_bond_info.ltk_present[i] = true;
+    if (g_ctkd_lk_to_ltk_ctx.use_h7)
+    {
+        g_bond_info.auth[i] |= CM_CTKD_AUTH_CT2_BIT;
+    }
+    else
+    {
+        g_bond_info.auth[i] &= ~CM_CTKD_AUTH_CT2_BIT;
+    }
+    g_bonding_info.ltk = ctkd_ltk;
+    g_bonding_info.ltk_present = true;
+    set_bond_infor_to_flash();
+
+    LOG_I("CTKD store LE LTK from BR/EDR LK, idx=%d", i);
+    LOG_HEX("CTKD LTK", 16, ltk, GAP_KEY_LEN);
+
+    if (g_ctkd_lk_to_ltk_ctx.valid)
+    {
+        uint8_t conidx = g_ctkd_lk_to_ltk_ctx.conidx;
+        g_ctkd_lk_to_ltk_ctx.valid = false;
+        connection_manager_ctkd_pairing_complete(conidx, true);
+    }
+
+}
+
+static int connection_manager_get_or_alloc_ctkd_bond_index(ble_gap_addr_t *peer_addr)
+{
+    int i;
+    int free_idx = -1;
+
+    for (i = 0; i < MAX_PAIR_DEV; i++)
+    {
+        if ((g_bond_info.priority[i] != 0) &&
+                (rt_memcmp(g_bond_info.peer_addr[i].addr.addr, peer_addr->addr.addr, BD_ADDR_LEN) == 0))
+        {
+            return i;
+        }
+        if ((free_idx < 0) && (g_bond_info.priority[i] == 0))
+        {
+            free_idx = i;
+        }
+    }
+
+    i = (free_idx >= 0) ? free_idx : 0;
+    memset(&g_bond_info.ltk[i], 0, sizeof(g_bond_info.ltk[i]));
+    g_bond_info.fixed[i] = 0;
+    g_bond_info.peer_addr[i] = *peer_addr;
+    g_bond_info.priority[i] = 1;
+    return i;
+}
+
+void connection_manager_ctkd_pairing_rsp_ind(uint8_t conidx)
+{
+    uint8_t manager_index;
+    BTS2S_BD_ADDR bd;
+
+    manager_index = get_manager_index_by_connection_index(conidx);
+    if (manager_index == CM_CONN_INDEX_ERROR)
+    {
+        LOG_E("CTKD Pairing Response unknown conidx=%d", conidx);
+        connection_manager_ctkd_pairing_complete(conidx, false);
+        return;
+    }
+
+    memset(&bd, 0, sizeof(bd));
+    bd.lap = ((uint32_t)g_conn_manager[manager_index].peer_addr.addr[2] << 16) |
+             ((uint32_t)g_conn_manager[manager_index].peer_addr.addr[1] << 8) |
+             ((uint32_t)g_conn_manager[manager_index].peer_addr.addr[0]);
+    bd.uap = g_conn_manager[manager_index].peer_addr.addr[3];
+    bd.nap = ((uint16_t)g_conn_manager[manager_index].peer_addr.addr[5] << 8) |
+             ((uint16_t)g_conn_manager[manager_index].peer_addr.addr[4]);
+
+    g_ctkd_lk_to_ltk_ctx.valid = true;
+    g_ctkd_lk_to_ltk_ctx.conidx = conidx;
+    /*
+     * For an actively initiated pairing there is no local
+     * GAPC_PAIRING_REQ confirmation callback before the BR/EDR pairing
+     * response is handled.  Therefore the CT2 setting configured through
+     * connection_manager_set_bond_cnf_ct2() must be carried into the CTKD
+     * conversion context here; otherwise the default value selects H6.
+     */
+    g_ctkd_lk_to_ltk_ctx.use_h7 =
+        ((cm_get_env()->bond_cnf_info.auth & CM_CTKD_AUTH_CT2_BIT) != 0);
+    g_ctkd_lk_to_ltk_ctx.peer_addr.addr = g_conn_manager[manager_index].peer_addr;
+    g_ctkd_lk_to_ltk_ctx.peer_addr.addr_type = CM_ADDR_PUBLIC;
+
+    LOG_I("CTKD Pairing Response request BR/EDR LK conidx=%d for %04x-%02x-%06x",
+          conidx, bd.nap, bd.uap, bd.lap);
+    connection_manager_request_bredr_link_key(bts2_task_get_app_task_id(), &bd);
+}
+
+
+void connection_manager_ctkd_bredr_link_key_ind(uint32_t lap, uint8_t uap, uint16_t nap, uint8_t *link_key)
+{
+    ble_gap_addr_t peer_addr;
+    int i;
+    uint32_t cb_request;
+    uint8_t keyid_tmp2[KEY_ID_LEN] = {0x32, 0x70, 0x6d, 0x74};
+
+    uint8_t salt[GAP_KEY_LEN];
+
+    if (link_key == NULL)
+    {
+        LOG_E("CTKD BR/EDR LK ind null key");
+        return;
+    }
+
+    LOG_HEX("CTKD BR/EDR Link Key input", 16, link_key, GAP_KEY_LEN);
+    LOG_I("CTKD BR/EDR LK input addr lap=%06x uap=%02x nap=%04x", lap, uap, nap);
+
+    memset(&peer_addr, 0, sizeof(peer_addr));
+    peer_addr.addr.addr[0] = lap & 0xFF;
+    peer_addr.addr.addr[1] = (lap >> 8) & 0xFF;
+    peer_addr.addr.addr[2] = (lap >> 16) & 0xFF;
+    peer_addr.addr.addr[3] = uap;
+    peer_addr.addr.addr[4] = nap & 0xFF;
+    peer_addr.addr.addr[5] = (nap >> 8) & 0xFF;
+    peer_addr.addr_type = CM_ADDR_PUBLIC;
+
+    i = connection_manager_get_or_alloc_ctkd_bond_index(&peer_addr);
+    if (g_ctkd_lk_to_ltk_ctx.valid &&
+            (rt_memcmp(g_ctkd_lk_to_ltk_ctx.peer_addr.addr.addr, peer_addr.addr.addr, BD_ADDR_LEN) != 0))
+    {
+        LOG_W("CTKD LK addr mismatch, overwrite pending context");
+        g_ctkd_lk_to_ltk_ctx.use_h7 =
+            ((cm_get_env()->bond_cnf_info.auth & CM_CTKD_AUTH_CT2_BIT) != 0);
+    }
+    g_ctkd_lk_to_ltk_ctx.use_h7 =
+        ((cm_get_env()->bond_cnf_info.auth & CM_CTKD_AUTH_CT2_BIT) != 0);
+    g_ctkd_lk_to_ltk_ctx.valid = true;
+    g_ctkd_lk_to_ltk_ctx.bond_index = i;
+    LOG_HEX("CTKD LK->ILK key_id", 4, keyid_tmp2, KEY_ID_LEN);
+    g_ctkd_lk_to_ltk_ctx.peer_addr = peer_addr;
+
+    LOG_I("CTKD BR/EDR LK->LE LTK start idx=%d use_h7=%d", i, g_ctkd_lk_to_ltk_ctx.use_h7);
+    if (g_ctkd_lk_to_ltk_ctx.use_h7)
+    {
+        memset(salt, 0, sizeof(salt));
+        memcpy(salt, keyid_tmp2, KEY_ID_LEN);
+        cb_request = ((REQUST_LK_ILK_H7 << 8) | i);
+        ble_gap_aes_h7(salt, link_key, cb_request);
+    }
+    else
+    {
+        cb_request = ((REQUST_LK_ILK_H6 << 8) | i);
+        ble_gap_aes_h6(link_key, keyid_tmp2, cb_request);
+    }
+}
+#endif
+#endif
 #endif //BLE_CM_BOND_DISABLE
 
 #else

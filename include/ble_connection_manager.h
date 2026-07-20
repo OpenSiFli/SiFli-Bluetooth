@@ -17,6 +17,8 @@
 #define LE_2M_PHY_OFFSET 0
 #define LE_2M_PHY_FLAG (1 << LE_2M_PHY_OFFSET)
 
+#define CM_GATT_OVER_BREDR_CONIDX (MAX_CONNECTION_LINK_NUM - 1)
+
 typedef struct
 {
     uint8_t conn_idx;
@@ -64,9 +66,24 @@ typedef struct
 } conn_manager_pair_dev_t;
 typedef enum
 {
+    // LE LTK -> BR/EDR LINK KEY
+    // LTK->ILK
     REQUST_LTK_ILK_H6,
     REQUST_LTK_ILK_H7,
+    // ILK->LK
     REQUST_ILK_LK_H6,
+
+    // BR/EDR LINK KEY -> LE LTK
+    // LK->ILTK
+    REQUST_LK_ILK_H6,
+    REQUST_LK_ILK_H7,
+    // ILTK->LTK
+    REQUST_ILK_LTK_H6,
+
+    // RAW LE LTK -> BR/EDR LINK KEY
+    REQUST_RAW_LTK_ILK_H6,
+    REQUST_RAW_LTK_ILK_H7,
+    REQUST_RAW_ILK_LK_H6,
     OTHER
 } CB_REQUEST_TYPE;
 typedef struct
@@ -81,6 +98,8 @@ typedef struct
 {
     bt_ilk_t ilk[MAX_PAIR_DEV];
     bt_lk_t  lk[MAX_PAIR_DEV];
+    bt_ilk_t raw_ilk[MAX_PAIR_DEV];
+    bt_lk_t  raw_lk[MAX_PAIR_DEV];
 } conn_manager_pair_dev_map_info_t;
 
 typedef struct
@@ -94,6 +113,8 @@ typedef struct
 {
     ble_gap_addr_t peer_addr;
     ble_gap_ltk_t ltk;
+    ble_gap_ltk_t raw_ltk;
+    bool raw_ltk_valid;
     ble_gap_sec_key_t local_irk;
     ble_gap_sec_key_t peer_irk;
     uint8_t auth;
@@ -720,6 +741,8 @@ void connection_manager_h6_result_cb(uint8_t *aes_res, uint32_t metainfo);
 void connection_manager_h7_result_cb(uint8_t *aes_res, uint32_t metainfo);
 void connection_manager_convert_ilk_to_lk(int i);
 void connection_manager_convert_ltk_to_ilk(int i);
+void connection_manager_ctkd_bredr_link_key_ind(uint32_t lap, uint8_t uap, uint16_t nap, uint8_t *link_key);
+void connection_manager_ctkd_pairing_rsp_ind(uint8_t conidx);
 
 /**
  * @brief return 1 if success, 0 not find target uuid

@@ -75,8 +75,13 @@ menu "Bluetooth"
             endif
             if BSP_BLE_CONNECTION_MANAGER
                 config BLE_CTKD_ENABLE
-                bool "Enable cross-transport key derivation"
+                bool "Enable cross-transport key Derivation of BR/EDR link key from LE LTK"
                 default y
+                if BLE_CTKD_ENABLE
+                    config BLE_CTKD_BREDR_LK_TO_LE_LTK
+                    bool "Enable Derivation of LE LTK from BR/EDR link key"
+                    default n
+                endif
             endif
             if BSP_BLE_CONNECTION_MANAGER
                 config BLE_CM_BOND_DISABLE

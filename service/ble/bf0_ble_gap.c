@@ -1145,8 +1145,19 @@ uint8_t ble_gap_aes_h6(uint8_t *w, uint8_t *key_id, uint32_t cb_request)
     sifli_msg_send((void const *)cmd);
     return HL_ERR_NO_ERROR;
 }
-uint8_t ble_gap_aes_h7(uint8_t *salt, uint8_t *w, uint32_t metainfo)
+
+uint8_t ble_gap_aes_h7(uint8_t *salt, uint8_t *w, uint32_t cb_request)
 {
+    BLE_GAP_EMPTY_CHECK(salt);
+    BLE_GAP_EMPTY_CHECK(w);
+    struct gapm_aes_h7_cmd *cmd = sifli_msg_alloc(GAPM_AES_H7_CMD,
+                                  TASK_ID_GAPM,
+                                  sifli_get_stack_id(),
+                                  sizeof(struct gapm_aes_h7_cmd));
+    memcpy(cmd->salt, salt, GAP_KEY_LEN);
+    memcpy(cmd->w, w, GAP_KEY_LEN);
+    cmd->cb_request = cb_request;
+    sifli_msg_send((void const *)cmd);
     return HL_ERR_NO_ERROR;
 }
 
@@ -1789,14 +1800,20 @@ void ble_gap_event_process(sibles_msg_para_t *header, uint8_t *data_ptr, uint16_
         ble_event_publish(BLE_GAP_SECURITY_REQUEST_IND, &sec_ind, sizeof(ble_gap_security_request_ind_t));
         break;
     }
-#if defined(BSP_BLE_CONNECTION_MANAGER) && !defined(BLE_CM_BOND_DISABLE)
+#ifdef BLE_CTKD_ENABLE
     case GAPM_AES_H6_IND:
     {
         struct gapm_aes_h6_ind *ind = (struct gapm_aes_h6_ind *)data_ptr;
         connection_manager_h6_result_cb(ind->aes_res, ind->metainfo);
         break;
     }
-#endif // BSP_BLE_CONNECTION_MANAGER
+    case GAPM_AES_H7_IND:
+    {
+        struct gapm_aes_h7_ind *ind = (struct gapm_aes_h7_ind *)data_ptr;
+        connection_manager_h7_result_cb(ind->aes_res, ind->metainfo);
+        break;
+    }
+#endif // BLE_CTKD_ENABLE
     case GAPC_GET_DEV_INFO_REQ_IND:
     {
         struct gapc_get_dev_info_req_ind *ind = (struct gapc_get_dev_info_req_ind *)data_ptr;
