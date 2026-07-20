@@ -253,9 +253,9 @@ void bt_init_local_ctrller(bts2_app_stru *bts2_app_data)
     bd_addr_t addr;
     ret = ble_get_public_address(&addr);
     if (ret == HL_ERR_NO_ERROR)
-        rt_snprintf((char *)tmp, MAX_FRIENDLY_NAME_LEN, "SDK-%x-%x-%x-%x-%x-%x", addr.addr[0], addr.addr[1], addr.addr[2], addr.addr[3], addr.addr[4], addr.addr[5]);
+        rt_snprintf((char *)tmp, MAX_FRIENDLY_NAME_LEN, "SifliDemo-%x-%x-%x-%x-%x-%x", addr.addr[0], addr.addr[1], addr.addr[2], addr.addr[3], addr.addr[4], addr.addr[5]);
     else
-        strcpy((char *)tmp, "SDK");
+        strcpy((char *)tmp, "SifliDemo");
 
 #endif
 

@@ -21,7 +21,7 @@ bt_err_t bt_hfp_hf_start_disb(bts2_app_stru *bts2_app_data);
 bt_err_t bt_hfp_hf_connect_request(BTS2S_BD_ADDR *bd);
 bt_err_t bt_hfp_hf_start_disc(BTS2S_BD_ADDR *bd);
 
-#if 1 //!defined(BT_CONNECT_SUPPORT_MULTI_LINK)
+#if 1 //Single-connection interface;
 U8 bt_hfp_hf_get_ring_type(void);
 bt_err_t bt_hfp_hf_audio_transfer(U8 type);
 bt_err_t bt_hfp_hf_voice_recog_send(U8 active);
@@ -46,7 +46,7 @@ bt_err_t bt_hfp_hf_at_dtmf_send(char key);
 bt_err_t bt_hfp_hf_at_nrec_send(void);
 bt_err_t bt_hfp_hf_update_batt_send(U8 batt_val);
 bt_err_t hfp_hf_get_at_cind_status();
-#endif
+#endif  //Single-connection interface;
 
 void bt_hfp_hf_rfc_conn_accept_hdl(BTS2S_BD_ADDR *bd, U8 srv_chnl);
 void bt_hfp_hf_rfc_conn_rej_hdl(BTS2S_BD_ADDR *bd, U8 srv_chnl);

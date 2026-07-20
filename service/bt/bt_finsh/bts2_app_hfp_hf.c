@@ -362,7 +362,7 @@ bt_err_t bt_hfp_hf_start_disc(BTS2S_BD_ADDR *bd)
     return ret;
 }
 
-#if 1 //!defined(BT_CONNECT_SUPPORT_MULTI_LINK)
+#if 1 //Single-connection interface;
 uint8_t g_mux_id = 0;
 U8 bt_hfp_hf_get_ring_type(void)
 {
@@ -1326,7 +1326,7 @@ bt_err_t hfp_hf_get_at_cind_status()
     }
     return ret;
 }
-#endif
+#endif  //Single-connection interface;
 
 /*----------------------------------------------------------------------------*
  *
