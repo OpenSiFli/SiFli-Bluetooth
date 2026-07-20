@@ -431,7 +431,7 @@ int abox_delay(int argc, char *argv[])
 MSH_CMD_EXPORT(abox_delay,  set audio box delay);
 
 #ifdef CFG_BT_VOICE_RELAY
-int hfp_audio_rely_option(bt_device_sco_conn_para_t *msg, BOOL audio_on)
+int hfp_audio_relay_option(bt_device_sco_conn_para_t *msg, BOOL audio_on)
 {
     if (audio_on)
     {
@@ -449,11 +449,11 @@ int hfp_audio_rely_option(bt_device_sco_conn_para_t *msg, BOOL audio_on)
             // RT_ASSERT(0);
             return -1;
         }
-        bt_voice_rely_open(msg->sco_hdl, samplerate);
+        bt_voice_relay_open(msg->sco_hdl, samplerate);
     }
     else
     {
-        bt_voice_rely_close(msg->sco_hdl);
+        bt_voice_relay_close(msg->sco_hdl);
     }
     return 0;
 }
