@@ -803,6 +803,12 @@ uint8_t connection_manager_delete_bond(ble_gap_addr_t peer_addr)
             rt_memset(&g_bond_info.ltk[i], 0, sizeof(ble_gap_ltk_t));
             rt_memset(&g_bond_info.local_irk[i], 0, sizeof(ble_gap_sec_key_t));
             rt_memset(&g_bond_info.peer_irk[i], 0, sizeof(ble_gap_sec_key_t));
+#ifdef BLE_CSRK_ENABLE
+            rt_memset(&g_bond_info.local_csrk[i], 0, sizeof(ble_gap_sec_key_t));
+            rt_memset(&g_bond_info.peer_csrk[i], 0, sizeof(ble_gap_sec_key_t));
+            g_bond_info.local_sign_counter[i] = 0;
+            g_bond_info.peer_sign_counter[i] = 0;
+#endif
 
             for (int j = 0; j < MAX_PAIR_DEV; j++)
             {
@@ -849,6 +855,12 @@ uint8_t connection_manager_delete_all_bond()
         rt_memset(&g_bond_info.ltk[i], 0, sizeof(ble_gap_ltk_t));
         rt_memset(&g_bond_info.local_irk[i], 0, sizeof(ble_gap_sec_key_t));
         rt_memset(&g_bond_info.peer_irk[i], 0, sizeof(ble_gap_sec_key_t));
+#ifdef BLE_CSRK_ENABLE
+        rt_memset(&g_bond_info.local_csrk[i], 0, sizeof(ble_gap_sec_key_t));
+        rt_memset(&g_bond_info.peer_csrk[i], 0, sizeof(ble_gap_sec_key_t));
+        g_bond_info.local_sign_counter[i] = 0;
+        g_bond_info.peer_sign_counter[i] = 0;
+#endif
     }
 
     update_resolving_list();
@@ -927,6 +939,12 @@ static void update_pair_infor(ble_gap_bond_ind_t *ind, uint8_t manager_index)
                 g_bond_info.priority[i] = 1;
                 g_bond_info.auth[i] = ind->data.auth.info;
                 g_bond_info.ltk_present[i] = ind->data.auth.ltk_present;
+#ifdef BLE_CSRK_ENABLE
+                g_bond_info.local_csrk[i] = g_bonding_info.local_csrk;
+                g_bond_info.peer_csrk[i] = g_bonding_info.peer_csrk;
+                g_bond_info.local_sign_counter[i] = g_bonding_info.local_sign_counter;
+                g_bond_info.peer_sign_counter[i] = g_bonding_info.peer_sign_counter;
+#endif
                 g_conn_manager[manager_index].bond_index = i;
                 break;
             }
@@ -962,6 +980,12 @@ static void update_pair_infor(ble_gap_bond_ind_t *ind, uint8_t manager_index)
                 g_bond_info.priority[i] = 1;
                 g_bond_info.auth[i] = ind->data.auth.info;
                 g_bond_info.ltk_present[i] = ind->data.auth.ltk_present;
+#ifdef BLE_CSRK_ENABLE
+                g_bond_info.local_csrk[i] = g_bonding_info.local_csrk;
+                g_bond_info.peer_csrk[i] = g_bonding_info.peer_csrk;
+                g_bond_info.local_sign_counter[i] = g_bonding_info.local_sign_counter;
+                g_bond_info.peer_sign_counter[i] = g_bonding_info.peer_sign_counter;
+#endif
                 g_conn_manager[manager_index].bond_index = i;
                 break;
             }
@@ -998,6 +1022,12 @@ static void update_pair_infor(ble_gap_bond_ind_t *ind, uint8_t manager_index)
                 g_bond_info.priority[i] = 1;
                 g_bond_info.auth[i] = ind->data.auth.info;
                 g_bond_info.ltk_present[i] = ind->data.auth.ltk_present;
+#ifdef BLE_CSRK_ENABLE
+                g_bond_info.local_csrk[i] = g_bonding_info.local_csrk;
+                g_bond_info.peer_csrk[i] = g_bonding_info.peer_csrk;
+                g_bond_info.local_sign_counter[i] = g_bonding_info.local_sign_counter;
+                g_bond_info.peer_sign_counter[i] = g_bonding_info.peer_sign_counter;
+#endif
                 g_conn_manager[manager_index].bond_index = i;
                 break;
             }
@@ -1125,6 +1155,18 @@ static void process_bond_event(ble_gap_bond_ind_t *ind, uint16_t command)
         g_bonding_info.peer_irk = ind->data.irk.irk;
         g_bonding_info.peer_addr.addr = g_conn_manager[manager_index].peer_addr;
         g_bonding_info.peer_addr.addr_type = g_conn_manager[manager_index].peer_addr_type;
+        break;
+    }
+    case GAPC_CSRK_EXCH:
+    {
+#ifdef BLE_CSRK_ENABLE
+        LOG_I("GAPC_CSRK_EXCH");
+
+        g_bonding_info.peer_csrk = ind->data.csrk;
+        g_bonding_info.peer_sign_counter = 0;
+#else
+        LOG_I("GAPC_CSRK_EXCH ignored");
+#endif
         break;
     }
     }
@@ -1639,10 +1681,21 @@ static void process_bond_req_ind(ble_gap_bond_req_ind_t *ind)
     break;
     case GAPC_CSRK_EXCH:
     {
+        uint8_t counter;
+
         cfm->conn_idx = connection_index;
         cfm->accept = true;
         cfm->request = GAPC_CSRK_EXCH;
-        memset(cfm->cfm_data.csrk.key, 0, GAP_KEY_LEN);
+        for (counter = 0; counter < GAP_KEY_LEN; counter++)
+        {
+            cfm->cfm_data.csrk.key[counter] = (uint8_t)cm_rand_word();
+        }
+#ifdef BLE_CSRK_ENABLE
+        g_bonding_info.local_csrk = cfm->cfm_data.csrk;
+        g_bonding_info.local_sign_counter = 0;
+#else
+        LOG_I("CSRK not stored");
+#endif
         break;
     }
     default:
@@ -1904,6 +1957,12 @@ int ble_connection_manager_handler(uint16_t event_id, uint8_t *data, uint16_t le
                 g_conn_manager[manager_index].bond_state = BOND_STATE_BONDED;
                 ind->config_info.auth = g_bond_info.auth[i];
                 ind->config_info.ltk_present = g_bond_info.ltk_present[i];
+#ifdef BLE_CSRK_ENABLE
+                ind->config_info.lcsrk = g_bond_info.local_csrk[i];
+                ind->config_info.rcsrk = g_bond_info.peer_csrk[i];
+                ind->config_info.lsign_counter = g_bond_info.local_sign_counter[i];
+                ind->config_info.rsign_counter = g_bond_info.peer_sign_counter[i];
+#endif
                 break;
             }
         }

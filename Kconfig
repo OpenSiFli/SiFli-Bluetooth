@@ -69,6 +69,11 @@ menu "Bluetooth"
                 default n
             endif
             if BSP_BLE_CONNECTION_MANAGER
+                config BLE_CSRK_ENABLE
+                bool "Save BLE CRSK info"
+                default n
+            endif
+            if BSP_BLE_CONNECTION_MANAGER
                 config BLE_CTKD_ENABLE
                 bool "Enable cross-transport key derivation"
                 default y

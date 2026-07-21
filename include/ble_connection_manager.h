@@ -55,6 +55,12 @@ typedef struct
     ble_gap_sec_key_t peer_irk[MAX_PAIR_DEV];
     uint8_t auth[MAX_PAIR_DEV];
     bool ltk_present[MAX_PAIR_DEV];
+#ifdef BLE_CSRK_ENABLE
+    ble_gap_sec_key_t local_csrk[MAX_PAIR_DEV];
+    ble_gap_sec_key_t peer_csrk[MAX_PAIR_DEV];
+    uint32_t local_sign_counter[MAX_PAIR_DEV];
+    uint32_t peer_sign_counter[MAX_PAIR_DEV];
+#endif
 } conn_manager_pair_dev_t;
 typedef enum
 {
@@ -92,6 +98,12 @@ typedef struct
     ble_gap_sec_key_t peer_irk;
     uint8_t auth;
     bool ltk_present;
+#ifdef BLE_CSRK_ENABLE
+    ble_gap_sec_key_t local_csrk;
+    ble_gap_sec_key_t peer_csrk;
+    uint32_t local_sign_counter;
+    uint32_t peer_sign_counter;
+#endif
 } conn_manager_bonding_dev_t;
 
 typedef struct
