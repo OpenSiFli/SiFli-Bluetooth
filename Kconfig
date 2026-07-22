@@ -230,10 +230,24 @@ menu "Bluetooth"
             depends on BT_PROFILE_CUSTOMIZE
             default n
 
+        config HFP_HF_LOCAL_FEATURES
+            hex "HFP HF local supported features"
+            depends on CFG_HFP_HF
+            default 0x02FF
+            help
+                Configure local supported features bitmap for HFP HandsFree.
+
         config CFG_HFP_AG
             bool "Enable HandsFree AG"
             depends on BT_PROFILE_CUSTOMIZE
             default n     
+
+        config HFP_AG_LOCAL_FEATURES
+            hex "HFP AG local supported features"
+            depends on CFG_HFP_AG
+            default 0x00000B6A
+            help
+                Configure local supported features bitmap for HFP Audio Gateway.
 
         config CFG_PAN
             bool "Enable PAN"

@@ -23,6 +23,7 @@ extern bts2_app_stru *bts2g_app_p;
     #include "hfp_audio_api.h"
 #endif
 
+#ifndef HFP_HF_LOCAL_FEATURES
 #define HFP_HF_LOCAL_FEATURES        (  HFP_HF_FEAT_ECNR  | \
                                         HFP_HF_FEAT_3WAY  | \
                                         HFP_HF_FEAT_CLI   | \
@@ -32,11 +33,16 @@ extern bts2_app_stru *bts2g_app_p;
                                         HFP_HF_FEAT_ECC   | \
                                         HFP_HF_FEAT_CODEC | \
                                         HFP_HF_FEAT_ESCO  )
+#endif
 
 // sco handle: Packet_Status_Flag inside if any.
 // static void hfp_hf_audio_cb_fn(U16 sco_hdl, U8 sco_len, U8 *data)
 // {
 // }
+__WEAK uint32_t bt_hfp_hf_local_feature()
+{
+    return HFP_HF_LOCAL_FEATURES;
+}
 /*******************************************device info func start**********************************************/
 static void bt_hfp_hf_app_init_device_info(bts2_hfp_hf_inst_data *hf_data)
 {
@@ -147,7 +153,6 @@ static bts2_hfp_hf_inst_data *bt_hfp_hf_get_context()
 
 static U8 bt_hfp_is_support_feature(bts2_hfp_hf_device_info *device_info, U16 feature)
 {
-    bts2_hfp_hf_inst_data *hfp_context = bt_hfp_hf_get_context();
     if (device_info && (device_info->peer_features & feature))
     {
         return 1;
@@ -183,6 +188,7 @@ static void bt_hfp_hf_app_service_state_update(bts2_hfp_st new_state)
 void bt_hfp_hf_init(bts2_app_stru *bts2_app_data)
 {
     bts2_app_data->hfp_hf_ptr = &bts2_app_data->hfp_hf_inst;
+    bts2_app_data->hfp_hf_ptr->local_feature = bt_hfp_hf_local_feature();
     bt_hfp_hf_app_service_state_update(hfp_idle);
     bt_hfp_hf_app_init_device_info(bts2_app_data->hfp_hf_ptr);
 #if defined(AUDIO_USING_MANAGER) && !defined(BT_USING_HF) && !defined(CFG_BT_VOICE_RELAY)
@@ -217,7 +223,7 @@ bt_err_t bt_hfp_hf_start_enb(bts2_app_stru *bts2_app_data)
     case hfp_disb:
     {
         bt_hfp_hf_app_service_state_update(hfp_enbd);
-        hfp_hf_register(HFP_HF_LOCAL_FEATURES);
+        hfp_hf_register(hfp_context->local_feature);
         ret = BT_EOK;
         break;
     }
@@ -1760,7 +1766,7 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
         bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(inst_data, msg->mux_id);
         if (msg->audio_on == TRUE)
         {
-            USER_TRACE("<< Audio connected\n");
+            USER_TRACE("<< Audio connected codec_id %d\n", msg->codec_id);
             // sco handle: Packet_Status_Flag inside if any.
             if (device_info)
             {
@@ -1781,6 +1787,15 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
             sco_info.para.rx_pkt_len = msg->rx_pkt_len;
             sco_info.para.tx_pkt_len = msg->tx_pkt_len;
             sco_info.para.air_mode = msg->air_mode;
+            if (bt_hfp_is_support_feature(device_info, HFP_AG_FEAT_SWB))
+            {
+                sco_info.para.codec_id = msg->codec_id;
+            }
+            else
+            {
+                sco_info.para.codec_id = msg->air_mode;
+            }
+            bt_addr_convert_to_general(&msg->bd, (bd_addr_t *)&sco_info.para.bd);
             bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_SCO_CONNECTED,
                                          &sco_info, sizeof(bt_notify_device_sco_info_t));
 
@@ -1815,6 +1830,7 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
             sco_info.para.rx_pkt_len = msg->rx_pkt_len;
             sco_info.para.tx_pkt_len = msg->tx_pkt_len;
             sco_info.para.air_mode = msg->air_mode;
+            sco_info.para.codec_id = msg->codec_id;
             bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_SCO_DISCONNECTED,
                                          &sco_info, sizeof(bt_notify_device_sco_info_t));
             gap_unreg_sco_callback(msg->sco_hdl);
@@ -2431,7 +2447,7 @@ bt_err_t bt_hfp_hf_update_spk_vol_ext(U8 mux_id, U8 vol)
         {
             if (0 <= vol && vol <= 15)
             {
-                hfp_hf_send_at_vgs_api(mux_id, HF_CONN, (U8)vol); //just send 0---15
+                hfp_hf_send_at_vgs_api(mux_id, device_info->profile_type, (U8)vol); //just send 0---15
                 ret = BT_EOK;
             }
             else
@@ -2460,7 +2476,7 @@ bt_err_t bt_hfp_hf_update_mic_vol_ext(U8 mux_id, U8 vol)
         {
             if (0 <= vol && vol <= 15)
             {
-                hfp_hf_send_at_vgm_api(mux_id, HF_CONN, vol); //just send 0---15
+                hfp_hf_send_at_vgm_api(mux_id, device_info->profile_type, vol); //just send 0---15
                 ret = BT_EOK;
             }
             else

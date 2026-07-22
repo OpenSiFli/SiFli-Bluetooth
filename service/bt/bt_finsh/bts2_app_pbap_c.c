@@ -1005,6 +1005,29 @@ bt_err_t bt_pbap_client_disconnect(BTS2S_BD_ADDR *bd)
 }
 
 // #define FILTER_TEST PBAP_FILTER_VERSION | PBAP_FILTER_FN | PBAP_FILTER_N | pbap_filter_tel
+void bt_pbap_client_pull_pb_ext(U8 reset_new_missed_calls, BTS2S_PBAP_SRM_PARAM  *srm_params,
+                                BTS2S_PBAP_PROPERTY_SELECTOR *selector, BTS2S_PBAP_VCARD_SELECTOR_PARAM *vcard_selector)
+{
+    BTS2S_PBAP_PHONEBOOK_OBJECT obj;
+    BTS2S_PBAP_PULL_PB_BASIC_PARAM para;
+
+    bmemset(&obj, 0x00, sizeof(obj));
+    bmemset(&para, 0x00, sizeof(para));
+
+    obj.repository = local_inst->curr_repos;
+    obj.phonebook = local_inst->curr_phonebook;
+
+    para.format = PBAP_FORMAT_21;
+    para.max_list = 0xffff;
+    para.listStart = 0;
+    para.reset_new_missed_calls = reset_new_missed_calls;
+    USER_TRACE("bt_pbap_client_pull_pb_ext");
+    pbap_clt_pull_pb_req_ext(&obj,
+                             selector,
+                             &para,
+                             vcard_selector,
+                             srm_params);
+}
 
 bt_err_t bt_pbap_client_pull_pb(BTS2E_PBAP_PHONE_REPOSITORY repos, U8 phone_book, U16 max_size)
 {
@@ -1151,6 +1174,13 @@ bt_err_t bt_pbap_client_get_name_by_number(char *phone_number, U16 phone_len)
     return ret;
 }
 
+bt_err_t bt_pbap_client_pull_vcard_list_ext(BTS2S_PBAP_SRM_PARAM  *srm_params,
+        BTS2S_PBAP_CLT_SEARCH_PARAM *search_para,
+        BTS2S_PBAP_PULL_PB_BASIC_PARAM *para, BTS2S_PBAP_VCARD_SELECTOR_PARAM *vcard_selector)
+{
+    pbap_clt_pull_vcard_list_req_ext(PBAP_UNKNOWN_PHONEBOOK, para, srm_params, search_para, vcard_selector);
+    return BT_EOK;
+}
 bt_err_t bt_pbap_client_auth(U8 *password, U8 len)
 {
     bt_err_t ret = BT_EOK;
@@ -1304,6 +1334,8 @@ void bt_pbap_clt_hdl_msg(bts2_app_stru *bts2_app_data)
     {
         INFO_TRACE(">> BTS2MU_PBAP_CLT_AUTH_IND\n");
         // bt_pbap_client_auth(bts2_app_data);
+        U8 *password = "0000";
+        bt_pbap_client_auth(password, 4);
         break;
     }
     case BTS2MU_PBAP_CLT_SET_PB_CFM:
@@ -1334,7 +1366,7 @@ void bt_pbap_clt_hdl_msg(bts2_app_stru *bts2_app_data)
         BTS2S_PBAP_CLT_PULL_PB_BEGIN_IND *msg;
         msg = (BTS2S_PBAP_CLT_PULL_PB_BEGIN_IND *)bts2_app_data->recv_msg;
         INFO_TRACE(">> BTS2MU_PBAP_CLT_PULL_PB_BEGIN_IND msg->body_data_length %d\n", msg->body_data_length);
-        INFO_TRACE(">> BTS2MU_PBAP_CLT_PULL_PB_BEGIN_IND msg->pbook_size %d\n", msg->pbook_size);
+        INFO_TRACE(">> BTS2MU_PBAP_CLT_PULL_PB_BEGIN_IND msg->pbook_size: %d\n", msg->pbook_size);
         if (msg->body_data_length)
         {
             bt_parser_vcard_property((U8 *)&msg->body_data, msg->body_data_length, msg->is_final_packet);

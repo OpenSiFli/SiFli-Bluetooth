@@ -181,7 +181,7 @@ void bt_pan_set_nap_route(char *string)
 
 static int bt_pan_notify_connection_state(bt_notify_profile_state_info_t *info, uint16_t event_id)
 {
-    bt_pan_connect_event_handle(event_id);
+    bnep_connect_event_handle(info, event_id);
     bt_profile_update_connection_state(BT_NOTIFY_PAN, event_id, info);
     return 0;
 }
@@ -194,7 +194,7 @@ static U8 bt_pan_get_idx(bts2_app_stru *bts2_app_data)
 
     for (i = 0; i < PAN_MAX_NUM; i++)
     {
-        if (bd_is_empty(&(ptr->pan_sdp[i].bd_addr)))
+        if (bd_is_empty(&(ptr->pan_info_list[i].bd_addr)))
         {
             return i;
         }
@@ -210,12 +210,71 @@ static U8 bt_pan_get_idx_by_bd(bts2_app_stru *bts2_app_data, const BTS2S_BD_ADDR
 
     for (i = 0; i < PAN_MAX_NUM; i++)
     {
-        if (bd_eq(&(ptr->pan_sdp[i].bd_addr), bd))
+        if (bd_eq(&(ptr->pan_info_list[i].bd_addr), bd))
         {
             return i;
         }
     }
     return i;
+}
+
+static U8 bt_pan_get_idx_by_id(bts2_app_stru *bts2_app_data, uint16_t id)
+{
+    U8 i = 0xff;
+    bts2_pan_inst_data *ptr = NULL;
+    ptr = bts2_app_data->pan_inst_ptr;
+
+    for (i = 0; i < PAN_MAX_NUM; i++)
+    {
+        if (ptr->pan_info_list[i].id == id)
+        {
+            return i;
+        }
+    }
+    return i;
+}
+
+static bts2_pan_info_t *bt_pan_get_device_by_bd(BTS2S_BD_ADDR *bd)
+{
+    bts2_pan_inst_data *ptr = NULL;
+    ptr = getApp()->pan_inst_ptr;
+
+    for (U8 i = 0; i < PAN_MAX_NUM; i++)
+    {
+        if (bd_eq(&(ptr->pan_info_list[i].bd_addr), bd))
+        {
+            return &ptr->pan_info_list[i];
+        }
+    }
+    return NULL;
+}
+
+static bts2_pan_info_t *bt_pan_app_alloc_device()
+{
+    bts2_pan_inst_data *ptr = getApp()->pan_inst_ptr;
+
+    for (U8 i = 0; i < PAN_MAX_NUM; i++)
+    {
+        if (!ptr->pan_info_list[i].is_use)
+        {
+            ptr->pan_info_list[i].is_use = 1;
+            return &ptr->pan_info_list[i];
+        }
+    }
+    return NULL;
+}
+
+static void bt_pan_app_dealloc_device(bts2_pan_info_t *device)
+{
+    if (device)
+    {
+        bmemset(device, 0x00, sizeof(bts2_pan_info_t));
+        device->is_use = 0;
+        device->id = 0xffff;
+        device->mode = ACT_MODE;
+        device->rmt_role = PAN_NO_ROLE;
+        device->local_role = PAN_NO_ROLE;
+    }
 }
 
 void bt_pan_init(bts2_app_stru *bts2_app_data)
@@ -224,18 +283,19 @@ void bt_pan_init(bts2_app_stru *bts2_app_data)
     bts2_app_data->pan_inst_ptr = &bts2_app_data->pan_inst;
 
     bts2_app_data->pan_inst.pan_st = PAN_REG_ST;
-    bts2_app_data->pan_inst.id = 0xffff;
     bts2_app_data->pan_inst.local_role = PAN_NO_ROLE;
-    bts2_app_data->pan_inst.rmt_role = PAN_NO_ROLE;
-    bts2_app_data->pan_inst.mode = ACT_MODE;
 
     for (i = 0; i < PAN_MAX_NUM; i++)
     {
-        bd_set_empty(&(bts2_app_data->pan_inst.pan_sdp[i].bd_addr));
-        bts2_app_data->pan_inst.pan_sdp[i].gn_sdp_pending = FALSE;
-        bts2_app_data->pan_inst.pan_sdp[i].gn_sdp_fail = FALSE;
-        bts2_app_data->pan_inst.pan_sdp[i].nap_sdp_pending = FALSE;
-        bts2_app_data->pan_inst.pan_sdp[i].nap_sdp_fail = FALSE;
+        bmemset(&bts2_app_data->pan_inst.pan_info_list[i], 0x00, sizeof(bts2_pan_info_t));
+        bd_set_empty(&(bts2_app_data->pan_inst.pan_info_list[i].bd_addr));
+        bts2_app_data->pan_inst.pan_info_list[i].gn_sdp_pending = FALSE;
+        bts2_app_data->pan_inst.pan_info_list[i].gn_sdp_fail = FALSE;
+        bts2_app_data->pan_inst.pan_info_list[i].nap_sdp_pending = FALSE;
+        bts2_app_data->pan_inst.pan_info_list[i].nap_sdp_fail = FALSE;
+        bts2_app_data->pan_inst.pan_info_list[i].rmt_role = PAN_NO_ROLE;
+        bts2_app_data->pan_inst.pan_info_list[i].mode = ACT_MODE;
+        bts2_app_data->pan_inst.pan_info_list[i].id = 0xffff;
     }
 }
 
@@ -275,9 +335,11 @@ void bt_pan_enable(bts2_app_stru *bts2_app_data)
         /*
         void pan_enb_req(BOOL the_single_user, U16  the_local_role, U16  the_rmt_role);
         */
-        //pan_enb_req(FALSE,PAN_NAP_ROLE,PAN_PANU_ROLE);
+        // pan_enb_req(FALSE,PAN_NAP_ROLE,PAN_PANU_ROLE);
         //modified the pan role,local is panu
         pan_enb_req(FALSE, PAN_PANU_ROLE, PAN_NAP_ROLE);
+
+        // pan_enb_req(FALSE, PAN_PANU_ROLE | PAN_NAP_ROLE | PAN_GN_ROLE, PAN_NAP_ROLE | PAN_PANU_ROLE | PAN_GN_ROLE);
         ptr->pan_st = PAN_IDLE_ST;
         // bt_lwip_pan_attach_tcpip();
         USER_TRACE(">> PAN enable\n");
@@ -305,16 +367,17 @@ int bt_pan_connect_request(BTS2S_BD_ADDR *remote_addr)
     {
         /*Before send connection,send service search requst*/
         //modified for product type
-        idx = bt_pan_get_idx_by_bd(bts2_app_data, remote_addr);
-        if (idx != PAN_MAX_NUM)
+        bts2_pan_info_t *device_info = bt_pan_get_device_by_bd(remote_addr);
+        if (device_info)
         {
-            if (ptr->pan_sdp[idx].gn_sdp_pending == TRUE)
+            if (device_info->gn_sdp_pending == TRUE)
             {
                 USER_TRACE("SDP is in progress,connect pan later\n");
             }
             else
             {
-                ptr->pan_sdp[idx].gn_sdp_pending = TRUE;
+                device_info->gn_sdp_pending = TRUE;
+                device_info->state = PAN_DEV_CONNECTING_ST;
                 pan_svc_srch_req(bts2_task_get_app_task_id(), remote_addr, PAN_NAP_ROLE);
                 USER_TRACE(">> PAN connect\n");
                 ret = 0;
@@ -322,13 +385,81 @@ int bt_pan_connect_request(BTS2S_BD_ADDR *remote_addr)
         }
         else
         {
-            idx2 = bt_pan_get_idx(bts2_app_data);
+            device_info = bt_pan_app_alloc_device();
 
-            if (idx2 != PAN_MAX_NUM)
+            if (device_info)
             {
-                bd_copy(&(ptr->pan_sdp[idx2].bd_addr), remote_addr);
-                ptr->pan_sdp[idx2].gn_sdp_pending = TRUE;
+                bd_copy(&(device_info->bd_addr), remote_addr);
+                device_info->gn_sdp_pending = TRUE;
+                device_info->is_use = 1;
+                device_info->state = PAN_DEV_CONNECTING_ST;
                 pan_svc_srch_req(bts2_task_get_app_task_id(), remote_addr, PAN_NAP_ROLE);
+                ret = 0;
+                USER_TRACE(">> PAN connect\n");
+            }
+            else
+            {
+                USER_TRACE("No pan resources are available\n");
+            }
+        }
+    }
+    else
+    {
+        if (ptr->pan_st == PAN_BUSY_ST)
+        {
+            USER_TRACE(">> PAN already connected\n");
+        }
+        else
+        {
+            USER_TRACE(">> PAN connect fail\n");
+        }
+    }
+    return ret;
+}
+
+int bt_pan_connect_request_ext(BTS2S_BD_ADDR *remote_addr, U16 role)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    bts2_pan_inst_data *ptr = NULL;
+    U8 idx, idx2;
+
+    int ret = 1;
+
+    ptr = bts2_app_data->pan_inst_ptr;
+
+    USER_TRACE(" pan st %x\n", ptr->pan_st);
+
+    if (ptr->pan_st == PAN_IDLE_ST)
+    {
+        /*Before send connection,send service search requst*/
+        //modified for product type
+        bts2_pan_info_t *device_info = bt_pan_get_device_by_bd(remote_addr);
+        if (device_info)
+        {
+            if (device_info->gn_sdp_pending == TRUE)
+            {
+                USER_TRACE("SDP is in progress,connect pan later\n");
+            }
+            else
+            {
+                device_info->gn_sdp_pending = TRUE;
+                device_info->state = PAN_DEV_CONNECTING_ST;
+                pan_svc_srch_req(bts2_task_get_app_task_id(), remote_addr, role);
+                USER_TRACE(">> PAN connect\n");
+                ret = 0;
+            }
+        }
+        else
+        {
+            device_info = bt_pan_app_alloc_device();
+
+            if (device_info)
+            {
+                bd_copy(&(device_info->bd_addr), remote_addr);
+                device_info->gn_sdp_pending = TRUE;
+                device_info->is_use = 1;
+                device_info->state = PAN_DEV_CONNECTING_ST;
+                pan_svc_srch_req(bts2_task_get_app_task_id(), remote_addr, role);
                 ret = 0;
                 USER_TRACE(">> PAN connect\n");
             }
@@ -364,15 +495,22 @@ void bt_pan_disc(BTS2S_BD_ADDR *bd)
 {
     bts2_app_stru *bts2_app_data = getApp();
     bts2_pan_inst_data *ptr = NULL;
+    uint8_t idx = bt_pan_get_idx_by_bd(bts2_app_data, bd);
     ptr = bts2_app_data->pan_inst_ptr;
 
-    if (ptr->pan_st == PAN_BUSY_ST)
+    if (idx == 0xff)
+    {
+        USER_TRACE(">> PAN disconnect fail, device not found\n");
+        return;
+    }
+
+    if (ptr->pan_info_list[idx].state == PAN_DEV_CONNECTED_ST)
     {
         /*
         void pan_disc_req (U16 the_id);
         void pan_disc_res (U16 the_id);
         */
-        pan_disc_req(ptr->id);
+        pan_disc_req(ptr->pan_info_list[idx].id);
         USER_TRACE(">> PAN disconnect\n");
     }
     else
@@ -381,17 +519,18 @@ void bt_pan_disc(BTS2S_BD_ADDR *bd)
     }
 }
 
-void bt_pan_send_data(void *buff, int len)
+void bt_pan_send_data(uint16_t bnep_id, void *buff, int len)
 {
     bts2_pan_inst_data *ptr = NULL;
     void  *p;
     U8   *eth_header;
     ptr = getApp()->pan_inst_ptr;
+    uint8_t idx = bt_pan_get_idx_by_id(getApp(), bnep_id);
 
-    if (ptr->pan_st == PAN_BUSY_ST)
+    if ((idx != 0xff) && (ptr->pan_info_list[idx].state == PAN_DEV_CONNECTED_ST))
     {
-        if (ptr->mode == SNIFF_MODE)
-            bt_exit_sniff_mode(&ptr->bd_addr);
+        if (ptr->pan_info_list[idx].mode == SNIFF_MODE)
+            bt_exit_sniff_mode(&ptr->pan_info_list[idx].bd_addr);
 
         BTS2S_PAN_DATA_REQ *msg;
         msg = (BTS2S_PAN_DATA_REQ *)bmalloc(sizeof(BTS2S_PAN_DATA_REQ));
@@ -403,6 +542,7 @@ void bt_pan_send_data(void *buff, int len)
             msg->ether_type = (eth_header[12] << 8) + eth_header[13];
             msg->len = len - 14;
             buff = eth_header + 14;
+            msg->id = bnep_id;
 
             //msg->dst_addr = bt_pan_get_remote_mac_address(bt_dev);
             msg->dst_addr.w[0] = (((U16)eth_header[0]) << 8) | (U16)eth_header[1];
@@ -453,7 +593,6 @@ void bt_hdl_pan_msg(bts2_app_stru *bts2_app_data)
         }
 
         USER_TRACE(">> PAN enable success\n");
-        bt_lwip_pan_attach_tcpip();
         break;
     }
     case BTS2MU_PAN_CONN_IND:
@@ -473,19 +612,31 @@ void bt_hdl_pan_msg(bts2_app_stru *bts2_app_data)
 
         msg = (BTS2S_PAN_CONN_IND *)bts2_app_data->recv_msg;
 
-        USER_TRACE("<< PAN local device addreess: %04X:%02X:%06lX, result=%d\n",
+        USER_TRACE("<< PAN local device addreess: %04X:%02X:%06lX, result=%d\n id:%d",
                    bts2_app_data->local_bd.nap,
                    bts2_app_data->local_bd.uap,
                    bts2_app_data->local_bd.lap,
-                   msg->res);
+                   msg->res, msg->id);
 
+        bts2_pan_info_t *device_info = bt_pan_get_device_by_bd(&msg->bd_addr);
         if (msg->res == BTS2_SUCC)
         {
-            ptr->id = msg->id;
-            ptr->bd_addr = msg->bd_addr;
-            ptr->local_role = msg->local_role;
-            ptr->rmt_role = msg->rmt_role;
-            ptr->pan_st = PAN_BUSY_ST;
+            if (!device_info)
+            {
+                device_info = bt_pan_app_alloc_device();
+                if (!device_info)
+                {
+                    pan_disc_req(msg->id);
+                    break;
+                }
+            }
+
+            device_info->id = msg->id;
+            device_info->bd_addr = msg->bd_addr;
+            device_info->local_role = msg->local_role;
+            device_info->rmt_role = msg->rmt_role;
+            device_info->state = PAN_DEV_CONNECTED_ST;
+
 #ifdef CFG_BNEP_DBG
             INFO_TRACE(">> Remote device bd_addr: %04X:%02X:%06X\n", msg->bd_addr.nap, msg->bd_addr.uap, msg->bd_addr.lap);
             INFO_TRACE("\n>> enable finish,now regeist a network card\n");
@@ -495,6 +646,8 @@ void bt_hdl_pan_msg(bts2_app_stru *bts2_app_data)
             bt_addr_convert(&msg->bd_addr, profile_state.mac.addr);
             profile_state.profile_type = BT_NOTIFY_PAN;
             profile_state.res = BTS2_SUCC;
+            profile_state.profile_role = msg->local_role;
+            profile_state.profile_channel = msg->id;
             bt_pan_notify_connection_state(&profile_state, BT_NOTIFY_PAN_PROFILE_CONNECTED);
 #ifdef CFG_GNU
             if (0 == running_flag)
@@ -513,27 +666,28 @@ void bt_hdl_pan_msg(bts2_app_stru *bts2_app_data)
         }
         else
         {
-            ptr->pan_st = PAN_IDLE_ST;
-            ptr->id = 0xffff;
-            ptr->local_role = PAN_NO_ROLE;
-            ptr->rmt_role = PAN_NO_ROLE;
-            bd_set_empty(&(ptr->bd_addr));
+            if (device_info)
+            {
+                bt_pan_app_dealloc_device(device_info);
+            }
 
             bt_notify_profile_state_info_t profile_state;
             bt_addr_convert(&msg->bd_addr, profile_state.mac.addr);
             profile_state.profile_type = BT_NOTIFY_PAN;
             profile_state.res = msg->res;
+            profile_state.profile_role = ptr->local_role;
+            profile_state.profile_channel = msg->id;
             bt_pan_notify_connection_state(&profile_state, BT_NOTIFY_PAN_PROFILE_DISCONNECTED);
 
         }
-        USER_TRACE(" BTS2MU_PAN_CONN_IND\n");
+        USER_TRACE("BTS2MU_PAN_CONN_IND\n");
 
 #ifdef CFG_BQB
 #ifdef TP_BNEP_BV_20_C
-        struct rt_bt_lwip_pan_dev *bt_dev;
+        struct rt_bnep_device_t *bt_dev;
         U8 buff[50];
         int len = 50;
-        bt_dev = &bt_lwip_pan_dev[0];
+        bt_dev = &bnep_dev[0];
         bt_dev->bts2_app_data = bts2_app_data;
         bt_dev->bts2_app_data->pan_inst_ptr =  ptr;
         memset(buff, 0xbb, 50);
@@ -546,7 +700,7 @@ void bt_hdl_pan_msg(bts2_app_stru *bts2_app_data)
         bt_pan_send_data(bt_dev, buff, len);
 #endif
 #ifdef TP_PANU_AUTONET_BV_01_I
-        struct rt_bt_lwip_pan_dev *bt_dev;
+        struct rt_bnep_device_t *bt_dev;
         //raw data:28byte
         //header 14byte;
         U8 buff[42] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00\
@@ -554,7 +708,7 @@ void bt_hdl_pan_msg(bts2_app_stru *bts2_app_data)
                        , 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc0, 0xa8, 0x01, 0x1e
                       };
         int len = 42;
-        bt_dev = &bt_lwip_pan_dev[0];
+        bt_dev = &bnep_dev[0];
         bt_dev->bts2_app_data = bts2_app_data;
         bt_dev->bts2_app_data->pan_inst_ptr =  ptr;
         buff[12] = 0x08;
@@ -573,10 +727,12 @@ void bt_hdl_pan_msg(bts2_app_stru *bts2_app_data)
     {
         BTS2S_PAN_DATA_IND *msg;
         msg = (BTS2S_PAN_DATA_IND *)bts2_app_data->recv_msg;
+        uint8_t idx = bt_pan_get_idx_by_id(getApp(), msg->id);
 
-        if (ptr->mode == SNIFF_MODE)
-            bt_exit_sniff_mode(&ptr->bd_addr);
-
+        if ((idx != 0xff) && (ptr->pan_info_list[idx].mode == SNIFF_MODE))
+        {
+            bt_exit_sniff_mode(&ptr->pan_info_list[idx].bd_addr);
+        }
 #ifdef CFG_GNU
         tx_data(msg);
 #endif
@@ -592,7 +748,7 @@ void bt_hdl_pan_msg(bts2_app_stru *bts2_app_data)
             break;
         }
 
-        bt_lwip_pan_dev_recv_data((void *)msg->payload, msg->len);
+        bnep_dev_recv_data(msg->id, (void *)msg->payload, msg->len);
         bfree(msg->payload);
         break;
     }
@@ -600,18 +756,18 @@ void bt_hdl_pan_msg(bts2_app_stru *bts2_app_data)
     {
         BTS2S_PAN_DISC_IND *msg;
         msg = (BTS2S_PAN_DISC_IND *)bts2_app_data->recv_msg;
-        ptr->pan_st = PAN_IDLE_ST;
-        ptr->id = 0xffff;
-        ptr->local_role = PAN_NO_ROLE;
-        ptr->rmt_role = PAN_NO_ROLE;
-        bd_set_empty(&(ptr->bd_addr));
+
+        bts2_pan_info_t *device_info = bt_pan_get_device_by_bd(&msg->bd);
+        if (device_info)
+        {
+            bt_pan_app_dealloc_device(device_info);
+        }
 
         bt_notify_profile_state_info_t profile_state;
         bt_addr_convert(&msg->bd, profile_state.mac.addr);
         profile_state.profile_type = BT_NOTIFY_PAN;
         profile_state.res = msg->res;
         bt_pan_notify_connection_state(&profile_state, BT_NOTIFY_PAN_PROFILE_DISCONNECTED);
-
 
         INFO_TRACE(" BTS2MU_PAN_DISC_IND\n");
         break;
@@ -620,47 +776,33 @@ void bt_hdl_pan_msg(bts2_app_stru *bts2_app_data)
     {
         BTS2S_PAN_STS_IND *msg;
         msg = (BTS2S_PAN_STS_IND *)bts2_app_data->recv_msg;
+        uint8_t idx = bt_pan_get_idx_by_id(getApp(), msg->id);
 #ifdef CFG_BNEP_DBG
         INFO_TRACE("id=%d\n", msg->id);
         INFO_TRACE("ev=%d\n", msg->ev);
         INFO_TRACE("sts=%d\n", msg->sts);
 #endif
-        if (msg->ev == PAN_LINK_ST_EV)
-            ptr->mode = msg->sts;
+        if ((idx != 0xff) && (msg->ev == PAN_LINK_ST_EV))
+        {
+            ptr->pan_info_list[idx].mode = msg->sts;
+        }
         INFO_TRACE(" BTS2MU_PAN_STS_IND\n");
         break;
     }
     case BTS2MU_PAN_SVC_SRCH_CFM:
     {
         BTS2S_PAN_SVC_SRCH_CFM *msg;
-        BTS2S_BD_ADDR rem_addr;
-        U8 idx;
-
         msg = (BTS2S_PAN_SVC_SRCH_CFM *)bts2_app_data->recv_msg;
-
-        rem_addr.nap = msg->bd_addr.nap;
-        rem_addr.uap = msg->bd_addr.uap;
-        rem_addr.lap = msg->bd_addr.lap;
-
 
         if (msg->res != BTS2_SUCC)
         {
-            idx = bt_pan_get_idx_by_bd(bts2_app_data, &rem_addr);
-            if (idx != PAN_MAX_NUM)
+            bts2_pan_info_t *device_info = bt_pan_get_device_by_bd(&msg->bd_addr);
+            if (device_info)
             {
-                ptr->pan_st = PAN_IDLE_ST;
-                ptr->id = 0xffff;
-                ptr->local_role = PAN_NO_ROLE;
-                ptr->rmt_role = PAN_NO_ROLE;
-                bd_set_empty(&(bts2_app_data->pan_inst.pan_sdp[idx].bd_addr));
-
-                bts2_app_data->pan_inst.pan_sdp[idx].gn_sdp_pending = FALSE;
-                bts2_app_data->pan_inst.pan_sdp[idx].gn_sdp_fail = FALSE;
-                bts2_app_data->pan_inst.pan_sdp[idx].nap_sdp_pending = FALSE;
-                bts2_app_data->pan_inst.pan_sdp[idx].nap_sdp_fail = FALSE;
+                bt_pan_app_dealloc_device(device_info);
 
                 bt_notify_profile_state_info_t profile_state;
-                bt_addr_convert(&rem_addr, profile_state.mac.addr);
+                bt_addr_convert(&msg->bd_addr, profile_state.mac.addr);
                 profile_state.profile_type = BT_NOTIFY_PAN;
                 profile_state.res = msg->res;
                 bt_pan_notify_connection_state(&profile_state, BT_NOTIFY_PAN_PROFILE_DISCONNECTED);
@@ -679,7 +821,6 @@ void bt_hdl_pan_msg(bts2_app_stru *bts2_app_data)
     case BTS2MU_PAN_SVC_SRCH_RSP_IND:
     {
         /*When receive this message,indicate that the service search finish,so can send connect request now*/
-        U8 idx;
         BTS2S_PAN_SVC_SRCH_RSP_IND *msg;
         msg = (BTS2S_PAN_SVC_SRCH_RSP_IND *)bts2_app_data->recv_msg;
 
@@ -691,16 +832,29 @@ void bt_hdl_pan_msg(bts2_app_stru *bts2_app_data)
             /*
             void pan_conn_req(BTS2S_BD_ADDR *the_bd_addr, U16 the_local_role, U16 the_rmt_role);
             */
-            idx = bt_pan_get_idx_by_bd(bts2_app_data, &msg->bd_addr);
+            bts2_pan_info_t *device_info = bt_pan_get_device_by_bd(&msg->bd_addr);
 
-            if (idx != PAN_MAX_NUM)
+            if (device_info)
             {
-                bd_set_empty(&(bts2_app_data->pan_inst.pan_sdp[idx].bd_addr));
-                bts2_app_data->pan_inst.pan_sdp[idx].gn_sdp_pending = FALSE;
-                bts2_app_data->pan_inst.pan_sdp[idx].gn_sdp_fail = FALSE;
-                bts2_app_data->pan_inst.pan_sdp[idx].nap_sdp_pending = FALSE;
-                bts2_app_data->pan_inst.pan_sdp[idx].nap_sdp_fail = FALSE;
+                device_info->gn_sdp_pending = FALSE;
                 pan_conn_req(&(msg->bd_addr), PAN_PANU_ROLE, msg->srch_role);
+            }
+            else
+            {
+                INFO_TRACE("error,the address is wrong\n");
+            }
+        }
+        else if (msg->srch_role == PAN_PANU_ROLE)
+        {
+            /*
+            void pan_conn_req(BTS2S_BD_ADDR *the_bd_addr, U16 the_local_role, U16 the_rmt_role);
+            */
+            bts2_pan_info_t *device_info = bt_pan_get_device_by_bd(&msg->bd_addr);
+
+            if (device_info)
+            {
+                device_info->gn_sdp_pending = FALSE;
+                pan_conn_req(&(msg->bd_addr), PAN_NAP_ROLE, msg->srch_role);
             }
             else
             {

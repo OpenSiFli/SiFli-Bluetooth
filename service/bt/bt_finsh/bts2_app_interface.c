@@ -2273,12 +2273,6 @@ void bt_interface_update_pan_addr_ext(bt_notify_device_mac_t *local_addr)
     bt_addr_convert_to_bts((bd_addr_t *)local_addr, &bd_addr);
     bt_pan_update_addr(&bd_addr);
 }
-
-uint8_t bt_interface_check_pan_in_sniff(void)
-{
-    bts2_app_stru *bts2_app_data = bts2g_app_p;
-    return bts2_app_data->pan_inst_ptr->mode == SNIFF_MODE;
-}
 #endif
 
 /// @}  BT_PAN_SRV

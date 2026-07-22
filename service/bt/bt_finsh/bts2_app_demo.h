@@ -167,6 +167,7 @@ typedef struct
 {
     bts2_ag_st st;
     bts2_ag_st old_st;
+    U32 local_feature;
     bts2_hfp_ag_device_info devices_info[CFG_MAX_HFP_CONN_NUM];
 } bts2_hfp_ag_inst_data;
 #endif
@@ -196,6 +197,7 @@ typedef struct
 typedef struct
 {
     bts2_hfp_st st;
+    U32 local_feature;
     bts2_hfp_hf_device_info devices_info[CFG_MAX_HFP_CONN_NUM];
 } bts2_hfp_hf_inst_data;
 #endif
@@ -210,24 +212,34 @@ typedef enum
     PAN_BUSY_ST
 } bts2_pan_st;
 
+typedef enum
+{
+    PAN_DEV_DISCONNECTED_ST,
+    PAN_DEV_CONNECTING_ST,
+    PAN_DEV_CONNECTED_ST,
+    PAN_DEV_DISCONNECTING_ST
+} bts2_pan_device_state_t;
+
 typedef struct
 {
+    U8 mode;
+    U8 is_use;
+    bts2_pan_device_state_t state;
+    U16 id;
+    U16 local_role;
+    U16 rmt_role;
     BTS2S_BD_ADDR bd_addr;
     U8 gn_sdp_pending;
     U8 gn_sdp_fail;
     U8 nap_sdp_pending;
     U8 nap_sdp_fail;
-} bts2_pan_sdp_service;
+} bts2_pan_info_t;
 
 typedef struct
 {
     bts2_pan_st pan_st;
-    U16 id;
-    BTS2S_BD_ADDR bd_addr;
     U16 local_role;
-    U16 rmt_role;
-    bts2_pan_sdp_service pan_sdp[PAN_MAX_NUM];
-    U8 mode;
+    bts2_pan_info_t pan_info_list[PAN_MAX_NUM];
 } bts2_pan_inst_data;
 #endif
 #ifdef CFG_AVRCP
@@ -236,7 +248,7 @@ typedef struct
 {
     BTS2S_BD_ADDR  rmt_bd;
     U8             role;
-    rt_timer_t     avrcp_vol_time_handle;
+    ot_timer_id_t     avrcp_vol_time_handle;
     U8             play_status_notify;
     U8             ab_volume;//the absolute volue be set.
     U8             tgTlable_1;

@@ -145,7 +145,11 @@ bt_err_t bt_pbap_client_pull_vcard_list(bts2_app_stru *bts2_app_data);
 bt_err_t bt_pbap_client_pull_vcard(U8 *p, U8 len);
 bt_err_t bt_pbap_client_get_name_by_number(char *phone_number, U16 phone_len);
 bt_err_t bt_pbap_client_auth(U8 *password, U8 len);
-
+void bt_pbap_client_pull_pb_ext(U8 reset_new_missed_calls, BTS2S_PBAP_SRM_PARAM  *srm_params,
+                                BTS2S_PBAP_PROPERTY_SELECTOR *selector, BTS2S_PBAP_VCARD_SELECTOR_PARAM *vcard_selector);
+bt_err_t bt_pbap_client_pull_vcard_list_ext(BTS2S_PBAP_SRM_PARAM  *srm_params,
+        BTS2S_PBAP_CLT_SEARCH_PARAM *search_para,
+        BTS2S_PBAP_PULL_PB_BASIC_PARAM *para, BTS2S_PBAP_VCARD_SELECTOR_PARAM *vcard_selector);
 #endif
 #ifdef __cplusplus
 }

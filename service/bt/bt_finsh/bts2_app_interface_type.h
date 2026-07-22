@@ -619,6 +619,7 @@ typedef struct
     * 0x03 Transparent Data
     */
     uint8_t air_mode;
+    uint8_t codec_id;
 } bt_device_sco_conn_para_t;
 
 ///  bt sco connection state information

@@ -32,7 +32,7 @@ void bt_pan_scan_proc_net_dev(void);
 void bt_pan_set_nap_route(char *string);
 void bt_pan_set_dns1(char *string);
 void bt_pan_set_dns2(char *string);
-void bt_pan_send_data(void *buff, int len);
+void bt_pan_send_data(uint16_t bnep_id, void *buff, int len);
 //extern BTS2S_ETHER_ADDR bt_pan_get_remote_mac_address(struct rt_bt_lwip_pan_dev *bt_dev);
 extern BTS2S_ETHER_ADDR bt_pan_get_mac_address();
 extern void lwip_sys_init(void);
@@ -40,7 +40,7 @@ extern void lwip_system_uninit(void);
 extern BTS2S_ETHER_ADDR bconvbd2etherbig(BTS2S_BD_ADDR *bd);
 extern void pan_reg_req(U16 conn_hdl, U16 data_hdl, BTS2S_BD_ADDR local_bd);
 
-
+int bt_pan_connect_request_ext(BTS2S_BD_ADDR *remote_addr, U16 role);
 
 
 

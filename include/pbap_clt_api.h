@@ -165,6 +165,70 @@ typedef struct
     U8 secondary_version_counter[16];
     U8 database_identifier[16];
 } BTS2S_PBAP_CLT_FOLDER_VERSION_IND;
+/* PBAP Phonebook object: repository + phonebook */
+typedef struct
+{
+    U8 repository;
+    U8 phonebook;
+} BTS2S_PBAP_PHONEBOOK_OBJECT;
+
+/* Application Parameter: PropertySelector, Tag 0x06, 8 bytes */
+typedef struct
+{
+    U32 filter_lo;
+    U32 filter_hi;
+} BTS2S_PBAP_PROPERTY_SELECTOR;
+
+/* Application Parameters: basic PullPhonebook parameters */
+typedef struct
+{
+    /* Application Parameter: Format, Tag 0x07, 1 byte */
+    /* for oder if cmd vcardlisting*/
+    U8 format;
+
+    /* Application Parameter: MaxListCount, Tag 0x04, 2 bytes */
+    U16 max_list;
+
+    /* Application Parameter: ListStartOffset, Tag 0x05, 2 bytes */
+    U16 listStart;
+
+    /* Application Parameter: ResetNewMissedCalls, Tag 0x0F, 1 byte */
+    U8 reset_new_missed_calls;
+} BTS2S_PBAP_PULL_PB_BASIC_PARAM;
+
+/* OBEX Header: Single Response Mode / Single Response Mode Parameter */
+typedef struct
+{
+    /* OBEX Header: Single Response Mode */
+    /* PBAP_SRM_DEFAULT means do not send SRM header */
+    U8 srm;
+
+    /* OBEX Header: Single Response Mode Parameter */
+    /* PBAP_SRMP_DEFAULT means do not send SRMP header */
+    U8 srmp;
+    U8 is_final;
+} BTS2S_PBAP_SRM_PARAM;
+
+/* Application Parameters: vCardSelector + vCardSelectorOperator */
+typedef struct
+{
+    /* Application Parameter: vCardSelector, Tag 0x0C, 8 bytes */
+    U32 vcard_selector_lo;
+    U32 vcard_selector_hi;
+
+    /* Application Parameter: vCardSelectorOperator, Tag 0x0E, 1 byte */
+    U8 vcard_selector_operator;
+} BTS2S_PBAP_VCARD_SELECTOR_PARAM;
+
+typedef struct
+{
+    /* Application Parameter: SearchProperty/SearchAttribute, Tag 0x03, 1 byte */
+    U8 srch_attr;
+
+    /* Application Parameter: SearchValue, Tag 0x02, variable length */
+    U16 srchval_len;
+    U8 *srch_val;
+} BTS2S_PBAP_CLT_SEARCH_PARAM;
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
@@ -460,6 +524,94 @@ void pbap_clt_pull_vcard_next_req(void);
  *----------------------------------------------------------------------------*/
 void pbap_clt_pull_vcard_list_next_req(void);
 
+/*----------------------------------------------------------------------------*
+ *
+ * DESCRIPTION:
+ *      Retrieve a phone book object from the specified PBAP repository with
+ *      extended PullPhonebook parameters.
+ *
+ *      This API is an extended version of pbap_clt_pull_pb_req(). It groups
+ *      PullPhonebook parameters into several structures, including phonebook
+ *      object, property selector, basic application parameters, vCard selector,
+ *      and SRM/SRMP parameters.
+ *
+ *      If one of the parameter structures is NULL, this function uses default
+ *      values for the corresponding fields.
+ *
+ * INPUT:
+ *      BTS2S_PBAP_PHONEBOOK_OBJECT *obj:
+ *          Phonebook object information.
+ *          - repository: phone book repository, such as PBAP_LOCAL or PBAP_SIM1.
+ *          - phonebook : phone book object, such as PBAP_PB, PBAP_ICH,
+ *                        PBAP_OCH, PBAP_MCH or PBAP_CCH.
+ *          If obj is NULL, PBAP_LOCAL/PBAP_PB is used by default.
+ *
+ *      BTS2S_PBAP_PROPERTY_SELECTOR *selector:
+ *          Application Parameter: PropertySelector, Tag 0x06, 8 bytes.
+ *          - filter_lo: low 32 bits of the vCard property selector.
+ *          - filter_hi: high 32 bits of the vCard property selector.
+ *          If selector is NULL, both filter_lo and filter_hi are set to 0,
+ *          which means the PropertySelector parameter is not used.
+ *
+ *      BTS2S_PBAP_PULL_PB_BASIC_PARAM *para:
+ *          Basic PullPhonebook application parameters.
+ *          - format: vCard format, such as PBAP_FORMAT_21 or PBAP_FORMAT_30.
+ *          - max_list: MaxListCount, Tag 0x04, 2 bytes.
+ *              0      means only request PhonebookSize and do not download
+ *                     vCard body data.
+ *              0xFFFF means no restriction on the number of returned entries.
+ *          - listStart: ListStartOffset, Tag 0x05, 2 bytes.
+ *          - reset_new_missed_calls: ResetNewMissedCalls, Tag 0x0F, 1 byte.
+ *          If para is NULL, default values are used:
+ *              format = PBAP_FORMAT_21,
+ *              max_list = 0xFFFF,
+ *              listStart = 0,
+ *              reset_new_missed_calls = 0.
+ *
+ *      BTS2S_PBAP_VCARD_SELECTOR_PARAM *vcard_selector:
+ *          Application parameters for PBAP 1.2 or later.
+ *          - vcard_selector_lo: low 32 bits of vCardSelector, Tag 0x0C.
+ *          - vcard_selector_hi: high 32 bits of vCardSelector, Tag 0x0C.
+ *          - vcard_selector_operator: vCardSelectorOperator, Tag 0x0E.
+ *          If vcard_selector is NULL, these fields are set to 0 and not used.
+ *
+ *      BTS2S_PBAP_SRM_PARAM *srm_params:
+ *          OBEX Single Response Mode parameters.
+ *          - srm : Single Response Mode header.
+ *          - srmp: Single Response Mode Parameter header.
+ *          If srm_params is NULL, PBAP_SRM_DEFAULT/PBAP_SRMP_DEFAULT are used,
+ *          which means SRM/SRMP headers are not sent by default.
+ *
+ * OUTPUT:
+ *      void.
+ *
+ * NOTE:
+ *      1. This function allocates BTS2S_PBAP_CLT_PULL_PB_REQ internally and
+ *         sends it to PBAP client task by bts2_msg_put().
+ *
+ *      2. To query the total number of phonebook entries only, set:
+ *             para->max_list = 0;
+ *         The PSE should return PhonebookSize in Application Parameters.
+ *
+ *      3. To download the full phonebook, set:
+ *             para->max_list = 0xFFFF;
+ *
+ *      4. The result is reported by:
+ *             BTS2MU_PBAP_CLT_PULL_PB_BEGIN_IND
+ *             BTS2MU_PBAP_CLT_PULL_PB_NEXT_IND
+ *             BTS2MU_PBAP_CLT_PULL_PB_COMPLETE_IND
+ *
+ *----------------------------------------------------------------------------*/
+void pbap_clt_pull_pb_req_ext(BTS2S_PBAP_PHONEBOOK_OBJECT *obj,
+                              BTS2S_PBAP_PROPERTY_SELECTOR *selector, BTS2S_PBAP_PULL_PB_BASIC_PARAM *para,
+                              BTS2S_PBAP_VCARD_SELECTOR_PARAM *vcard_selector, BTS2S_PBAP_SRM_PARAM *srm_params);
+
+void  pbap_clt_pull_vcard_list_req_ext(U8 pbook,
+                                       BTS2S_PBAP_PULL_PB_BASIC_PARAM *para,
+                                       BTS2S_PBAP_SRM_PARAM *srm_params,
+                                       BTS2S_PBAP_CLT_SEARCH_PARAM *search_para,
+                                       BTS2S_PBAP_VCARD_SELECTOR_PARAM *vcard_selector);
+void pbap_clt_pull_pb_next_req_ext(uint8_t srm, uint8_t srmp, uint8_t final);
 U16 pbap_clt_get_max_mtu(void);
 
 

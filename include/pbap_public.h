@@ -59,6 +59,69 @@ typedef enum
     PBAP_FORMAT_30 = 0x01,  /* vCard 3.0 */
 } BTS2E_PBAP_VCARD_FORMAT;
 
+/* Single Response Mode values to use with PBAP GET functions. */
+typedef enum
+{
+    PBAP_SRM_DISABLE = 0x00,    /* Disable Single Response Mode */
+    PBAP_SRM_ENABLE  = 0x01,    /* Enable Single Response Mode */
+    PBAP_SRM_DEFAULT           /* Do not send SRM header */
+} BTS2S_PBAP_SRM_VALUES;
+
+typedef enum
+{
+    PBAP_SRMP_NEXT    = 0x00,   /* Next */
+    PBAP_SRMP_WAIT    = 0x01,   /* Wait */
+    PBAP_SRMP_DEFAULT          /* Do not send SRMP header */
+} BTS2S_PBAP_SRMP_VALUES;
+
+/* vCard selector operator values to use with PBAP GET functions. */
+typedef enum
+{
+    PBAP_VCARD_SELECTOR_OPERATOR_OR      = 0x00, /* OR */
+    PBAP_VCARD_SELECTOR_OPERATOR_AND     = 0x01, /* AND */
+    PBAP_VCARD_SELECTOR_OPERATOR_DEFAULT         /* Do not send vCardSelectorOperator */
+} BTS2S_PBAP_VCARD_SELECTOR_OPERATOR_VALUES;
+
+typedef enum
+{
+    PBAP_VCARD_PROP_VERSION                 = (1ULL << 0),
+    PBAP_VCARD_PROP_FN                      = (1ULL << 1),
+    PBAP_VCARD_PROP_N                       = (1ULL << 2),
+    PBAP_VCARD_PROP_PHOTO                   = (1ULL << 3),
+    PBAP_VCARD_PROP_BDAY                    = (1ULL << 4),
+    PBAP_VCARD_PROP_ADR                     = (1ULL << 5),
+    PBAP_VCARD_PROP_LABEL                   = (1ULL << 6),
+    PBAP_VCARD_PROP_TEL                     = (1ULL << 7),
+    PBAP_VCARD_PROP_EMAIL                   = (1ULL << 8),
+    PBAP_VCARD_PROP_MAILER                  = (1ULL << 9),
+    PBAP_VCARD_PROP_TZ                      = (1ULL << 10),
+    PBAP_VCARD_PROP_GEO                     = (1ULL << 11),
+    PBAP_VCARD_PROP_TITLE                   = (1ULL << 12),
+    PBAP_VCARD_PROP_ROLE                    = (1ULL << 13),
+    PBAP_VCARD_PROP_LOGO                    = (1ULL << 14),
+    PBAP_VCARD_PROP_AGENT                   = (1ULL << 15),
+    PBAP_VCARD_PROP_ORG                     = (1ULL << 16),
+    PBAP_VCARD_PROP_NOTE                    = (1ULL << 17),
+    PBAP_VCARD_PROP_REV                     = (1ULL << 18),
+    PBAP_VCARD_PROP_SOUND                   = (1ULL << 19),
+    PBAP_VCARD_PROP_URL                     = (1ULL << 20),
+    PBAP_VCARD_PROP_UID                     = (1ULL << 21),
+    PBAP_VCARD_PROP_KEY                     = (1ULL << 22),
+    PBAP_VCARD_PROP_NICKNAME                = (1ULL << 23),
+    PBAP_VCARD_PROP_CATEGORIES              = (1ULL << 24),
+    PBAP_VCARD_PROP_PROID                   = (1ULL << 25),
+    PBAP_VCARD_PROP_CLASS                   = (1ULL << 26),
+    PBAP_VCARD_PROP_SORT_STRING             = (1ULL << 27),
+    PBAP_VCARD_PROP_X_IRMC_CALL_DATETIME    = (1ULL << 28),
+    PBAP_VCARD_PROP_X_BT_SPEEDDIALKEY       = (1ULL << 29),
+    PBAP_VCARD_PROP_X_BT_UCI                = (1ULL << 30),
+    PBAP_VCARD_PROP_X_BT_UID                = (1ULL << 31),
+
+    /* bit 32 ~ 38: Reserved for future use */
+    PBAP_VCARD_PROP_PROPRIETARY_FILTER      = (1ULL << 39),
+
+    /* bit 40 ~ 63: Reserved for proprietary filter usage */
+} BTS2S_PBAP_VCARD_PROPERTY_BITS;
 
 /* PBAP application default parameters values */
 #define PBAP_ORDER_DEFAULT              PBAP_ORDER_IDX     /* Order Index */

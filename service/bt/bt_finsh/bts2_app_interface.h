@@ -1470,15 +1470,6 @@ void bt_interface_update_pan_addr(BTS2S_BD_ADDR *bd_addr);
  *
  **/
 void bt_interface_update_pan_addr_ext(bt_notify_device_mac_t *local_addr);
-
-/**
- * @brief                         check whether pan profile is in sniff mode
- *
- * @return                        is it in sniff mode?
- *
- **/
-uint8_t bt_interface_check_pan_in_sniff(void);
-
 /// @}  BT_PAN_SRV
 #endif
 

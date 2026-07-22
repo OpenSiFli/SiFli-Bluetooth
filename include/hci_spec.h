@@ -203,6 +203,7 @@ extern "C" {
 #endif
 #define HCI_SET_EV_MASK2                     ((U16)HCI_HOST_BB | 0x0063)
 #define HCI_WR_LE_HOST_SUPPORT               ((U16)HCI_HOST_BB | 0x006D)
+#define HCI_RD_SEC_HOST_SUPPORT              ((U16)HCI_HOST_BB | 0x0079)
 #define HCI_WR_SEC_HOST_SUPPORT              ((U16)HCI_HOST_BB | 0x007A)
 
 
@@ -2861,6 +2862,16 @@ typedef struct
     BTS2S_HCI_CMD_COMMON common;
     U8 sec_support;
 } BTS2S_HCI_WR_SEC_HOST_SUPPORT;
+
+typedef struct
+{
+    BTS2S_HCI_CMD_COMMON common;
+} BTS2S_HCI_RD_SEC_HOST_SUPPORT;
+
+typedef struct
+{
+    U8 sec_host_support;// 0x00:disabled  0x01:enable
+} BTS2S_HCI_RD_SEC_CONN_HOST_SUPP_EVT;
 
 typedef struct
 {

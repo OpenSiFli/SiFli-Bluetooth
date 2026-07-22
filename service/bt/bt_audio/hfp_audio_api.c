@@ -126,6 +126,11 @@ void hfp_set_audio_voice_para(bt_device_sco_conn_para_t *msg, BOOL audio_on, U8 
             g_hfp_audio_env.voice_para.sample_rate = 16000;
         }
 
+        if (msg->codec_id == 3)
+        {
+            g_hfp_audio_env.voice_para.sample_rate = 32000;
+        }
+
         if (AUDIO_MANAGER_TYPE_INVALID  == g_hfp_audio_env.type_process && direct_audio_on)
         {
             BT_DBG_D("sco open audio path codec: %d, sample_rate:%d", msg->air_mode, g_hfp_audio_env.voice_para.sample_rate);
@@ -231,7 +236,7 @@ typedef struct
     uint32_t delay_cnt;
     uint32_t tx_cnt;
     uint8_t  tx_en;
-    uint8_t  data_len;
+    uint16_t  data_len;
 } HFP_AG_AUDIO_INFO_T;
 
 HFP_AG_AUDIO_INFO_T g_hfp_ag_audioinfo;
@@ -248,6 +253,14 @@ static int bt_hfpag_register_audio_open(void *user_data, int (*input)(audio_serv
     ag_inf->ring_pool   = audio_mem_calloc(1, HFP_AG_AUDIO_POOL_SIZE);
     RT_ASSERT(ag_inf->ring_pool);
     rt_ringbuffer_init(&(ag_inf->ring_buf), ag_inf->ring_pool, HFP_AG_AUDIO_POOL_SIZE);
+
+    if (ag_inf->sco_inf.codec_id == 3)
+    {
+        ag_inf->data_len = 480;
+        bt_voice_open(32000);
+        return 0;
+    }
+
     if (2 == ag_inf->sco_inf.air_mode)
     {
         ag_inf->data_len = 120;
@@ -390,6 +403,12 @@ void hfp_ag_audio_opt(BTS2S_HF_AUDIO_INFO *msg, BOOL audio_on)
             else
             {
                 RT_ASSERT(0);
+            }
+
+            if (msg->codec_id == 3)
+            {
+                param.read_samplerate = 32000;
+                param.write_samplerate = 32000;
             }
 
             memcpy(&(g_hfp_ag_audioinfo.sco_inf), msg, sizeof(BTS2S_HF_AUDIO_INFO));

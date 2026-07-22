@@ -124,7 +124,7 @@ typedef enum
 #ifdef CFG_BT_L2CAP_PROFILE
     menu_bt_l2cap_profile,
 #endif
-
+    menu_rfcomm_cmd,
 } menu_st;
 
 /*fn */

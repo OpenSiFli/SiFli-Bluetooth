@@ -72,6 +72,7 @@ static void bt_disply_menu_main(void)
     printf("##                                                  ##\n");
     printf("##           BTS2 Demo Main Menu                    ##\n");
     printf("##   1. Generic Command                             ##\n");
+    printf("##   2. RFCOMM CMD Command                          ##\n");
 #ifdef CFG_SPP_SRV
     printf("##   3. SPP Server                                  ##\n");
 #endif
@@ -153,6 +154,11 @@ static void bt_hdl_menu_main(bts2_app_stru *bts2_app_data)
     case '1':
     {
         bts2_app_data->menu_id = menu_gen;
+        break;
+    }
+    case '2':
+    {
+        bts2_app_data->menu_id = menu_rfcomm_cmd;
         break;
     }
 #ifdef CFG_SPP_SRV
@@ -1581,11 +1587,18 @@ static void bt_disply_menu_gen_9(void)
     printf("##                                                  ##\n");
     printf("##           SDP Service Browse Menu                ##\n");
     printf("##   0 ~ 9. Input Device Number of Inquiry List     ##\n");
+    printf("##   1. connect sdp                                 ##\n");
+    printf("##   2. search profile service                      ##\n");
+    printf("##   3. search profile service  & attribute         ##\n");
+    printf("##   4. search profile service                      ##\n");
+    printf("##   5. search profile attribute                    ##\n");
+    printf("##   6. search profile service  & attribute         ##\n");
     printf("##   r. Return to last menu                         ##\n");
     printf("##                                                  ##\n");
     printf("######################################################\n");
     printf("\n");
 }
+
 
 /*----------------------------------------------------------------------------*
  *
@@ -1648,37 +1661,41 @@ static void bt_disply_menu_gen_a(void)
  *----------------------------------------------------------------------------*/
 static void bt_hdl_menu_gen_9(bts2_app_stru *bts2_app_data)
 {
-    U32 svc = 0x00000100;
-
-    U16 attr_id = 0x0001;/*TP/SERVER/SSA/BV-01-C*/
-    /*SVC_RECORD_ST_ATTRUTE_ID  TP/SERVER/SSA/BV-07-C*/
-
-#ifdef CFG_BQB_SDC_SSA
-    U16 svc_list_size;
-    U16 attr_list_size;
-    U8 *attr_list = NULL;
-    U8 *srch_ptr = NULL;
-#endif
-
-    // if (BT_IN(bts2_app_data->input_str[0] - '0', 0, bts2_app_data->bd_list_num))
-    // {
-    //     bts2_app_data->dev_idx = bts2_app_data->input_str[0] - '0';
-
     // }
     switch (bts2_app_data->input_str[0])
     {
     case '1':
     {
-        sdpa_sdc_open_srch_req(bts2_task_get_app_task_id(), &bts2_app_data->bd_list[bts2_app_data->dev_idx]);
+        BTS2S_BD_ADDR bd;
+        int reuslt = 0;
+        uint32_t mac[6];
+        reuslt = sscanf((const char *)bts2_app_data->input_str + 1, "%02X%02X%02X%02X%02X%02X", \
+                        &mac[0], &mac[1], \
+                        &mac[2], &mac[3], \
+                        &mac[4], &mac[5]);
+        bd.lap = (mac[3] << 16) | (mac[4] << 8) | mac[5];
+        bd.uap = (U8)mac[2];
+        bd.nap = (U16)((mac[0] << 8) | mac[1]);
+        sdpa_sdc_open_srch_req(bts2_task_get_app_task_id(), &bd);
         break;
     }
     case '2':
     {
+        BTS2S_BD_ADDR bd;
+        int reuslt = 0;
+        uint32_t mac[6];
+        reuslt = sscanf((const char *)bts2_app_data->input_str + 1, "%02X%02X%02X%02X%02X%02X", \
+                        &mac[0], &mac[1], \
+                        &mac[2], &mac[3], \
+                        &mac[4], &mac[5]);
+        bd.lap = (mac[3] << 16) | (mac[4] << 8) | mac[5];
+        bd.uap = (U8)mac[2];
+        bd.nap = (U16)((mac[0] << 8) | mac[1]);
         GAP_BT_UUID uuid_list;
         uuid_list.len = LEN_UUID_16;
         uuid_list.uu.uuid16 = 0x0019;
         sdpa_sdc_svc_srch_req(bts2_task_get_app_task_id(),
-                              &bts2_app_data->bd_list[bts2_app_data->dev_idx],
+                              &bd,
                               1,
                               &uuid_list,
                               0x100);
@@ -1686,9 +1703,19 @@ static void bt_hdl_menu_gen_9(bts2_app_stru *bts2_app_data)
     }
     case '3':
     {
+        BTS2S_BD_ADDR bd;
+        int reuslt = 0;
+        uint32_t mac[6];
+        reuslt = sscanf((const char *)bts2_app_data->input_str + 1, "%02X%02X%02X%02X%02X%02X", \
+                        &mac[0], &mac[1], \
+                        &mac[2], &mac[3], \
+                        &mac[4], &mac[5]);
+        bd.lap = (mac[3] << 16) | (mac[4] << 8) | mac[5];
+        bd.uap = (U8)mac[2];
+        bd.nap = (U16)((mac[0] << 8) | mac[1]);
         GAP_BT_ATTR_ID attr_list[] = {LEN_ATTR_ID_16, {.attr_id_16 = 0x0100}};
         sdpa_sdc_svc_attrute_req(bts2_task_get_app_task_id(),
-                                 &bts2_app_data->bd_list[bts2_app_data->dev_idx],
+                                 &bd,
                                  0x00010002,  // service_handle
                                  1,
                                  attr_list,
@@ -1697,6 +1724,16 @@ static void bt_hdl_menu_gen_9(bts2_app_stru *bts2_app_data)
     }
     case '4':
     {
+        BTS2S_BD_ADDR bd;
+        int reuslt = 0;
+        uint32_t mac[6];
+        reuslt = sscanf((const char *)bts2_app_data->input_str + 1, "%02X%02X%02X%02X%02X%02X", \
+                        &mac[0], &mac[1], \
+                        &mac[2], &mac[3], \
+                        &mac[4], &mac[5]);
+        bd.lap = (mac[3] << 16) | (mac[4] << 8) | mac[5];
+        bd.uap = (U8)mac[2];
+        bd.nap = (U16)((mac[0] << 8) | mac[1]);
         extern void gap_sdc_svc_srch_req_send(U16 app_hdl,
                                               BTS2S_BD_ADDR bd,
                                               U16 num_uuid,
@@ -1707,7 +1744,7 @@ static void bt_hdl_menu_gen_9(bts2_app_stru *bts2_app_data)
         uuid_list.len = LEN_UUID_16;
         uuid_list.uu.uuid16 = 0x0019;
         gap_sdc_svc_srch_req_send(bts2_task_get_app_task_id(),
-                                  bts2_app_data->bd_list[bts2_app_data->dev_idx],
+                                  bd,
                                   1, &uuid_list, 0, 0);
         break;
     }
@@ -1719,7 +1756,41 @@ static void bt_hdl_menu_gen_9(bts2_app_stru *bts2_app_data)
         GAP_BT_ATTR_ID attr_list;
         attr_list.len = LEN_ATTR_ID_16;
         attr_list.uu.attr_id_16 = 0x0100;
-        gap_sdc_attrute_req(0x00010002, attr_list, MAX_FRIENDLY_NAME_LEN);
+        gap_sdc_attrute_req(bts2_task_get_app_task_id(), attr_list, MAX_FRIENDLY_NAME_LEN);
+        break;
+    }
+    case '6':
+    {
+        extern void gap_sdc_svc_att_srch_req_send(U16 app_hdl,
+                BTS2S_BD_ADDR bd,
+                U8 local_srv_chnl,
+                U8 num_uuid,
+                GAP_BT_UUID * uuid_list,
+                U16 total_uuid_len,
+                U8 num_attr,
+                GAP_BT_ATTR_ID * attr_list);
+        BTS2S_BD_ADDR bd;
+        int reuslt = 0;
+        uint32_t mac[6];
+        reuslt = sscanf((const char *)bts2_app_data->input_str + 1, "%02X%02X%02X%02X%02X%02X", \
+                        &mac[0], &mac[1], \
+                        &mac[2], &mac[3], \
+                        &mac[4], &mac[5]);
+        bd.lap = (mac[3] << 16) | (mac[4] << 8) | mac[5];
+        bd.uap = (U8)mac[2];
+        bd.nap = (U16)((mac[0] << 8) | mac[1]);
+        GAP_BT_ATTR_ID default_attr_list[4] =
+        {
+            {LEN_ATTR_ID_16, {.attr_id_16 = 0x0001}},
+            {LEN_ATTR_ID_16, {.attr_id_16 = 0x0004}},
+            {LEN_ATTR_ID_16, {.attr_id_16 = 0x0009}},
+            {LEN_ATTR_ID_16, {.attr_id_16 = 0x0311}},
+        };
+        GAP_BT_UUID svc_list;
+        svc_list.len = LEN_UUID_16;
+        svc_list.uu.uuid16 = BT_UUID_HF;
+        gap_sdc_svc_att_srch_req_send(bts2_task_get_app_task_id(), bd,
+                                      0, 1, &svc_list, 0, 4, default_attr_list);
         break;
     }
     case 's':
@@ -1736,30 +1807,6 @@ static void bt_hdl_menu_gen_9(bts2_app_stru *bts2_app_data)
     default:
         break;
     }
-// #ifdef CFG_BQB_SDC_SSA
-//         GAP_BT_UUID uuid_list;
-//         uuid_list.len = LEN_UUID_16;
-//         uuid_list.uu.uuid16 = 0x0019;
-
-//         sdpa_sdc_svc_srch_req(bts2_task_get_app_task_id(),
-//                               &bts2_app_data->bd_list[bts2_app_data->dev_idx],
-//                               1,
-//                               &uuid_list,
-//                               0x100);
-// #else
-//         // gap_sdc_srch_req(bts2_task_get_app_task_id(), bts2_app_data->bd_list[bts2_app_data->dev_idx], &svc, 1);
-// #endif
-//     }
-//     else if (bts2_app_data->input_str[0] == 'r')        //return menu
-//     {
-//         bts2_app_data->menu_id = menu_gen;
-//         bt_disply_menu(bts2_app_data);
-//     }
-//     else if (bts2_app_data->input_str[0] == 's')        //show menu again
-//     {
-//         bt_disply_menu(bts2_app_data);
-//     }
-//     else
 //         printf(" -- input again:");
 }
 
@@ -1821,12 +1868,45 @@ void bt_disply_menu_pan(void)
     printf("##   1. Connecing                                   ##\n");
     printf("##   2. Disconnect                                  ##\n");
     printf("##   3. Register                                    ##\n");
-    printf("##   4. void                                        ##\n");
+    printf("##   4. connect PANU                                ##\n");
+    printf("##   5. void                                        ##\n");
+    printf("##   6. send ipv4 data(60)                          ##\n");
+    printf("##   7. send arp  data                              ##\n");
+    printf("##   8. send ICMP  data                             ##\n");
+    printf("##   9. send ARP   data                             ##\n");
+    printf("##   a. send ipv4 data(0x5a0 bytes)                 ##\n");
+    printf("##   b. send ICMP  reply data                       ##\n");
     printf("##   s. Show Menu                                   ##\n");
     printf("##   r. Return to last menu                         ##\n");
     printf("##                                                  ##\n");
     printf("######################################################\n");
     printf("\n");
+}
+
+#define IGNORED_DATA_LEN    60
+#define TEST_DATA_LEN       0x5A0
+#define BNEP_PACKET_LEN     (IGNORED_DATA_LEN + TEST_DATA_LEN)
+static uint16_t build_eth_type_0x0800_payload(uint8_t *buf, uint16_t buf_size)
+{
+    uint16_t offset = 0;
+    uint16_t i;
+
+    memset(buf, 0, buf_size);
+    /* 60 bytes of data to be ignored: 00 01 02 ... 3B */
+    for (i = 0; i < IGNORED_DATA_LEN; i++)
+    {
+        buf[offset++] = (uint8_t)i;
+    }
+    /*
+     * 0x5A0 bytes test data:
+     * {0x00, 0x01, ..., 0xFF} * 5 + {0x00, 0x01, ..., 0x9E, 0x9F}
+     */
+    for (i = 0; i < TEST_DATA_LEN; i++)
+    {
+        buf[offset++] = (uint8_t)(i & 0xFF);
+    }
+
+    return offset;
 }
 
 static void bt_hdl_menu_pan(bts2_app_stru *bts2_app_data)
@@ -1870,6 +1950,273 @@ static void bt_hdl_menu_pan(bts2_app_stru *bts2_app_data)
     }
     case '4':
     {
+        BTS2S_BD_ADDR bd;
+        int reuslt = 0;
+        uint32_t mac[6];
+        reuslt = sscanf((const char *)bts2_app_data->input_str + 1, "%02X%02X%02X%02X%02X%02X", \
+                        &mac[0], &mac[1], \
+                        &mac[2], &mac[3], \
+                        &mac[4], &mac[5]);
+        bd.lap = (mac[3] << 16) | (mac[4] << 8) | mac[5];
+        bd.uap = (U8)mac[2];
+        bd.nap = (U16)((mac[0] << 8) | mac[1]);
+        bt_pan_connect_request_ext(&bd, PAN_PANU_ROLE);
+        break;
+    }
+    // case '5':
+    // {
+
+    //     BTS2S_BD_ADDR bd;
+    //     int reuslt = 0;
+    //     uint32_t mac[6];
+    //     reuslt = sscanf((const char *)bts2_app_data->input_str + 1, "%02X%02X%02X%02X%02X%02X", \
+    //                     &mac[0], &mac[1], \
+    //                     &mac[2], &mac[3], \
+    //                     &mac[4], &mac[5]);
+    //     bd.lap = (mac[3] << 16) | (mac[4] << 8) | mac[5];
+    //     bd.uap = (U8)mac[2];
+    //     bd.nap = (U16)((mac[0] << 8) | mac[1]);
+    //     bt_pan_connect_request_ext(&bd, PAN_PANU_ROLE);
+    //     break;
+    // }
+    case '6':
+    {
+        int reuslt = 0;
+        BTS2S_ETHER_ADDR dst_addr;
+        BTS2S_ETHER_ADDR src_addr;
+        uint32_t mac[6];
+        reuslt = sscanf((const char *)bts2_app_data->input_str + 1, "%02X%02X%02X%02X%02X%02X", \
+                        &mac[0], &mac[1], \
+                        &mac[2], &mac[3], \
+                        &mac[4], &mac[5]);
+        dst_addr.w[0] = (((U16)mac[0]) << 8) | (U16)mac[1];
+        dst_addr.w[1] = (((U16)mac[2]) << 8) | (U16)mac[3];
+        dst_addr.w[2] = (((U16)mac[4]) << 8) | (U16)mac[5];
+        USER_TRACE("mac 00 : %02X:%02X:%02X:%02X:%02X:%02X",
+                   mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+        reuslt = sscanf((const char *)bts2_app_data->input_str + 13, "%02X%02X%02X%02X%02X%02X", \
+                        &mac[0], &mac[1], \
+                        &mac[2], &mac[3], \
+                        &mac[4], &mac[5]);
+        USER_TRACE("mac02: %02X:%02X:%02X:%02X:%02X:%02X",
+                   mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+
+        src_addr.w[0] = (((U16)mac[0]) << 8) | (U16)mac[1];
+        src_addr.w[1] = (((U16)mac[2]) << 8) | (U16)mac[3];
+        src_addr.w[2] = (((U16)mac[4]) << 8) | (U16)mac[5];
+        uint16_t id = atoi((const char *)bts2_app_data->input_str + 25);
+        U16 ethernet_type = 0x0800;
+        U16 len = 0x3c;
+        static const U8 ipv4[] =
+        {
+            /* IPv4 header, total length = 60, protocol = ICMP */
+            0x45, 0x00,
+            0x00, 0x3C,
+            0x00, 0x01,
+            0x00, 0x00,
+            0x40,
+            0x01,
+            0xF7, 0x6C,
+            0xC0, 0xA8, 0x01, 0x02,   /* Source IP: 192.168.1.2 */
+            0xC0, 0xA8, 0x01, 0x01,   /* Destination IP: 192.168.1.1 */
+
+            /* ICMP Echo Request */
+            0x08, 0x00,               /* Type = 8, Code = 0 */
+            0xF4, 0xC9,               /* ICMP checksum */
+            0x12, 0x34,               /* Identifier */
+            0x00, 0x01,               /* Sequence Number */
+
+            /* ICMP payload, 32 bytes */
+            0x00, 0x01, 0x02, 0x03,
+            0x04, 0x05, 0x06, 0x07,
+            0x08, 0x09, 0x0A, 0x0B,
+            0x0C, 0x0D, 0x0E, 0x0F,
+            0x10, 0x11, 0x12, 0x13,
+            0x14, 0x15, 0x16, 0x17,
+            0x18, 0x19, 0x1A, 0x1B,
+            0x1C, 0x1D, 0x1E, 0x1F
+        };
+        U8 *payload = bmalloc(sizeof(ipv4));
+        bmemcpy(payload, ipv4, sizeof(ipv4));
+        USER_TRACE("pan id 0x%2x dst_addr:0x%02X 0x%02X 0x%02X src_addr: 0x%02X 0x%02X 0x%02X, payload: 0x%2x\n", id,
+                   dst_addr.w[0], dst_addr.w[1], dst_addr.w[2],  src_addr.w[0], src_addr.w[1], src_addr.w[2], sizeof(ipv4));
+        pan_data_req(id, ethernet_type, &dst_addr, &src_addr, sizeof(ipv4), (U8 *)payload);
+        break;
+    }
+    case '7':
+    {
+        // struct rt_bnep_device_t *bt_dev;
+        //raw data:28byte
+        //header 14byte;
+        U8 buff[42] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00\
+                       , 0x00, 0x01, 0x08, 0x00, 0x06, 0x04, 0x00, 0x01, 0xab, 0x89, 0x56, 0x34, 0x12, 0x00\
+                       , 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc0, 0xa8, 0x01, 0x1e
+                      };
+        int len = 42;
+        buff[12] = 0x08;
+        buff[13] = 0x06;//ether_type ETHER_TYPE_ARP
+        uint16_t id = atoi((const char *)bts2_app_data->input_str + 1);
+        bt_pan_send_data(id, buff, len);
+        break;
+    }
+    case '8':
+    {
+        static const U8 bnep_icmp_echo_request[] =
+        {
+            /* BNEP Type: BNEP_GENERAL_ETHERNET */
+            // 0x00,
+
+            /* Destination Address: Lower Tester / peer, 80:C8:AC:00:09:BC */
+            0x80, 0xC8, 0xAC, 0x00, 0x09, 0xBC,
+
+            /* Source Address: IUT / local, 11:22:33:44:88:E5 */
+            0x11, 0x22, 0x33, 0x44, 0x88, 0xE5,
+
+            /* Network Protocol Type: IPv4 */
+            0x08, 0x00,
+
+            /* IPv4 header, total length = 60, protocol = ICMP */
+            0x45, 0x00,
+            0x00, 0x3C,
+            0x00, 0x01,
+            0x00, 0x00,
+            0x40,
+            0x01,
+            0xF7, 0x6C,
+            0xC0, 0xA8, 0x01, 0x02,   /* Source IP: 192.168.1.2 */
+            0xC0, 0xA8, 0x01, 0x01,   /* Destination IP: 192.168.1.1 */
+
+            /* ICMP Echo Request */
+            0x08, 0x00,               /* Type = 8, Code = 0 */
+            0xF4, 0xC9,               /* ICMP checksum */
+            0x12, 0x34,               /* Identifier */
+            0x00, 0x01,               /* Sequence Number */
+
+            /* ICMP payload, 32 bytes */
+            0x00, 0x01, 0x02, 0x03,
+            0x04, 0x05, 0x06, 0x07,
+            0x08, 0x09, 0x0A, 0x0B,
+            0x0C, 0x0D, 0x0E, 0x0F,
+            0x10, 0x11, 0x12, 0x13,
+            0x14, 0x15, 0x16, 0x17,
+            0x18, 0x19, 0x1A, 0x1B,
+            0x1C, 0x1D, 0x1E, 0x1F
+        };
+        uint16_t id = atoi((const char *)bts2_app_data->input_str + 1);
+        bt_pan_send_data(id, (void *)bnep_icmp_echo_request, sizeof(bnep_icmp_echo_request));
+        break;
+    }
+    case '9':
+    {
+        static const U8 bnep_ipv4ll_arp_probe[] =
+        {
+            // /* BNEP Type: BNEP_GENERAL_ETHERNET */
+            // 0x00,
+
+            /* Destination Address: broadcast FF:FF:FF:FF:FF:FF */
+            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+
+            /* Source Address: IUT local PAN MAC 11:22:33:44:88:E5 */
+            0x11, 0x22, 0x33, 0x44, 0x88, 0xE5,
+
+            /* Network Protocol Type: ARP = 0x0806 */
+            0x08, 0x06,
+
+            /* ARP payload */
+            0x00, 0x01,                 /* Hardware Type: Ethernet */
+            0x08, 0x00,                 /* Protocol Type: IPv4 */
+            0x06,                       /* Hardware Address Length */
+            0x04,                       /* Protocol Address Length */
+            0x00, 0x01,                 /* Operation: ARP Request */
+
+            /* Sender Hardware Address: IUT MAC */
+            0x11, 0x22, 0x33, 0x44, 0x88, 0xE5,
+
+            /* Sender Protocol Address: 0.0.0.0 for ARP Probe */
+            0x00, 0x00, 0x00, 0x00,
+
+            /* Target Hardware Address: unknown */
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+            /* Target Protocol Address: candidate IPv4LL address 169.254.1.2 */
+            0xA9, 0xFE, 0x01, 0x02
+        };
+        uint16_t id = atoi((const char *)bts2_app_data->input_str + 1);
+        bt_pan_send_data(id, (void *)bnep_ipv4ll_arp_probe, sizeof(bnep_ipv4ll_arp_probe));
+        break;
+    }
+    case 'a':
+    {
+        int reuslt = 0;
+        BTS2S_ETHER_ADDR dst_addr;
+        BTS2S_ETHER_ADDR src_addr;
+        uint32_t mac[6];
+        reuslt = sscanf((const char *)bts2_app_data->input_str + 1, "%02X%02X%02X%02X%02X%02X", \
+                        &mac[0], &mac[1], \
+                        &mac[2], &mac[3], \
+                        &mac[4], &mac[5]);
+        dst_addr.w[0] = (((U16)mac[0]) << 8) | (U16)mac[1];
+        dst_addr.w[1] = (((U16)mac[2]) << 8) | (U16)mac[3];
+        dst_addr.w[2] = (((U16)mac[4]) << 8) | (U16)mac[5];
+        USER_TRACE("mac 00 : %02X:%02X:%02X:%02X:%02X:%02X",
+                   mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+        reuslt = sscanf((const char *)bts2_app_data->input_str + 13, "%02X%02X%02X%02X%02X%02X", \
+                        &mac[0], &mac[1], \
+                        &mac[2], &mac[3], \
+                        &mac[4], &mac[5]);
+        USER_TRACE("mac02: %02X:%02X:%02X:%02X:%02X:%02X",
+                   mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+
+        src_addr.w[0] = (((U16)mac[0]) << 8) | (U16)mac[1];
+        src_addr.w[1] = (((U16)mac[2]) << 8) | (U16)mac[3];
+        src_addr.w[2] = (((U16)mac[4]) << 8) | (U16)mac[5];
+        uint16_t id = atoi((const char *)bts2_app_data->input_str + 25);
+        U16 ethernet_type = 0x0800;
+
+        U8 *payload = bmalloc(BNEP_PACKET_LEN);
+        build_eth_type_0x0800_payload(payload, BNEP_PACKET_LEN);
+        USER_TRACE("pan id 0x%2x dst_addr:0x%02X 0x%02X 0x%02X src_addr: 0x%02X 0x%02X 0x%02X, payload: 0x%2x\n", id,
+                   dst_addr.w[0], dst_addr.w[1], dst_addr.w[2],  src_addr.w[0], src_addr.w[1], src_addr.w[2], BNEP_PACKET_LEN);
+        pan_data_req(id, ethernet_type, &dst_addr, &src_addr, BNEP_PACKET_LEN, (U8 *)payload);
+        break;
+    }
+    case 'b':
+    {
+        static const U8 bnep_icmp_echo_reply[] =
+        {
+            /* Destination Ethernet Address: original source 80:C8:AC:00:09:BC */
+            0x80, 0xC8, 0xAC, 0x00, 0x09, 0xBC,
+
+            /* Source Ethernet Address: original destination 11:22:33:44:88:E5 */
+            0x11, 0x22, 0x33, 0x44, 0x88, 0xE5,
+
+            /* Network Protocol Type: IPv4 */
+            0x08, 0x00,
+
+            /* IPv4 header, total length = 40 bytes */
+            0x45, 0x00,
+            0x00, 0x28,
+            0x00, 0x29,
+            0x00, 0x00,
+            0x80,
+            0x01,
+            0x69, 0x5E,
+            0xC0, 0xA8, 0xA7, 0x98,   /* Source IP: 192.168.167.152 */
+            0xC0, 0xA8, 0xA8, 0x64,   /* Destination IP: 192.168.168.100 */
+
+            /* ICMP Echo Reply */
+            0x00, 0x00,               /* Type = 0, Code = 0 */
+            0x8F, 0x85,               /* ICMP checksum */
+            0x00, 0x01,               /* Identifier */
+            0x00, 0x09,               /* Sequence Number */
+
+            /* ICMP data: "PtsPtsPtsPts" */
+            0x50, 0x74, 0x73, 0x50,
+            0x74, 0x73, 0x50, 0x74,
+            0x73, 0x50, 0x74, 0x73
+        };
+        uint16_t id = atoi((const char *)bts2_app_data->input_str + 1);
+        bt_pan_send_data(id, (void *)bnep_icmp_echo_reply, sizeof(bnep_icmp_echo_reply));
         break;
     }
     case 's':
@@ -1941,6 +2288,8 @@ void bt_disply_menu_hfp_hf(void)
     printf("##   p. hs connect                                  ##\n");
     printf("##   q. ckpd                                        ##\n");
     printf("##   t. set wbs                                     ##\n");
+    printf("##   x. send bia cmd                                ##\n");
+    printf("##   y. set biev cnd                                ##\n");
     printf("##   s. Show Menu                                   ##\n");
     printf("##   r. Return to last menu                         ##\n");
     printf("##                                                  ##\n");
@@ -2013,6 +2362,23 @@ static void bt_hdl_menu_hfp_hf(bts2_app_stru *bts2_app_data)
     {
         // bt_hfp_hf_rfc_conn_rej_hdl();
         //smsInit(bts2_app_data);
+        break;
+    }
+    case 'A':
+    {
+        // bt_hfp_hf_rfc_conn_accept_hdl();
+        uint8_t mux_id = bts2_app_data->input_str[1] - '0';
+        uint8_t value = atoi((const char *)bts2_app_data->input_str + 2);
+        bt_hfp_hf_update_spk_vol_ext(mux_id, value);
+        break;
+    }
+    case 'B':
+    {
+        // bt_hfp_hf_rfc_conn_rej_hdl();
+        //smsInit(bts2_app_data);
+        uint8_t mux_id = bts2_app_data->input_str[1] - '0';
+        uint8_t value = atoi((const char *)bts2_app_data->input_str + 2);
+        bt_hfp_hf_update_mic_vol_ext(mux_id, value);
         break;
     }
     case '5':
@@ -2146,13 +2512,61 @@ static void bt_hdl_menu_hfp_hf(bts2_app_stru *bts2_app_data)
     }
     case 'q':
     {
-        hfp_hs_send_at_ckpd_api(0, HF_CONN);
+        hfp_hs_send_at_ckpd_api(0, HS_CONN);
         break;
     }
     case 't':
     {
         int wbs_flag = atoi((const char *)bts2_app_data->input_str + 1);
         hfp_hf_set_wbs(0, HF_CONN, (U8) wbs_flag);
+        break;
+    }
+    case 'x':
+    {
+        uint8_t mux_id = bts2_app_data->input_str[1] - '0';
+        uint8_t value = bts2_app_data->input_str[2] - '0';
+        BTS2S_HF_OPTIONAL_INDICATORS  optional_indicators;
+        if (value == 0)
+        {
+            optional_indicators.service = 0;
+        }
+        else if (value == 1)
+        {
+            optional_indicators.signal_strength = 0;
+        }
+        else if (value == 2)
+        {
+            optional_indicators.roaming_status = 0;
+        }
+        else if (value == 3)
+        {
+            optional_indicators.battery_charge = 0;
+        }
+        else if (value == 4)
+        {
+            optional_indicators.signal_strength = 1;
+        }
+        else if (value == 5)
+        {
+            optional_indicators.roaming_status = 1;
+        }
+        else if (value == 6)
+        {
+            optional_indicators.battery_charge = 1;
+        }
+        else if (value == 7)
+        {
+            optional_indicators.service = 1;
+        }
+        hfp_hf_send_at_bia_api(mux_id, HF_CONN, &optional_indicators);
+        break;
+    }
+    case 'y':
+    {
+        uint8_t mux_id = bts2_app_data->input_str[1] - '0';
+        uint8_t assigned_id = bts2_app_data->input_str[2] - '0';
+        uint8_t value = (U8)atoi((const char *)bts2_app_data->input_str + 3);
+        hfp_hf_send_at_biev_api(mux_id, HF_CONN, assigned_id, value);
         break;
     }
     case 's':
@@ -2704,6 +3118,9 @@ static void  bt_display_menu_hfp_ag(void)
     printf("##   t. not auto response                           ##\n");
     printf("##   x. all indicator 1:call ative 2:hold & active  ##\n");
     printf("##   y. set sco retry                               ##\n");
+    printf("##   z. three calls status change                   ##\n");
+    printf("##   A. send  NO CARRIER  cmd                       ##\n");
+    printf("##   B. send btrh cmd (three calls cmd)             ##\n");
     printf("##   s. Show ag Menu                                ##\n");
     printf("##   r. Return to last menu                         ##\n");
     printf("##                                                  ##\n");
@@ -2781,28 +3198,28 @@ static void bt_hdl_menu_hfp_ag(bts2_app_stru *bts2_app_data)
     case '5':
     {
         uint8_t mux_id = bts2_app_data->input_str[1] - '0';
-        uint8_t value = bts2_app_data->input_str[2] - '0';
+        uint8_t value = atoi((const char *)bts2_app_data->input_str + 2);
         bt_hfp_ag_spk_vol_control(mux_id, value);
         break;
     }
     case '6':
     {
         uint8_t mux_id = bts2_app_data->input_str[1] - '0';
-        uint8_t value = bts2_app_data->input_str[2] - '0';
+        uint8_t value = atoi((const char *)bts2_app_data->input_str + 2);
         bt_hfp_ag_mic_vol_control(mux_id, value);
         break;
     }
     case '7':
     {
         uint8_t mux_id = bts2_app_data->input_str[1] - '0';
-        uint8_t value = bts2_app_data->input_str[2] - '0';
+        uint8_t value = atoi((const char *)bts2_app_data->input_str + 2);
         bt_hfp_ag_set_inband(mux_id, value);
         break;
     }
     case '8':
     {
         uint8_t mux_id = bts2_app_data->input_str[1] - '0';
-        uint8_t value = bts2_app_data->input_str[2] - '0';
+        uint8_t value = atoi((const char *)bts2_app_data->input_str + 2);
         bt_hfp_ag_brva_response(mux_id, value);
         break;
     }
@@ -2819,7 +3236,7 @@ static void bt_hdl_menu_hfp_ag(bts2_app_stru *bts2_app_data)
     case 'b':
     {
         uint8_t mux_id = bts2_app_data->input_str[1] - '0';
-        uint8_t value = bts2_app_data->input_str[2] - '0';
+        uint8_t value = atoi((const char *)bts2_app_data->input_str + 2);
         bt_hfp_ag_app_cind_status_change(HFP_AG_CIND_SERVICE_TYPE, value);
         bt_hfp_ag_ind_status_update(mux_id, HFP_AG_CIND_SERVICE_TYPE, value);
         break;
@@ -2827,7 +3244,7 @@ static void bt_hdl_menu_hfp_ag(bts2_app_stru *bts2_app_data)
     case 'c':
     {
         uint8_t mux_id = bts2_app_data->input_str[1] - '0';
-        uint8_t value = bts2_app_data->input_str[2] - '0';
+        uint8_t value = atoi((const char *)bts2_app_data->input_str + 2);
         bt_hfp_ag_app_cind_status_change(HFP_AG_CIND_CALL_TYPE, value);
         bt_hfp_ag_ind_status_update(mux_id, HFP_AG_CIND_CALL_TYPE, value);
         break;
@@ -2835,7 +3252,7 @@ static void bt_hdl_menu_hfp_ag(bts2_app_stru *bts2_app_data)
     case 'd':
     {
         uint8_t mux_id = bts2_app_data->input_str[1] - '0';
-        uint8_t value = bts2_app_data->input_str[2] - '0';
+        uint8_t value = atoi((const char *)bts2_app_data->input_str + 2);
         bt_hfp_ag_app_cind_status_change(HFP_AG_CIND_CALLSETUP_TYPE, value);
         bt_hfp_ag_ind_status_update(mux_id, HFP_AG_CIND_CALLSETUP_TYPE, value);
         break;
@@ -2843,7 +3260,7 @@ static void bt_hdl_menu_hfp_ag(bts2_app_stru *bts2_app_data)
     case 'e':
     {
         uint8_t mux_id = bts2_app_data->input_str[1] - '0';
-        uint8_t value = bts2_app_data->input_str[2] - '0';
+        uint8_t value = atoi((const char *)bts2_app_data->input_str + 2);
         bt_hfp_ag_app_cind_status_change(HFP_AG_CIND_BATT_TYPE, value);
         bt_hfp_ag_ind_status_update(mux_id, HFP_AG_CIND_BATT_TYPE, value);
         break;
@@ -2851,7 +3268,7 @@ static void bt_hdl_menu_hfp_ag(bts2_app_stru *bts2_app_data)
     case 'f':
     {
         uint8_t mux_id = bts2_app_data->input_str[1] - '0';
-        uint8_t value = bts2_app_data->input_str[2] - '0';
+        uint8_t value = atoi((const char *)bts2_app_data->input_str + 2);
         bt_hfp_ag_app_cind_status_change(HFP_AG_CIND_SIGNAL_TYPE, value);
         bt_hfp_ag_ind_status_update(mux_id, HFP_AG_CIND_SIGNAL_TYPE, value);
         break;
@@ -2860,7 +3277,7 @@ static void bt_hdl_menu_hfp_ag(bts2_app_stru *bts2_app_data)
     case 'g':
     {
         uint8_t mux_id = bts2_app_data->input_str[1] - '0';
-        uint8_t value = bts2_app_data->input_str[2] - '0';
+        uint8_t value = atoi((const char *)bts2_app_data->input_str + 2);
         bt_hfp_ag_app_cind_status_change(HFP_AG_CIND_ROAM_TYPE, value);
         bt_hfp_ag_ind_status_update(mux_id, HFP_AG_CIND_ROAM_TYPE, value);
         break;
@@ -2868,7 +3285,7 @@ static void bt_hdl_menu_hfp_ag(bts2_app_stru *bts2_app_data)
     case 'h':
     {
         uint8_t mux_id = bts2_app_data->input_str[1] - '0';
-        uint8_t value = bts2_app_data->input_str[2] - '0';
+        uint8_t value = atoi((const char *)bts2_app_data->input_str + 2);
         bt_hfp_ag_app_cind_status_change(HFP_AG_CIND_CALLHELD_TYPE, value);
         bt_hfp_ag_ind_status_update(mux_id, HFP_AG_CIND_CALLHELD_TYPE, value);
         break;
@@ -2921,15 +3338,15 @@ static void bt_hdl_menu_hfp_ag(bts2_app_stru *bts2_app_data)
     }
     case 'o':
     {
-        uint8_t value = atoi((const char *)bts2_app_data->input_str + 1);
-        uint8_t mux_id = atoi((const char *)bts2_app_data->input_str + 2);
+        uint8_t mux_id = bts2_app_data->input_str[1] - '0';;
+        uint8_t value = atoi((const char *)bts2_app_data->input_str + 2);
         bt_hfp_ag_at_result_res(mux_id, value);
         break;
     }
     case 'p':
     {
-        uint8_t value = atoi((const char *)bts2_app_data->input_str + 1);
-        uint8_t mux_id = atoi((const char *)bts2_app_data->input_str + 2);
+        uint8_t mux_id = bts2_app_data->input_str[1] - '0';
+        uint8_t value = atoi((const char *)bts2_app_data->input_str + 2);
         bt_hfp_ag_set_bcs(mux_id, value);
         break;
     }
@@ -2972,6 +3389,16 @@ static void bt_hdl_menu_hfp_ag(bts2_app_stru *bts2_app_data)
             cind_status.callsetup = 0;
             cind_status.callheld = 1;
         }
+        else if (value == 3)
+        {
+            cind_status.call = 0;
+            cind_status.callsetup = 0;
+            cind_status.callheld = 0;
+            cind_status.service_status = 0;
+            cind_status.batt_level = 0;
+            cind_status.signal = 3;
+            cind_status.roam_status = 0;
+        }
         bt_hfp_ag_cind_response(mux_id, &cind_status);
         break;
     }
@@ -2982,7 +3409,102 @@ static void bt_hdl_menu_hfp_ag(bts2_app_stru *bts2_app_data)
         hfp_set_sco_retry_flag(enable);
         break;
     }
+    case 'z':
+    {
+        uint8_t mux_id = bts2_app_data->input_str[1] - '0';
+        uint8_t value = bts2_app_data->input_str[2] - '0';
+        uint8_t call_idx = bts2_app_data->input_str[3] - '0';
+        uint8_t mutlti = bts2_app_data->input_str[4] - '0';
+        hfp_phone_call_info_t remote_call_info;
 
+        if (value == 0)
+        {
+            remote_call_info.call_idx = call_idx;
+            remote_call_info.call_dir = PHONE_CALL_DIR_OUTGOING;
+            remote_call_info.call_mode = PHONE_CALL_MODE_VOICE;
+            remote_call_info.call_mtpty = mutlti;
+            remote_call_info.call_status = PHONE_CALL_ACTIVE;
+            bmemcpy(&remote_call_info.phone_info.phone_number, bts2_app_data->input_str + 5, 11);
+            remote_call_info.phone_info.type = 0x81;
+        }
+        else if (value == 1)
+        {
+            remote_call_info.call_idx = call_idx;
+            remote_call_info.call_dir = PHONE_CALL_DIR_INCOMING;
+            remote_call_info.call_mode = PHONE_CALL_MODE_VOICE;
+            remote_call_info.call_mtpty = mutlti;
+            remote_call_info.call_status = PHONE_CALL_ACTIVE;
+            bmemcpy(&remote_call_info.phone_info.phone_number, bts2_app_data->input_str + 5, 11);
+            remote_call_info.phone_info.type = 0x81;
+        }
+        else if (value == 2)
+        {
+            remote_call_info.call_idx = call_idx;
+            remote_call_info.call_dir = PHONE_CALL_DIR_INCOMING;
+            remote_call_info.call_mode = PHONE_CALL_MODE_VOICE;
+            remote_call_info.call_mtpty = mutlti;
+            remote_call_info.call_status = PHONE_CALL_INCOMING;
+            bmemcpy(&remote_call_info.phone_info.phone_number, bts2_app_data->input_str + 5, 11);
+            remote_call_info.phone_info.type = 0x81;
+        }
+        else if (value == 3)
+        {
+            remote_call_info.call_idx = call_idx;
+            remote_call_info.call_dir = PHONE_CALL_DIR_INCOMING;
+            remote_call_info.call_mode = PHONE_CALL_MODE_VOICE;
+            remote_call_info.call_mtpty = mutlti;
+            remote_call_info.call_status = PHONE_CALL_WAITING;
+            bmemcpy(&remote_call_info.phone_info.phone_number, bts2_app_data->input_str + 5, 11);
+            remote_call_info.phone_info.type = 0x81;
+        }
+        else if (value == 4)
+        {
+            remote_call_info.call_idx = call_idx;
+            remote_call_info.call_dir = PHONE_CALL_DIR_OUTGOING;
+            remote_call_info.call_mode = PHONE_CALL_MODE_VOICE;
+            remote_call_info.call_mtpty = PHONE_CALL_MPTY_SINGLE;
+            remote_call_info.call_status = PHONE_CALL_ALERTING;
+            bmemcpy(&remote_call_info.phone_info.phone_number, bts2_app_data->input_str + 5, 11);
+            remote_call_info.phone_info.type = 0x81;
+        }
+        else if (value == 5)
+        {
+            remote_call_info.call_idx = call_idx;
+            remote_call_info.call_dir = PHONE_CALL_DIR_OUTGOING;
+            remote_call_info.call_mode = PHONE_CALL_MODE_VOICE;
+            remote_call_info.call_mtpty = PHONE_CALL_MPTY_SINGLE;
+            remote_call_info.call_status = PHONE_CALL_HELD;
+            bmemcpy(&remote_call_info.phone_info.phone_number, bts2_app_data->input_str + 5, 11);
+            remote_call_info.phone_info.type = 0x81;
+        }
+        else if (value == 6)
+        {
+            remote_call_info.call_idx = call_idx;
+            remote_call_info.call_dir = PHONE_CALL_DIR_INCOMING;
+            remote_call_info.call_mode = PHONE_CALL_MODE_VOICE;
+            remote_call_info.call_mtpty = PHONE_CALL_MPTY_SINGLE;
+            remote_call_info.call_status = PHONE_CALL_HELD;
+            bmemcpy(&remote_call_info.phone_info.phone_number, bts2_app_data->input_str + 5, 11);
+            remote_call_info.phone_info.type = 0x81;
+        }
+
+        bt_hfp_ag_clcc_response(mux_id, &remote_call_info);
+        break;
+    }
+    case 'A':
+    {
+        extern void hfp_ag_send_unknow_at_cmd(U8 mux_id, char *payload, U8 payload_len);
+        char *str = "NO CARRIER";
+        hfp_ag_send_unknow_at_cmd(0, str, 11);
+        break;
+    }
+    case 'B':
+    {
+        uint8_t mux_id = bts2_app_data->input_str[1] - '0';
+        uint8_t value = bts2_app_data->input_str[2] - '0';
+        bt_hfp_ag_set_btrh(mux_id, value);
+        break;
+    }
     case 's':
     {
         bt_display_menu_hfp_ag();
@@ -4871,6 +5393,12 @@ static void bt_disply_menu_pbap_clt(void)
     printf("##   7. Pull vcard list                             ##\n");
     printf("##   8. Abort current operation                     ##\n");
     printf("##   9. Initial connect with authentication         ##\n");
+    printf("##   a. Pull phonebook with maxlen                  ##\n");
+    printf("##   b. Pull phonebook with para                    ##\n");
+    printf("##   c. Pull vcard list with maxlen(0)              ##\n");
+    printf("##   d. Pull vcard entry with para                  ##\n");
+    printf("##   e. Pull vcard list with para                   ##\n");
+    printf("##   f. Pull vcard next with srm para               ##\n");
     printf("##   s. Show Menu                                   ##\n");
     printf("##   r. Return to last menu                         ##\n");
     printf("##                                                  ##\n");
@@ -4994,6 +5522,227 @@ static void bt_hdl_menu_pbap_clt(bts2_app_stru *bts2_app_data)
         bt_pbap_client_connect_request(&bd, TRUE);
         break;
     }
+    case 'a':
+    {
+        int value = atoi((const char *)bts2_app_data->input_str + 1);
+        bt_pbap_client_pull_pb(0, 1, value);
+        break;
+    }
+
+    case 'b':
+    {
+        uint8_t type_value = bts2_app_data->input_str[1] - '0';
+        switch (type_value)
+        {
+        case 0:
+        {
+            /* b0: query current phonebook size only
+             * MaxListCount = 0
+             */
+            uint8_t value = bts2_app_data->input_str[2] - '0';
+            bt_pbap_client_pull_pb_ext(value, NULL, NULL, NULL);
+            break;
+        }
+        case 1:
+        {
+            /* b0: query current phonebook size only
+             * MaxListCount = 0
+             */
+            uint8_t srm = bts2_app_data->input_str[2] - '0';
+            uint8_t srmp = bts2_app_data->input_str[3] - '0';
+            uint8_t final = bts2_app_data->input_str[4] - '0';
+            BTS2S_PBAP_SRM_PARAM  srm_params;
+            srm_params.srm = srm;
+            srm_params.srmp = srmp;
+            srm_params.is_final = final;
+            bt_pbap_client_pull_pb_ext(0, &srm_params, NULL, NULL);
+            break;
+        }
+        case 2:
+        {
+            /* b0: query current phonebook size only
+             * MaxListCount = 0
+             */
+            uint8_t value = bts2_app_data->input_str[2] - '0';
+            uint8_t value2 = bts2_app_data->input_str[3] - '0';
+            BTS2S_PBAP_VCARD_SELECTOR_PARAM  vcard_selector;
+            /* vCardSelector: not used, only for demo parameter path */
+            vcard_selector.vcard_selector_lo = value;
+            vcard_selector.vcard_selector_hi = value2;
+            vcard_selector.vcard_selector_operator = 0;
+            bt_pbap_client_pull_pb_ext(0, NULL, NULL, &vcard_selector);
+            break;
+        }
+        case 3:
+        {
+            /* b0: query current phonebook size only
+             * MaxListCount = 0
+             */
+            uint32_t value = atol((const char *)bts2_app_data->input_str + 1);
+            uint32_t value2 = atol((const char *)bts2_app_data->input_str + 5);
+            BTS2S_PBAP_PROPERTY_SELECTOR selector;
+            /* selector: not used, only for demo parameter path */
+            selector.filter_lo = value;
+            selector.filter_hi = value2;
+            selector.filter_lo |= PBAP_VCARD_PROP_PHOTO;
+            bt_pbap_client_pull_pb_ext(0, NULL, &selector, NULL);
+            break;
+        }
+        default:
+        {
+            break;
+        }
+        }
+        break;
+    }
+    case 'c':
+    {
+        uint8_t max = bts2_app_data->input_str[1] - '0';
+        uint8_t value = bts2_app_data->input_str[2] - '0';
+        pbap_clt_pull_vcard_list_req(PBAP_ORDER_IDX,
+                                     PBAP_UNKNOWN_PHONEBOOK,
+                                     value,
+                                     NULL,
+                                     0,
+                                     max, 0x00);
+        break;
+    }
+    case 'd':
+    {
+        U8 *name;
+        U32 name_len;
+        U8 vCardExt[] = "2.vcf";
+        U8 *name1      = "X-BT-UID:1234567890ABCDEF1234567890000002";
+        name = vCardExt;
+
+        BTS2S_PBAP_PROPERTY_SELECTOR selector;
+        /* selector: not used, only for demo parameter path */
+        uint8_t type_value = bts2_app_data->input_str[1] - '0';
+        uint8_t format = PBAP_FORMAT_21;
+        selector.filter_hi = 0;
+        selector.filter_lo = 0;
+        switch (type_value)
+        {
+        case 0:
+        {
+            selector.filter_lo = PBAP_VCARD_PROP_X_BT_UID | PBAP_VCARD_PROP_X_BT_UCI;
+            break;
+        }
+        case 1:
+        {
+            selector.filter_lo = PBAP_VCARD_PROP_TEL | PBAP_VCARD_PROP_N;
+            break;
+        }
+        case 2:
+        {
+            selector.filter_lo = PBAP_VCARD_PROP_FN | PBAP_VCARD_PROP_PHOTO | PBAP_VCARD_PROP_N | PBAP_VCARD_PROP_TEL;
+            break;
+        }
+        case 3:
+        {
+            /* b0: query current phonebook size only
+             * MaxListCount = 0
+             */
+            selector.filter_lo = PBAP_VCARD_PROP_PHOTO;
+            break;
+        }
+        case 4:
+        {
+            /* b0: query current phonebook size only
+             * MaxListCount = 0
+             */
+            name = name1;
+            selector.filter_lo = PBAP_VCARD_PROP_X_BT_UID | PBAP_VCARD_PROP_X_BT_UCI;
+            selector.filter_lo |= PBAP_VCARD_PROP_FN | PBAP_VCARD_PROP_PHOTO | PBAP_VCARD_PROP_N | PBAP_VCARD_PROP_TEL;
+            break;
+        }
+        default:
+        {
+            break;
+        }
+        }
+
+        // USER_TRACE("name %s len:%d %s", name, len, p);
+        pbap_clt_pull_vcard_req(name,
+                                selector.filter_lo,
+                                selector.filter_hi,
+                                PBAP_FORMAT_21);
+        break;
+    }
+    case 'e':
+    {
+        uint8_t type_value = bts2_app_data->input_str[1] - '0';
+        switch (type_value)
+        {
+        case 0:
+        {
+            /* b0: query current phonebook size only
+             * MaxListCount = 0
+             */
+            BTS2S_PBAP_CLT_SEARCH_PARAM search_para;
+            bt_pbap_client_pull_vcard_list_ext(NULL, &search_para, NULL, NULL);
+            break;
+        }
+        case 1:
+        {
+            /* b0: query current phonebook size only
+             * MaxListCount = 0
+             */
+            uint8_t srm = bts2_app_data->input_str[2] - '0';
+            uint8_t srmp = bts2_app_data->input_str[3] - '0';
+            BTS2S_PBAP_SRM_PARAM  srm_params;
+            srm_params.srm = srm;
+            srm_params.srmp = srmp;
+            bt_pbap_client_pull_vcard_list_ext(&srm_params, NULL, NULL, NULL);
+            break;
+        }
+        case 2:
+        {
+            /* b0: query current phonebook size only
+             * MaxListCount = 0
+             */
+            uint8_t value = bts2_app_data->input_str[2] - '0';
+            uint8_t value2 = bts2_app_data->input_str[3] - '0';
+            BTS2S_PBAP_VCARD_SELECTOR_PARAM  vcard_selector;
+            /* vCardSelector: not used, only for demo parameter path */
+            vcard_selector.vcard_selector_lo = value;
+            vcard_selector.vcard_selector_hi = value2;
+            vcard_selector.vcard_selector_operator = 0;
+            bt_pbap_client_pull_vcard_list_ext(NULL, NULL, NULL, &vcard_selector);
+            break;
+        }
+        case 3:
+        {
+            /* b0: query current phonebook size only
+             * MaxListCount = 0
+             */
+            uint8_t value = bts2_app_data->input_str[2] - '0';
+            uint8_t value2 = bts2_app_data->input_str[3] - '0';
+            BTS2S_PBAP_PULL_PB_BASIC_PARAM para;
+            para.format = PBAP_ORDER_DEFAULT;
+            para.max_list = value2;
+            para.listStart = 0;
+            para.reset_new_missed_calls = value;
+            /* selector: not used, only for demo parameter path */
+            bt_pbap_client_pull_vcard_list_ext(NULL, NULL, &para, NULL);
+            break;
+        }
+        default:
+        {
+            break;
+        }
+        }
+        break;
+    }
+    case 'f':
+    {
+        uint8_t srm = bts2_app_data->input_str[1] - '0';
+        uint8_t srmp = bts2_app_data->input_str[2] - '0';
+        uint8_t is_final = bts2_app_data->input_str[3] - '0';
+        pbap_clt_pull_pb_next_req_ext(srm, srmp, is_final);
+        break;
+    }
+
     case 's':
     {
         bt_disply_menu(bts2_app_data);
@@ -5367,6 +6116,19 @@ static void bt_disply_menu_sc_pair()
     printf("\n");
 }
 
+static void bt_disply_menu_rfcomm_cmd()
+{
+    printf("\n");
+    printf("######################################################\n");
+    printf("##                                                  ##\n");
+    printf("##           rfcomm cmd menu                        ##\n");
+    printf("##   1. close dlci                                  ##\n");
+    printf("##   2. send data              	                    ##\n");
+    printf("##   r. Return to last menu                         ##\n");
+    printf("##                                                  ##\n");
+    printf("######################################################\n");
+    printf("\n");
+}
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
@@ -5403,6 +6165,43 @@ void bt_hdl_sc_pincode(bts2_app_stru *bts2_app_data)
     }
 }
 
+void bt_hdl_rfcomm_cmd_hdl(bts2_app_stru *bts2_app_data)
+{
+    switch (bts2_app_data->input_str[0])
+    {
+    case '1':
+    {
+        extern void rfc_rel_req_send(U8 mux_id, U8 srv_chan);
+        uint8_t mux_id = bts2_app_data->input_str[1] - '0';
+        uint8_t srv_chan = atoi((const char *)bts2_app_data->input_str + 2);
+        rfc_rel_req_send(mux_id, srv_chan);
+    }
+    break;
+    case '2':
+    {
+        extern void rfc_data_req_send(U8 mux_id,
+                                      U8 srv_chan,
+                                      U16 credit,
+                                      U16 payload_len,
+                                      U8 * payload);
+
+        uint8_t *payload = bmalloc(6);
+        bmemcpy(payload,  bts2_app_data->input_str + 3, 5);
+        uint8_t mux_id = bts2_app_data->input_str[1] - '0';
+        uint8_t value = atoi((const char *)bts2_app_data->input_str + 2);
+
+        rfc_data_req_send(mux_id, value, 7, 5, payload);
+        break;
+    }
+    case 'r':
+        bts2_app_data->menu_id = menu_gen_4;
+        bt_disply_menu(bts2_app_data);
+        break;
+    default:
+        printf(">> input err...\n");
+        break;
+    }
+}
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
@@ -5782,6 +6581,11 @@ void bt_hdl_menu(bts2_app_stru *bts2_app_data)
     case menu_sc_pair:
     {
         bt_hdl_sc_pincode(bts2_app_data);
+        break;
+    }
+    case menu_rfcomm_cmd:
+    {
+        bt_hdl_rfcomm_cmd_hdl(bts2_app_data);
         break;
     }
     default:
@@ -6171,6 +6975,11 @@ void bt_disply_menu(bts2_app_stru *bts2_app_data)
     case menu_sc_pair:
     {
         bt_disply_menu_sc_pair();
+        break;
+    }
+    case menu_rfcomm_cmd:
+    {
+        bt_disply_menu_rfcomm_cmd();
         break;
     }
     default:

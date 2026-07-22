@@ -30,12 +30,25 @@ extern "C" {
 #define HFP_HF_FEAT_ENVR_EXT    0x0400      /*ENHANCED_VOICE_RECOGNITION_ST*/
 #define HFP_HF_FEAT_VREC_TEXT   0x0800
 
+#define HFP_HF_FEAT_VALID_MASK  0x00000FFF  /* Bits 0~11 valid */
+#define HFP_HF_FEAT_RFU_MASK    0xFFFFF000  /* Bits 12~31 reserved */
 /* Proprietary features: using bits after 12 */
 
 /* Pass unknown AT command responses to application */
 #define HFP_HF_FEAT_UNAT 0x1000
 #define HFP_HF_FEAT_VOIP 0x2000         /* VoIP call */
+#define HFP_HF_FEAT_SWB         0x4000         /* Super wide band speech */
 
+/* HFP HF SDP SupportedFeatures bit mask */
+#define HFP_HF_SDP_FEAT_ECNR        0x0001      /* Bit 0: EC and/or NR function */
+#define HFP_HF_SDP_FEAT_3WAY        0x0002      /* Bit 1: Call waiting or three-way calling */
+#define HFP_HF_SDP_FEAT_CLI         0x0004      /* Bit 2: CLI presentation capability */
+#define HFP_HF_SDP_FEAT_VREC        0x0008      /* Bit 3: Voice recognition activation */
+#define HFP_HF_SDP_FEAT_VOL         0x0010      /* Bit 4: Remote audio volume control */
+#define HFP_HF_SDP_FEAT_WBS         0x0020      /* Bit 5: Wide Band Speech */
+#define HFP_HF_SDP_FEAT_EVRS        0x0040      /* Bit 6: Enhanced Voice Recognition Status */
+#define HFP_HF_SDP_FEAT_VREC_TEXT   0x0080      /* Bit 7: Voice Recognition Text */
+#define HFP_HF_SDP_FEAT_SWBS        0x0100      /* Bit 8: Super Wide Band Speech */
 
 /* AG feature masks */
 #define HFP_AG_FEAT_3WAY    0x00000001      /* Three-way calling */
@@ -50,18 +63,33 @@ extern "C" {
 #define HFP_AG_FEAT_CODEC   0x00000200      /* Codec Negotiation */
 
 /* Valid feature bit mask for HFP 1.6 (and below) */
-#define HFP_1_6_FEAT_MASK   0x000003FF
 
 /* HFP 1.7+ */
 #define HFP_AG_FEAT_HF_IND  0x00000400      /* HF Indicators */
 #define HFP_AG_FEAT_ESCO    0x00000800      /* eSCO S4 (and T2) setting supported */
+#define HFP_AG_FEAT_EVRS        0x00001000      /* Bit 12: Enhanced Voice Recognition Status */
+#define HFP_AG_FEAT_VREC_TEXT   0x00002000      /* Bit 13: Voice Recognition Text */
 
+#define HFP_AG_FEAT_VALID_MASK  0x00003FFF      /* Bits 0~13 valid */
+#define HFP_AG_FEAT_RFU_MASK    0xFFFFC000      /* Bits 14~31 reserved */
 /* Proprietary features: using 31 ~ 16 bits */
 #define HFP_AG_FEAT_BTRH    0x00010000      /* CCAP incoming call hold */
 #define HFP_AG_FEAT_UNAT    0x00020000      /* Pass unknown AT commands to app */
 #define HFP_AG_FEAT_NOSCO   0x00040000      /* No SCO control performed by BTA AG */
 #define HFP_AG_FEAT_NO_ESCO 0x00080000      /* Do not allow or use eSCO */
 #define HFP_AG_FEAT_VOIP    0x00100000      /* VoIP call */
+#define HFP_AG_FEAT_SWB     0x00200000      /*Super wide band speech for 1.9*/
+#define HFP_AG_FEAT_VALID_MASK  0x00003FFF      /* Bits 0~13 valid */
+#define HFP_AG_FEAT_RFU_MASK    0xFFFFC000      /* Bits 14~31 reserved */
+#define HFP_AG_SDP_FEAT_3WAY        0x0001      /* Bit 0: Three-way calling */
+#define HFP_AG_SDP_FEAT_ECNR        0x0002      /* Bit 1: EC and/or NR function */
+#define HFP_AG_SDP_FEAT_VREC        0x0004      /* Bit 2: Voice recognition function */
+#define HFP_AG_SDP_FEAT_INBAND      0x0008      /* Bit 3: In-band ring tone capability */
+#define HFP_AG_SDP_FEAT_VTAG        0x0010      /* Bit 4: Attach a phone number for a voice tag */
+#define HFP_AG_SDP_FEAT_WBS         0x0020      /* Bit 5: Wide Band Speech */
+#define HFP_AG_SDP_FEAT_EVRS        0x0040      /* Bit 6: Enhanced Voice Recognition Status */
+#define HFP_AG_SDP_FEAT_VREC_TEXT   0x0080      /* Bit 7: Voice Recognition Text */
+#define HFP_AG_SDP_FEAT_SWBS        0x0100      /* Bit 8: Super Wide Band Speech */
 
 /* HFP errcode - Set when HFP_OK_ERROR is returned in 'ok_flag' */
 #define HFP_ERR_PHONE_FAILURE       0       /* Phone Failure */
@@ -246,6 +274,7 @@ typedef struct
     * 0x03 Transparent Data
     */
     U8 air_mode;
+    U8 codec_id;
 } BTS2S_HF_AUDIO_INFO;
 
 typedef struct

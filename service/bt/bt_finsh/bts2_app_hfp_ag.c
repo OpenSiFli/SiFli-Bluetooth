@@ -23,6 +23,15 @@
     #include "bt_rt_device.h"
 #endif
 
+#ifndef HFP_AG_LOCAL_FEATURES
+#define HFP_AG_LOCAL_FEATURES  (HFP_AG_FEAT_ECNR   | \
+                                HFP_AG_FEAT_INBAND | \
+                                HFP_AG_FEAT_REJECT | \
+                                HFP_AG_FEAT_ECS    | \
+                                HFP_AG_FEAT_EXTERR | \
+                                HFP_AG_FEAT_CODEC  | \
+                                HFP_AG_FEAT_ESCO)
+#endif
 #ifndef BT_USING_AG
 uint8_t g_flag_auto_answer_call = 1;
 
@@ -31,6 +40,12 @@ __WEAK uint8_t bt_hfp_ag_set_auto_answer_call_default()
     return g_flag_auto_answer_call;
 }
 #endif
+
+
+__WEAK uint32_t bt_hfp_ag_local_feature()
+{
+    return HFP_AG_LOCAL_FEATURES;
+}
 
 /*******************************************device info func start**********************************************/
 static void bt_hfp_ag_app_init_device_info(bts2_hfp_ag_inst_data *ag_data)
@@ -714,6 +729,15 @@ void bt_hfp_ag_msg_hdl(bts2_app_stru *bts2_app_data)
             sco_info.para.rx_pkt_len = msg->rx_pkt_len;
             sco_info.para.tx_pkt_len = msg->tx_pkt_len;
             sco_info.para.air_mode = msg->air_mode;
+
+            if (inst_data->local_feature & HFP_AG_FEAT_SWB)
+            {
+                sco_info.para.codec_id = msg->codec_id;
+            }
+            else
+            {
+                sco_info.para.codec_id = msg->air_mode;
+            }
             bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_SCO_CONNECTED,
                                          &sco_info, sizeof(bt_notify_device_sco_info_t));
         }
@@ -840,7 +864,7 @@ void bt_hfp_ag_app_init(bts2_app_stru *bts2_app_data)
         // bts2_app_data->hfp_ag_inst.srv_chnl = 0xff;
         // bts2_app_data->hfp_ag_inst.profile_state = HFP_DEVICE_DISCONNECTED;
         // bts2_app_data->hfp_ag_inst.pre_profile_state = HFP_DEVICE_DISCONNECTED;
-        // bts2_app_data->hfp_ag_inst.call_state = HFP_CALL_IDLE;
+        bts2_app_data->hfp_ag_inst.local_feature = bt_hfp_ag_local_feature();
         bt_hfp_ag_app_init_device_info(&bts2_app_data->hfp_ag_inst);
         bt_hfp_ag_app_profile_service_update(&bts2_app_data->hfp_ag_inst, HFP_AG_APP_INIT);
         bmemset(&g_remote_calls_info, 0x00, sizeof(hfp_phone_call_info_t));
@@ -858,14 +882,7 @@ void bt_hfp_start_profile_service(bts2_app_stru *bts2_app_data)
     {
     case HFP_AG_APP_INIT:
     {
-        U32 features = (U32)(HFP_AG_FEAT_ECNR   | \
-                             HFP_AG_FEAT_INBAND | \
-                             HFP_AG_FEAT_REJECT | \
-                             HFP_AG_FEAT_ECS    | \
-                             HFP_AG_FEAT_EXTERR | \
-                             HFP_AG_FEAT_CODEC  | \
-                             HFP_AG_FEAT_ESCO);
-        hfp_ag_register(features);
+        hfp_ag_register(ptr->local_feature);
         bt_hfp_ag_app_profile_service_update(ptr, HFP_AG_APP_OPENING);
         break;
     }
@@ -1095,6 +1112,3 @@ void bt_hfp_ag_at_result_res(U8 mux_id, U8 res)
 }
 
 #endif
-
-
-
