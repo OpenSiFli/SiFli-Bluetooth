@@ -1666,10 +1666,10 @@ void bt_avsnk_hdl_streamdata_ind(bts2s_av_inst_data *inst, uint8_t con_idx, BTS2
         {
 #ifdef A2DP_RELAY_SERVICE
             // resume
-            if (inst->snk_data.slience_count > (SINK_DATA_LIST_MAX_THRESHOLD + 2))
+            if (inst->con[con_idx].snk_data.slience_count > (SINK_DATA_LIST_MAX_THRESHOLD + 2))
             {
                 LOG_I("silence start");
-                a2dp_relay_start(inst->snk_data.codec, inst->con[con_idx].act_cfg.chnl_mode, inst->con[con_idx].act_cfg.alloc_method,
+                a2dp_relay_start(inst->con[con_idx].snk_data.codec, inst->con[con_idx].act_cfg.chnl_mode, inst->con[con_idx].act_cfg.alloc_method,
                                  inst->con[con_idx].act_cfg.sample_freq, inst->con[con_idx].act_cfg.blocks,
                                  inst->con[con_idx].act_cfg.subbands, inst->con[con_idx].act_cfg.bit_pool,
                                  SINK_DATA_LIST_START_THRESHOLD, SINK_DATA_LIST_MAX_THRESHOLD, 0);
@@ -1686,10 +1686,10 @@ void bt_avsnk_hdl_streamdata_ind(bts2s_av_inst_data *inst, uint8_t con_idx, BTS2
 
 #ifdef A2DP_RELAY_SERVICE
         uint32_t left_byte = 0;
-        if (inst->snk_data.audio_client)
+        if (inst->con[con_idx].snk_data.audio_client)
         {
-            uint8_t left_cnt = inst->snk_data.playlist.cnt;
-            audio_ioctl(inst->snk_data.audio_client, 3, &left_byte);
+            uint8_t left_cnt = inst->con[con_idx].snk_data.playlist.cnt;
+            audio_ioctl(inst->con[con_idx].snk_data.audio_client, 3, &left_byte);
             LOG_I("cnt[%d] %d, %d", count++, left_cnt, left_byte);
             a2dp_relay_transfer(msg->data, msg->len, left_cnt, left_byte);
         }
