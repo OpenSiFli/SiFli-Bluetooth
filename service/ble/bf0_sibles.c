@@ -44,6 +44,10 @@
 // this may alloc a big value
 #define LAST_SVC_LEN 40
 
+#ifdef BLE_GATT_CLIENT
+    #define SIBLES_MAX_WR_NODE 20
+#endif
+
 #define LOG_TAG "sibles"
 #include "log.h"
 
@@ -109,10 +113,21 @@ struct sibles_remote_svc_env
     sibles_remote_svc_cbk callback;
 };
 
+#ifdef BLE_GATT_CLIENT
+struct sibles_cached_value
+{
+    uint8_t conn_idx;
+    uint16_t handle;
+    uint16_t length;
+    uint8_t value[__ARRAY_EMPTY];
+};
+#endif
+
 struct sibles_rte_wr_info
 {
     rt_slist_t   next;
-    struct sibles_value_write_req_content_t *value;
+    uint16_t msg;
+    void *value;
 };
 
 struct sibles_env
@@ -323,7 +338,6 @@ void sibles_clear_wr_list(uint8_t conn_idx)
     rt_slist_t *fir_node = rt_slist_first(&(g_sibles.wr_node));
     rt_exit_critical();
     struct sibles_rte_wr_info *info;
-    struct sibles_value_write_req_content_t *msginfo;
     uint8_t  buffer_num;
     rt_slist_t *nex_node;
 
@@ -333,13 +347,16 @@ void sibles_clear_wr_list(uint8_t conn_idx)
         rt_enter_critical();
         nex_node = rt_slist_next(fir_node);
 
-        if (info->value->conn_idx == conn_idx)
+        if ((info->msg == SIBLES_VALUE_NTF_IND &&
+                ((struct sibles_cached_value *)info->value)->conn_idx == conn_idx) ||
+                (info->msg != SIBLES_VALUE_NTF_IND &&
+                 ((struct sibles_value_write_req_content_t *)info->value)->conn_idx == conn_idx))
         {
+            void *cached_value = info->value;
             rt_slist_remove(&(g_sibles.wr_node), fir_node);
             rt_exit_critical();
-            msginfo = info->value;
             bt_mem_free(fir_node);
-            bt_mem_free(msginfo);
+            bt_mem_free(cached_value);
             fir_node = nex_node;
         }
         else
@@ -362,8 +379,10 @@ void sibles_check_wr_list_msg(void)
 #endif //BLE_GATT_CLIENT
     struct sibles_rte_wr_info *info;
     struct sibles_value_write_req_content_t *msginfo;
+    struct sibles_cached_value *cached_value;
     sifli_task_id_t task_id = g_sibles.app_task_id;
     uint8_t conn_idx;
+    uint16_t msg;
 
 #ifdef BLE_GATT_CLIENT
     if (NULL == fir_node)
@@ -379,21 +398,50 @@ void sibles_check_wr_list_msg(void)
     rt_slist_remove(&(g_sibles.wr_node), fir_node);
     rt_exit_critical();
     info = (struct sibles_rte_wr_info *)fir_node;
-    msginfo = info->value;
-    bt_mem_free(fir_node);
-
-    conn_idx = msginfo->conn_idx;
-    struct sibles_value_write_req_t *req = (struct sibles_value_write_req_t *)sifli_msg_alloc(SIBLES_VALUE_WRITE_REQ,
-                                           TASK_BUILD_ID(task_id, conn_idx), TASK_BUILD_ID(sifli_get_stack_id(), conn_idx), sizeof(struct sibles_value_write_req_t) +  msginfo->length);
-    req->write_type = msginfo->write_type;
-    req->seq_num = msginfo->seq_num;
-    req->handle = msginfo->handle;
-    req->length =  msginfo->length;
-    memcpy(req->value, msginfo->value, msginfo->length);
-    sifli_msg_send((void const *)req);
-
-
-    bt_mem_free(msginfo);
+    msg = info->msg;
+    if (msg == SIBLES_VALUE_NTF_IND)
+    {
+        cached_value = (struct sibles_cached_value *)info->value;
+        bt_mem_free(fir_node);
+        conn_idx = cached_value->conn_idx;
+        struct sibles_value *req = (struct sibles_value *)sifli_msg_alloc(msg,
+                                   TASK_BUILD_ID(task_id, conn_idx), TASK_BUILD_ID(sifli_get_stack_id(), conn_idx),
+                                   sizeof(struct sibles_value) + cached_value->length);
+        if (req != NULL)
+        {
+            req->hdl = (uint8_t)cached_value->handle;
+            req->length = cached_value->length;
+            memcpy(req->data, cached_value->value, cached_value->length);
+            sifli_msg_send((void const *)req);
+        }
+        else
+        {
+            LOG_E("sibles notify cache message alloc failed, len %d\n", cached_value->length);
+        }
+        bt_mem_free(cached_value);
+    }
+    else
+    {
+        msginfo = (struct sibles_value_write_req_content_t *)info->value;
+        bt_mem_free(fir_node);
+        conn_idx = msginfo->conn_idx;
+        struct sibles_value_write_req_t *req = (struct sibles_value_write_req_t *)sifli_msg_alloc(msg,
+                                               TASK_BUILD_ID(task_id, conn_idx), TASK_BUILD_ID(sifli_get_stack_id(), conn_idx), sizeof(struct sibles_value_write_req_t) +  msginfo->length);
+        if (req != NULL)
+        {
+            req->write_type = msginfo->write_type;
+            req->seq_num = msginfo->seq_num;
+            req->handle = msginfo->handle;
+            req->length =  msginfo->length;
+            memcpy(req->value, msginfo->value, msginfo->length);
+            sifli_msg_send((void const *)req);
+        }
+        else
+        {
+            LOG_E("sibles remote write cache message alloc failed, len %d\n", msginfo->length);
+        }
+        bt_mem_free(msginfo);
+    }
 #endif //BLE_GATT_CLIENT
 }
 
@@ -1426,8 +1474,75 @@ int sibles_write_value(uint8_t conn_idx, sibles_value_t *value)
     send_val.len = value->len;
     send_val.value = value->value;
 
+#ifdef BLE_GATT_CLIENT
+    if (sibles_acquire_tx_pkts() == 0)
+    {
+        struct sibles_rte_wr_info *node;
+        uint8_t buffer_num = sibles_get_slist_len(&g_sibles.wr_node);
+
+        if (buffer_num >= SIBLES_MAX_WR_NODE)
+        {
+            LOG_W("no buff for sibles write value!");
+            return 0;
+        }
+
+        LOG_D("notify: buffer tx_num t_pkt %d %d\n", buffer_num, g_sibles.num_of_tx_pkt);
+
+        struct sibles_cached_value *value_req;
+        value_req = bt_mem_alloc(sizeof(struct sibles_cached_value) + value->len);
+        node = bt_mem_alloc(sizeof(struct sibles_rte_wr_info));
+        if (value_req == NULL || node == NULL)
+        {
+            if (value_req)
+                bt_mem_free(value_req);
+            if (node)
+                bt_mem_free(node);
+            return 0;
+        }
+
+        rt_enter_critical();
+        if (sibles_get_tx_pkts() == 0 &&
+                sibles_get_slist_len(&g_sibles.wr_node) < SIBLES_MAX_WR_NODE)
+        {
+            value_req->conn_idx = conn_idx;
+            value_req->handle = send_val.hdl;
+            value_req->length = value->len;
+            memcpy(value_req->value, value->value, value->len);
+            memset(node, 0, sizeof(struct sibles_rte_wr_info));
+            node->msg = SIBLES_VALUE_NTF_IND;
+            node->value = value_req;
+            rt_slist_append(&g_sibles.wr_node, (rt_slist_t *)node);
+            rt_exit_critical();
+            return send_val.len;
+        }
+
+        /*
+         * The TX window may have been released while the cache node was
+         * being allocated.  In that case consume the newly available
+         * window before sending directly.  Without this decrement, the
+         * following response increments num_of_tx_pkt without a matching
+         * acquisition and eventually trips the MAX_NUM_OF_TX_PKT assert.
+         */
+        if (g_sibles.num_of_tx_pkt != 0)
+        {
+            //LOG_I("released buffer while malloc");
+            g_sibles.num_of_tx_pkt--;
+        }
+        else
+        {
+            rt_exit_critical();
+            bt_mem_free(node);
+            bt_mem_free(value_req);
+            return 0;
+        }
+        rt_exit_critical();
+        bt_mem_free(node);
+        bt_mem_free(value_req);
+    }
+#else
     if (sibles_acquire_tx_pkts() == 0)
         return 0;
+#endif
     sibles_send_value(conn_idx, &send_val);
     //svc->svc_status = SIBLES_BUSY;
     //sifli_sem_take();
@@ -1643,7 +1758,7 @@ int8_t sibles_write_remote_value(uint16_t remote_handle, uint8_t conn_idx, sible
 
     acq_tx = sibles_acquire_tx_pkts();
     LOG_D("send:acq_tx, buffer tx_num t_pkt %d %d %d\n", acq_tx, buffer_num, g_sibles.num_of_tx_pkt);
-    if ((0 == acq_tx) && (20 == buffer_num))
+    if ((0 == acq_tx) && (SIBLES_MAX_WR_NODE == buffer_num))
     {
         LOG_W("no buff for sibles write!");
         return SIBLES_WIRTE_TX_FLOWCTRL_ERR;
@@ -1659,7 +1774,8 @@ int8_t sibles_write_remote_value(uint16_t remote_handle, uint8_t conn_idx, sible
         if (wr_req && node)
         {
             rt_enter_critical();
-            if (sibles_get_tx_pkts() == 0)
+            if (sibles_get_tx_pkts() == 0 &&
+                    sibles_get_slist_len(&g_sibles.wr_node) < SIBLES_MAX_WR_NODE)
             {
                 wr_req->conn_idx = conn_idx;
                 wr_req->write_type = value->write_type;
@@ -1668,6 +1784,7 @@ int8_t sibles_write_remote_value(uint16_t remote_handle, uint8_t conn_idx, sible
                 wr_req->length =  value->len;
                 memcpy(wr_req->value, value->value, value->len);
                 memset(node, 0, sizeof(struct sibles_rte_wr_info));
+                node->msg = SIBLES_VALUE_WRITE_REQ;
                 node->value = wr_req;
                 rt_slist_append(&g_sibles.wr_node, (rt_slist_t *)node);
                 rt_exit_critical();
