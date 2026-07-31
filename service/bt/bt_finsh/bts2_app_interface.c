@@ -1105,16 +1105,6 @@ bt_err_t bt_interface_avrcp_get_cover_art(bt_notify_device_mac_t *rmt_addr)
 #endif
 #endif
 
-#ifdef CFG_AVRCP_COVER_ART
-bt_err_t bt_interface_avrcp_get_cover_art(BTS2S_BD_ADDR *addr)
-{
-    bt_err_t ret = BT_EOK;
-    bts2_app_stru *bts2_app_data = bts2g_app_p;
-    ret = bt_avrcp_cover_art_get_linked_thumbnail(bts2_app_data, addr);
-    return ret;
-}
-#endif
-
 /// @}  BT_AVRCP_SRV
 
 
