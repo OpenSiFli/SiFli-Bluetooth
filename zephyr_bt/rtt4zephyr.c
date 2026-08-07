@@ -91,8 +91,8 @@ rt_tick_t k_work_delayable_remaining_get(const struct rt_delayed_work *dwork)
 {
     rt_tick_t t = 0;
 
-    if (dwork->timer.timeout_tick > rt_tick_get())
-        t = dwork->timer.timeout_tick - rt_tick_get();
+    if (dwork->work.timeout_tick > rt_tick_get())
+        t = dwork->work.timeout_tick - rt_tick_get();
 
     return t;
 }
@@ -106,8 +106,8 @@ int k_work_reschedule2(struct rt_delayed_work *dwork, rt_tick_t delay)
         rt_work_init(&(dwork->work), dwork->work.work_func, dwork->work.work_data);
 
     t.ticks = delay;
-    if (dwork->workqueue)
-        r = rt_workqueue_cancel_work(dwork->workqueue, &(dwork->work));
+    if (dwork->work.workqueue)
+        r = rt_workqueue_cancel_work(dwork->work.workqueue, &(dwork->work));
     r = k_work_schedule(dwork, t);
     return r;
 }
