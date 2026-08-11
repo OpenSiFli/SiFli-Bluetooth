@@ -659,12 +659,15 @@ void bt_avsrc_hdl_disc_handler(bts2s_av_inst_data *inst, uint8_t con_idx)
     inst->con[con_idx].pending_cmd = 0xff;
 
 #ifdef AUDIO_USING_MANAGER
-    if ((send_timer_added == 1) && (bt_av_get_src_streaming_number() == 0))
+    if (bt_av_get_src_streaming_number() == 0)
     {
         inst->src_data.stream_frm_time_begin = 0;
-        bts2_timer_ev_cancel(inst->src_data.tid, NULL, NULL);
-        inst->src_data.tid = 0;
-        send_timer_added = 0;
+        if (send_timer_added == 1)
+        {
+            bts2_timer_ev_cancel(inst->src_data.tid, NULL, NULL);
+            inst->src_data.tid = 0;
+            send_timer_added = 0;
+        }
     }
 #endif
 

@@ -49,8 +49,8 @@
     #define  BIT_RATE_DEAFLUT                  (327)
     #define  MAX_BIT_POOL                      (0x35)
 #else
-    #define  SINK_DATA_LIST_START_THRESHOLD    (30)
-    #define  SINK_DATA_LIST_MAX_THRESHOLD      (40)
+    #define  SINK_DATA_LIST_START_THRESHOLD    (10)
+    #define  SINK_DATA_LIST_MAX_THRESHOLD      (30)
     #define  BIT_RATE_DEAFLUT                  (229)
     #define  MAX_BIT_POOL                      (0x19)
 #endif
