@@ -1767,6 +1767,7 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
         if (msg->audio_on == TRUE)
         {
             USER_TRACE("<< Audio connected codec_id %d\n", msg->codec_id);
+            USER_TRACE("<< Audio connected air_mode %d\n", msg->air_mode);
             // sco handle: Packet_Status_Flag inside if any.
             if (device_info)
             {
@@ -1793,7 +1794,7 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
             }
             else
             {
-                sco_info.para.codec_id = msg->air_mode;
+                sco_info.para.codec_id = 0xFF;
             }
             bt_addr_convert_to_general(&msg->bd, (bd_addr_t *)&sco_info.para.bd);
             bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_SCO_CONNECTED,

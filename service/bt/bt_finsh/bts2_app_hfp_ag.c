@@ -736,7 +736,7 @@ void bt_hfp_ag_msg_hdl(bts2_app_stru *bts2_app_data)
             }
             else
             {
-                sco_info.para.codec_id = msg->air_mode;
+                sco_info.para.codec_id = 0xFF;
             }
             bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_SCO_CONNECTED,
                                          &sco_info, sizeof(bt_notify_device_sco_info_t));
