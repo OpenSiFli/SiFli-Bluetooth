@@ -191,7 +191,7 @@ typedef struct
     U16 peer_features;
     U16 sco_hdl;
     BTS2S_BD_ADDR         hfp_bd;
-    bts2_hfp_hf_cind cind_status;
+    hfp_cind_status_t cind_status;
 } bts2_hfp_hf_device_info;
 
 typedef struct

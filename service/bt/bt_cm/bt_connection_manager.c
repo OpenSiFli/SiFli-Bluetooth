@@ -2013,6 +2013,18 @@ void bt_cm(uint8_t argc, char **argv)
             bt_pbap_client_connect_request(&bd_addr, FALSE);
         }
 #endif
+        else if (strcmp(argv[1], "hci_dis") == 0)
+        {
+            BTS2S_BD_ADDR bd_addr;
+            bd_addr.nap = strtol(argv[2], NULL, 0);
+            bd_addr.uap = strtol(argv[3], NULL, 0);
+            bd_addr.lap = strtol(argv[4], NULL, 0);
+            LOG_I("hci disconn addr: %04X:%02X:%06lX",
+                  bd_addr.nap,
+                  bd_addr.uap,
+                  bd_addr.lap);
+            gap_disconnect_req(&bd_addr);
+        }
     }
 }
 #ifdef BSP_BQB_TEST

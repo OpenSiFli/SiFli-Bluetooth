@@ -60,7 +60,7 @@ static void bt_hfp_hf_app_init_device_info(bts2_hfp_hf_inst_data *hf_data)
             hf_data->devices_info[i].profile_type = HF_CONN;
             hf_data->devices_info[i].sco_hdl = 0xffff;
             hf_data->devices_info[i].peer_features = 0x0000;
-            bmemset(&hf_data->devices_info[i].cind_status, 0x00, sizeof(bts2_hfp_hf_cind));
+            bmemset(&hf_data->devices_info[i].cind_status, 0x00, sizeof(hfp_cind_status_t));
         }
     }
 }
@@ -125,7 +125,7 @@ static void bt_hfp_hf_app_dealloc_device(bts2_hfp_hf_device_info *device)
         device->profile_type = HF_CONN;
         device->sco_hdl = 0xffff;
         device->peer_features = 0x0000;
-        bmemset(&device->cind_status, 0x00, sizeof(bts2_hfp_hf_cind));
+        bmemset(&device->cind_status, 0x00, sizeof(hfp_cind_status_t));
     }
 }
 
@@ -1599,11 +1599,11 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
 
                 bt_notify_all_call_status call_info;
                 call_info.profile_channel = msg->mux_id;
-                call_info.call_status = device_info->cind_status.callStatus;
-                call_info.callsetup_status = device_info->cind_status.callSetupStatus;
-                call_info.callheld_status = device_info->cind_status.callHeldStatus;
-                call_info.roam = device_info->cind_status.roam;
-                call_info.service = device_info->cind_status.service;
+                call_info.call_status = device_info->cind_status.call;
+                call_info.callsetup_status = device_info->cind_status.callsetup;
+                call_info.callheld_status = device_info->cind_status.callheld;
+                call_info.roam = device_info->cind_status.roam_status;
+                call_info.service = device_info->cind_status.service_status;
                 call_info.signal = device_info->cind_status.signal;
                 call_info.batt_level = device_info->cind_status.batt_level;
                 bt_interface_bt_event_notify(BT_NOTIFY_HFP_HF, BT_NOTIFY_HF_CALL_STATUS_UPDATE,
@@ -2046,7 +2046,7 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
         BTS2S_HF_CALL_STATUS_IND  *msg;
         msg = (BTS2S_HF_CALL_STATUS_IND *)bts2_app_data->recv_msg;
         USER_TRACE("cind call status %d callHeldStatus %d callSetupStatus %d",
-                   msg->cind_status.callStatus, msg->cind_status.callHeldStatus, msg->cind_status.callSetupStatus);
+                   msg->cind_status.call, msg->cind_status.callheld, msg->cind_status.callsetup);
 
         bts2_hfp_hf_device_info *device_info = bt_hfp_hf_app_get_device_by_mux_id(inst_data, msg->mux_id);
         if (!device_info)
@@ -2059,11 +2059,11 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
         }
         if (device_info)
         {
-            device_info->cind_status.callStatus = msg->cind_status.callStatus;
-            device_info->cind_status.callHeldStatus = msg->cind_status.callHeldStatus;
-            device_info->cind_status.callSetupStatus = msg->cind_status.callSetupStatus;
-            device_info->cind_status.roam = msg->cind_status.roam;
-            device_info->cind_status.service = msg->cind_status.service;
+            device_info->cind_status.call = msg->cind_status.call;
+            device_info->cind_status.callheld = msg->cind_status.callheld;
+            device_info->cind_status.callsetup = msg->cind_status.callsetup;
+            device_info->cind_status.roam_status = msg->cind_status.roam_status;
+            device_info->cind_status.service_status = msg->cind_status.service_status;
             device_info->cind_status.signal = msg->cind_status.signal;
             device_info->cind_status.batt_level = msg->cind_status.batt_level;
             break;
@@ -2071,11 +2071,11 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
 
         bt_notify_all_call_status call_info;
         call_info.profile_channel = msg->mux_id;
-        call_info.call_status = msg->cind_status.callStatus;
-        call_info.callsetup_status = msg->cind_status.callSetupStatus;
-        call_info.callheld_status = msg->cind_status.callHeldStatus;
-        call_info.roam = msg->cind_status.roam;
-        call_info.service = msg->cind_status.service;
+        call_info.call_status = msg->cind_status.call;
+        call_info.callsetup_status = msg->cind_status.callsetup;
+        call_info.callheld_status = msg->cind_status.callheld;
+        call_info.roam = msg->cind_status.roam_status;
+        call_info.service = msg->cind_status.service_status;
         call_info.signal = msg->cind_status.signal;
         call_info.batt_level = msg->cind_status.batt_level;
         bt_interface_bt_event_notify(BT_NOTIFY_HFP_HF, BT_NOTIFY_HF_CALL_STATUS_UPDATE,

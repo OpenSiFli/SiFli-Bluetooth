@@ -409,7 +409,7 @@ typedef struct
     U16  type;
     U8 profile_type;
     U8 mux_id;
-    bts2_hfp_hf_cind cind_status;
+    hfp_cind_status_t cind_status;
 } BTS2S_HF_CALL_STATUS_IND;
 
 typedef struct
