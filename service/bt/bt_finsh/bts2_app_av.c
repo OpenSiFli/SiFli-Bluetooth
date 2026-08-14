@@ -1936,11 +1936,13 @@ static void bt_av_hdl_suspend_cfm(bts2_app_stru *bts2_app_data)
 #ifdef CFG_AV_SRC
         if (bt_av_get_src_streaming_number() == 0)
         {
+#ifdef AUDIO_USING_MANAGER
             if (inst->src_data.tid)
             {
                 bts2_timer_ev_cancel(inst->src_data.tid, NULL, NULL);
                 inst->src_data.tid = 0;
             }
+#endif
             inst->src_data.stream_frm_time_begin = 0;
         }
         U8 play_status = bt_av_get_a2dp_stream_state(&inst->con[con_idx].av_rmt_addr);
