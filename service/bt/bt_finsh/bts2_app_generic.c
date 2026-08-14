@@ -1021,6 +1021,16 @@ void bt_hdl_sc_msg(bts2_app_stru *bts2_app_data)
         bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_KEY_OVERLAID, addr, 6);
         break;
     }
+    case BTS2MU_SC_STORE_LINK_KEY_CFM:
+    {
+        BTS2S_SC_STORE_LINK_KEY_CFM  *msg = (BTS2S_SC_STORE_LINK_KEY_CFM *) bts2_app_data->recv_msg;
+        USER_TRACE("BTS2MU_SC_STORE_LINK_KEY_CFM");
+        USER_TRACE("BTS2MU_SC_STORE_LINK_KEY_CFM bd: %04X:%02X:%06lX, res:%d\n",
+                   msg->bd.nap,
+                   msg->bd.uap,
+                   msg->bd.lap, msg->res);
+        break;
+    }
 
     default:
     {

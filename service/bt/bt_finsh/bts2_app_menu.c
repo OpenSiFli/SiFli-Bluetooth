@@ -592,6 +592,7 @@ static void bt_disply_menu_gen_4(void)
     printf("##   3. Set security mode                           ##\n");
     printf("##   4. Read paired device db                       ##\n");
     printf("##   5. Delete all paired records                   ##\n");
+    printf("##   6. change linkey save type                     ##\n");
     printf("##   s. Show Menu                                   ##\n");
     printf("##   r. Return to last menu                         ##\n");
     printf("##                                                  ##\n");
@@ -634,6 +635,22 @@ static void bt_hdl_menu_gen_4(bts2_app_stru *bts2_app_data)
     case '5':
         sc_unpair_req(bts2_app_data->phdl, NULL);
         break;
+    case '6':
+    {
+        BTS2S_BD_ADDR bd;
+        int reuslt = 0;
+        uint32_t mac[6];
+        reuslt = sscanf((const char *)bts2_app_data->input_str + 1, "%02X%02X%02X%02X%02X%02X", \
+                        &mac[0], &mac[1], \
+                        &mac[2], &mac[3], \
+                        &mac[4], &mac[5]);
+        bd.lap = (mac[3] << 16) | (mac[4] << 8) | mac[5];
+        bd.uap = (U8)mac[2];
+        bd.nap = (U16)((mac[0] << 8) | mac[1]);
+        U8 id = atoi((const char *)bts2_app_data->input_str + 13);
+        sc_store_link_key_req(bts2_task_get_app_task_id(), &bd, id);
+        break;
+    }
     case 's':
         bt_disply_menu(bts2_app_data);
         break;

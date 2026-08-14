@@ -30,6 +30,7 @@ enum
     BTS2MU_SC_USER_CFM_REQ_RSP,
     BTS2MD_SC_UPDATE_DEV_REQ,
     BTS2MD_SC_RD_PAIRED_DEV_KEY_REQ,
+    BTS2MD_SC_STORE_LINK_KEY_REQ,
 
     BTS2MU_SC_PASSKEY_IND = BTS2MU_START,
     BTS2MU_SC_PAIR_CFM,
@@ -50,6 +51,7 @@ enum
     BTS2MU_SC_RMT_OOB_DATA_CFM,
     BTS2MU_SC_RD_PAIRED_DEV_KEY_CFM,
     BTS2MU_SC_PAIRED_DEV_KEY_DELETE_CFM,
+    BTS2MU_SC_STORE_LINK_KEY_CFM,
 };
 
 #define SC_RECV_MSG_NUM      (BTS2MD_SC_UPDATE_DEV_REQ - BTS2MD_START + 1)
@@ -77,6 +79,12 @@ typedef enum
     SC_MITM_AND_GENERAL_BONDING_REQUIRE, /* MITM Protection Required – General Bonding */
     SC_UNKNOWN_AUTH_REQUIREMENTS /* Unrecognized authentication requirements */
 } BTS2E_AUTH_REQUIREMENTS;
+
+typedef enum
+{
+    SC_DB_RECORD_REPLACEABLE,  /* The device record can be overwritten */
+    SC_DB_RECORD_PROTECTED,    /* The device record cannot be overwritten */
+} BTS2E_SC_DB_RECORD_REPLACE_TYPE;
 
 typedef struct
 {
@@ -348,6 +356,20 @@ typedef struct
     U8 res;
 } BTS2S_SC_PAIRED_DEV_DELETE_KEY_CFM;
 
+typedef struct
+{
+    U16           type;           /* BTS2MD_SC_STORE_LINK_KEY_REQ */
+    U16           tid;            /* Requester task ID */
+    BTS2S_BD_ADDR bd;             /* Remote Bluetooth address */
+    BTS2E_SC_DB_RECORD_REPLACE_TYPE overwrite_type;
+} BTS2S_SC_STORE_LINK_KEY_REQ;
+
+typedef struct
+{
+    U16           type; /* BTS2MU_SC_STORE_LINK_KEY_CFM */
+    U8            res;  /* BTS2_SUCC / BTS2_FAILED */
+    BTS2S_BD_ADDR bd;   /* Remote Bluetooth address */
+} BTS2S_SC_STORE_LINK_KEY_CFM;
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
@@ -512,6 +534,9 @@ void sc_rd_dev_record_req(U16 tid, U32 byte_max_num);
  *----------------------------------------------------------------------------*/
 void sc_rd_paired_dev_record_req(U16 tid);
 
+void sc_store_link_key_req(U16 tid,
+                           BTS2S_BD_ADDR *bd,
+                           BTS2E_SC_DB_RECORD_REPLACE_TYPE overwrite_type);
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
