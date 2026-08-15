@@ -500,13 +500,10 @@ uint8_t sibles_advertising_update_adv_and_scan_rsp_data(sibles_advertising_conte
             if (ret != SIBLES_ADV_NO_ERR)
                 break;
 
-            if (context->state == SIBLES_ADV_STATE_STARTED)
+            if (context->adv_data)
             {
-                if (context->adv_data)
-                {
-                    context->adv_data->actv_idx = context->adv_idx;
-                    ble_gap_set_adv_data(context->adv_data);
-                }
+                context->adv_data->actv_idx = context->adv_idx;
+                ble_gap_set_adv_data(context->adv_data);
             }
         }
 
@@ -531,13 +528,10 @@ uint8_t sibles_advertising_update_adv_and_scan_rsp_data(sibles_advertising_conte
             if (ret != SIBLES_ADV_NO_ERR)
                 break;
 
-            if (context->state == SIBLES_ADV_STATE_STARTED)
+            if (context->scan_rsp_data)
             {
-                if (context->scan_rsp_data)
-                {
-                    context->scan_rsp_data->actv_idx = context->adv_idx;
-                    ble_gap_set_scan_rsp_data(context->scan_rsp_data);
-                }
+                context->scan_rsp_data->actv_idx = context->adv_idx;
+                ble_gap_set_scan_rsp_data(context->scan_rsp_data);
             }
 
         }
@@ -580,13 +574,10 @@ uint8_t sibles_advertising_update_periodic_data(sibles_advertising_context_t *co
             context->periodic_data->length = periodic_data->len;
             memcpy(context->periodic_data->data, periodic_data->data, periodic_data->len);
 
-            if (context->state >= SIBLES_ADV_STATE_READY)
+            if (context->periodic_data)
             {
-                if (context->periodic_data)
-                {
-                    context->periodic_data->actv_idx = context->adv_idx;
-                    ble_gap_set_periodic_adv_data(context->periodic_data);
-                }
+                context->periodic_data->actv_idx = context->adv_idx;
+                ble_gap_set_periodic_adv_data(context->periodic_data);
             }
         }
 
