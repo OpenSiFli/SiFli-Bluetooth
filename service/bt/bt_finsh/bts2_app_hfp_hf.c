@@ -151,7 +151,7 @@ static bts2_hfp_hf_inst_data *bt_hfp_hf_get_context()
     return bts2_app_data->hfp_hf_ptr;
 }
 
-static U8 bt_hfp_is_support_feature(bts2_hfp_hf_device_info *device_info, U16 feature)
+static U8 bt_hfp_is_support_feature(bts2_hfp_hf_device_info *device_info, U32 feature)
 {
     if (device_info && (device_info->peer_features & feature))
     {

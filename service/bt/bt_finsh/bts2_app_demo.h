@@ -188,7 +188,7 @@ typedef struct
     U8 esco_flag;
     BOOL voice_flag;
 
-    U16 peer_features;
+    U32 peer_features;
     U16 sco_hdl;
     BTS2S_BD_ADDR         hfp_bd;
     hfp_cind_status_t cind_status;
