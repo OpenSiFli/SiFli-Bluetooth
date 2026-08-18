@@ -639,6 +639,62 @@ uint8_t ble_gap_scan_stop(void)
     return ret;
 }
 
+uint8_t ble_gap_scan_set_adv_filter(ble_gap_scan_set_adv_filter_cmd_t *filter_param)
+{
+    BLE_GAP_EMPTY_CHECK(filter_param);
+
+    if (filter_param->len > GAP_MAX_SCAN_ADV_FILTER_LEN)
+        return GAP_ERR_INVALID_PARAM;
+
+    struct gapm_set_scan_adv_filter_cmd *cmd = sifli_msg_alloc(GAPM_SET_SCAN_ADV_FILTER_CMD,
+            TASK_ID_GAPM, sifli_get_stack_id(),
+            sizeof(struct gapm_set_scan_adv_filter_cmd) + filter_param->len);
+    cmd->operation = GAPM_SET_SCAN_ADV_FILTER;
+    cmd->idx = filter_param->idx;
+    cmd->is_enable = filter_param->is_enable;
+    if (cmd->is_enable)
+    {
+        cmd->filter_type = filter_param->filter_type;
+        cmd->adv_type = filter_param->adv_type;
+        cmd->len = filter_param->len;
+        memcpy(cmd->data, filter_param->data, filter_param->len);
+    }
+
+    sifli_msg_send((void const *)cmd);
+
+    return HL_ERR_NO_ERROR;
+}
+
+
+uint8_t ble_gap_scan_get_adv_filter(ble_gap_scan_get_adv_filter_cmd_t *filter_param)
+{
+    BLE_GAP_EMPTY_CHECK(filter_param);
+
+    struct gapm_get_scan_adv_filter_cmd *cmd = sifli_msg_alloc(GAPM_GET_SCAN_ADV_FILTER_CMD,
+            TASK_ID_GAPM, sifli_get_stack_id(),
+            sizeof(struct gapm_get_scan_adv_filter_cmd));
+    cmd->operation = GAPM_GET_SCAN_ADV_FILTER;
+    cmd->idx = filter_param->idx;
+
+    sifli_msg_send((void const *)cmd);
+
+    return HL_ERR_NO_ERROR;
+}
+
+uint8_t ble_gap_scan_clear_adv_filter(ble_gap_scan_clear_adv_filter_cmd_t *filter_param)
+{
+    BLE_GAP_EMPTY_CHECK(filter_param);
+
+    struct gapm_clear_scan_adv_filter_cmd *cmd = sifli_msg_alloc(GAPM_CLEAR_SCAN_ADV_FILTER_CMD,
+            TASK_ID_GAPM, sifli_get_stack_id(),
+            sizeof(struct gapm_clear_scan_adv_filter_cmd));
+    cmd->operation = GAPM_CLEAR_SCAN_ADV_FILTER;
+    cmd->idx = filter_param->idx;
+
+    sifli_msg_send((void const *)cmd);
+
+    return HL_ERR_NO_ERROR;
+}
 
 // For ADV set is not enough and need act as central role.
 uint8_t ble_gap_delete_init(void)
@@ -1593,6 +1649,29 @@ void ble_gap_event_process(sibles_msg_para_t *header, uint8_t *data_ptr, uint16_
             ble_event_publish(BLE_GAP_RESOLVE_ADDRESS_CNF, &ret, sizeof(ble_gap_resolve_address_cnf_t));
             break;
         }
+#ifdef BLE_GAP_CENTRAL
+        case GAPM_SET_SCAN_ADV_FILTER:
+        {
+            ble_gap_scan_set_adv_filter_cnf_t ret;
+            ret.status = evt->status;
+            ble_event_publish(BLE_GAP_SCAN_SET_ADV_FILTER_CNF, &ret, sizeof(ble_gap_scan_set_adv_filter_cnf_t));
+            break;
+        }
+        case GAPM_GET_SCAN_ADV_FILTER:
+        {
+            ble_gap_scan_get_adv_filter_cnf_t ret;
+            ret.status = evt->status;
+            ble_event_publish(BLE_GAP_SCAN_GET_ADV_FILTER_CNF, &ret, sizeof(ble_gap_scan_get_adv_filter_cnf_t));
+            break;
+        }
+        case GAPM_CLEAR_SCAN_ADV_FILTER:
+        {
+            ble_gap_scan_clear_adv_filter_cnf_t ret;
+            ret.status = evt->status;
+            ble_event_publish(BLE_GAP_SCAN_CLEAR_ADV_FILTER_CNF, &ret, sizeof(ble_gap_scan_clear_adv_filter_cnf_t));
+            break;
+        }
+#endif //BLE_GAP_CENTRAL
         default:
             break;
         }
@@ -1607,6 +1686,21 @@ void ble_gap_event_process(sibles_msg_para_t *header, uint8_t *data_ptr, uint16_
             memcpy(&ind.addr, &evt->addr, sizeof(ble_gap_addr_t));
             ble_event_publish(BLE_GAP_RAL_ADDR_IND, &ind, sizeof(ble_gap_ral_addr_ind_t));
         }
+        break;
+    }
+    case GAPM_GET_SCAN_ADV_FILTER_IND:
+    {
+        struct gapm_get_scan_adv_filter_ind *evt = (struct gapm_get_scan_adv_filter_ind *)data_ptr;
+        ble_gap_scan_get_adv_filter_ind_t ind =
+        {
+            .idx = evt->idx,
+            .is_enable = evt->is_enable,
+            .filter_type = evt->filter_type,
+            .adv_type = evt->adv_type,
+        };
+        ind.len = evt->len > GAP_MAX_SCAN_ADV_FILTER_LEN ? GAP_MAX_SCAN_ADV_FILTER_LEN : evt->len;
+        memcpy(ind.data, evt->data, ind.len);
+        ble_event_publish(BLE_GAP_SCAN_GET_ADV_FILTER_IND, &ind, sizeof(ble_gap_scan_get_adv_filter_ind_t));
         break;
     }
     case GAPC_CONNECTION_REQ_IND:

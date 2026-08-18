@@ -650,7 +650,7 @@ void sifli_mbox_process(sibles_msg_para_t *header, uint8_t *data_ptr, uint16_t p
     sifli_msg_id_t msg_id = header->id;
     uint8_t conn_idx = TASK_IDX_GET(header->src_id);
 
-    if ((msg_id >= GAPM_CMP_EVT && msg_id <= GAPM_CONFIG_RESOLUTION) ||
+    if ((msg_id >= GAPM_CMP_EVT && msg_id <= GAPM_LAST_MSG) ||
             (msg_id >= GAPC_CMP_EVT && msg_id <= GAPC_SMP_REP_ATTEMPTS_TIMER_IND))
     {
         //LOG_D("GAP event %d", msg_id);

@@ -229,6 +229,12 @@ enum gapm_operation
     GAPM_RENEW_ADDR,
     /// INTERNAL OPERATION -  Start all activities
     GAPM_START_ALL_ACTIVITIES,
+
+    GAPM_SET_SCAN_ADV_FILTER,
+
+    GAPM_GET_SCAN_ADV_FILTER,
+
+    GAPM_CLEAR_SCAN_ADV_FILTER,
 };
 
 /// request operation type - application interface
@@ -1483,5 +1489,41 @@ struct gapm_resolv_addr_cmd
 };
 
 
+struct gapm_set_scan_adv_filter_cmd
+{
+    /// Command Operation Code (shall be GAPM_SET_SCAN_ADV_FILTER)
+    uint8_t operation;
+    uint8_t idx;
+    uint8_t is_enable;
+    uint8_t filter_type;
+    uint8_t adv_type;
+    uint8_t len;
+    uint8_t data[__ARRAY_EMPTY];
+};
+
+struct  gapm_get_scan_adv_filter_cmd
+{
+    /// Command Operation Code (shall be GAPM_GET_SCAN_ADV_FILTER)
+    uint8_t operation;
+    uint8_t idx;
+};
+
+struct gapm_clear_scan_adv_filter_cmd
+{
+    /// Command Operation Code (shall be GAPM_CLEAR_SCAN_ADV_FILTER)
+    uint8_t operation;
+    uint8_t idx;
+};
+
+
+struct gapm_get_scan_adv_filter_ind
+{
+    uint8_t idx;
+    uint8_t is_enable;
+    uint8_t filter_type;
+    uint8_t adv_type;
+    uint8_t len;
+    uint8_t data[__ARRAY_EMPTY];
+};
 
 

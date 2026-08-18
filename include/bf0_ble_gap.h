@@ -60,7 +60,9 @@
 #endif
 
 #define GAP_DEFAULT_LOCAL_NAME "SIFLI-BLE-DEV"  /**< Default Local device name. */
-
+#define GAP_MAX_SCAN_ADV_FILTER_LEN 31   /**< maximum filter context in octets. */
+#define GAP_MAX_SCAN_FILTER_IDX 3        /**< maximum filter index in octets. */
+#define GAP_SCAN_ALL_CLEAR_INDEX (0xFF)  /**< to clear all filter parameters. */
 
 
 /// Random Address type.
@@ -147,6 +149,12 @@ enum ble_gap_event_t
     BLE_GAP_CREATE_CONNECTION_STOP_IND,      /**< This event indicates create connection stopped. */
 
     BLE_GAP_SET_PHY_CNF,                     /**< This event indicates set phy finished. */
+
+    BLE_GAP_SCAN_SET_ADV_FILTER_CNF,         /**< This event indicates the reuslt of set adv filter. */
+    BLE_GAP_SCAN_GET_ADV_FILTER_CNF,         /**< This event indicates the result of get adv filter. */
+    BLE_GAP_SCAN_GET_ADV_FILTER_IND,         /**< This event indicates the config of according idx in get adv filter.
+                                                  Only generated when get adv filter successfully. */
+    BLE_GAP_SCAN_CLEAR_ADV_FILTER_CNF,       /**< This event indicates the result of clear adv filter. */
 };
 
 /**
@@ -677,6 +685,12 @@ enum gapm_adv_report_info
     GAPM_REPORT_INFO_DIR_ADV_BIT         = (1 << 6),
 };
 
+/// Scan filter type
+enum gapm_scan_filter_type
+{
+    GAPM_SCAN_ADV_FILTER_OUT, // advertising which meet fitler condition will not report
+    GAPM_SCAN_ADV_FILTER_IN, // Only advertising which meet fitler condition will report
+};
 
 /**
  * @brief BD address structure
@@ -1504,6 +1518,11 @@ typedef ble_gap_status_t ble_gap_resolve_address_cnf_t;  /**< The struture of #B
 
 typedef ble_gap_status_t ble_gap_create_per_adv_sync_cnf_t;                /**< The struture of #BLE_GAP_CREATE_PERIODIC_ADV_SYNC_CNF. */
 
+typedef ble_gap_status_t ble_gap_scan_set_adv_filter_cnf_t;  /**< The struture of #BLE_GAP_SCAN_SET_ADV_FILTER_CNF. */
+
+typedef ble_gap_status_t ble_gap_scan_get_adv_filter_cnf_t;  /**< The struture of #BLE_GAP_SCAN_GET_ADV_FILTER_CNF. */
+
+typedef ble_gap_status_t ble_gap_scan_clear_adv_filter_cnf_t;  /**< The struture of #BLE_GAP_SCAN_CLEAR_ADV_FILTER_CNF. */
 
 /**
  * @brief The struture of #BLE_GAP_START_ADV_CNF.
@@ -2033,6 +2052,54 @@ typedef struct
     uint8_t type;
 } ble_gap_assert_ind_t;
 
+typedef struct
+{
+    /// index for config the advertising filter. Should less than GAP_MAX_SCAN_FILTER_IDX
+    uint8_t idx;
+    /// indicates whether enable or disable filter for this idx
+    uint8_t is_enable;
+    /// The method to filter advertising.(@see enmu gapm_scan_filter_type)
+    uint8_t filter_type;
+    /// advertising flag. (@see enum ble_gap_adv_type)
+    uint8_t adv_type;
+    /// the length of filter context. Should not more than GAP_MAX_SCAN_ADV_FILTER_LEN
+    uint8_t len;
+    /// filter context
+    uint8_t data[GAP_MAX_SCAN_ADV_FILTER_LEN];
+} ble_gap_scan_set_adv_filter_cmd_t;
+
+typedef struct
+{
+    /// index for config the advertising filter. Should less than GAP_MAX_SCAN_FILTER_IDX
+    uint8_t idx;
+} ble_gap_scan_get_adv_filter_cmd_t;
+
+typedef struct
+{
+    /// index for config the advertising filter. GAP_SCAN_ALL_CLEAR_INDEX will clear all indices, otherwise should less than GAP_MAX_SCAN_FILTER_IDX.
+    uint8_t idx;
+} ble_gap_scan_clear_adv_filter_cmd_t;
+
+
+/**
+ * @brief The struture of #BLE_GAP_SCAN_GET_ADV_FILTER_IND.
+ */
+typedef struct
+{
+    /// index for config the advertising filter
+    uint8_t idx;
+    /// indicates whether enable or disable filter for this idx
+    uint8_t is_enable;
+    /// The method to filter advertising.(@see enmu gapm_scan_filter_type)
+    uint8_t filter_type;
+    /// advertising flag. (@see enum ble_gap_adv_type)
+    uint8_t adv_type;
+    /// the length of filter context.
+    uint8_t len;
+    /// filter context
+    uint8_t data[GAP_MAX_SCAN_ADV_FILTER_LEN];
+} ble_gap_scan_get_adv_filter_ind_t;
+
 // Local info
 
 
@@ -2201,6 +2268,30 @@ uint8_t ble_gap_scan_start(ble_gap_scan_start_t *scan_param);
    @retval The status of send to BLE subsystem.
  */
 uint8_t ble_gap_scan_start_ex(ble_gap_scan_start_t *scan_param);
+
+/**
+ * @brief Set fitler parameter for advertising. The event #BLE_GAP_SCAN_SET_ADV_FILTER_CNF will indicate the result.
+          Only SF3258x support this API.
+   @param[in] filter_param Filter parameters.
+   @retval The status of send to BLE subsystem.
+ */
+uint8_t ble_gap_scan_set_adv_filter(ble_gap_scan_set_adv_filter_cmd_t *filter_param);
+
+/**
+ * @brief Get fitler parameter in controller. The event #BLE_GAP_SCAN_GET_ADV_FILTER_CNF or BLE_GAP_SCAN_GET_ADV_FILTER_IND will indicate the result.
+          Only SF3258x support this API.
+   @param[in] filter_param Filter parameters.
+   @retval The status of send to BLE subsystem.
+ */
+uint8_t ble_gap_scan_get_adv_filter(ble_gap_scan_get_adv_filter_cmd_t *filter_param);
+
+/**
+ * @brief Clear fitler config in controller. The event #BLE_GAP_SCAN_CLEAR_ADV_FILTER_CNF will indicate the result.
+          Only SF3258x support this API.
+   @param[in] filter_param Filter parameters.
+   @retval The status of send to BLE subsystem.
+ */
+uint8_t ble_gap_scan_clear_adv_filter(ble_gap_scan_clear_adv_filter_cmd_t *filter_param);
 
 
 /**

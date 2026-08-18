@@ -280,9 +280,9 @@ enum gapm_msg_id
 
     GAPM_CONFIG_RESOLUTION,
 
-    GAM_SET_SCAN_ADV_FILTER_CMD,
+    GAPM_SET_SCAN_ADV_FILTER_CMD,
 
-    GAM_GET_SCAN_ADV_FILTER_CMD,
+    GAPM_GET_SCAN_ADV_FILTER_CMD,
 
     GAPM_CLEAR_SCAN_ADV_FILTER_CMD,
 
@@ -290,6 +290,8 @@ enum gapm_msg_id
 
     GAPM_AES_H7_CMD,
     GAPM_AES_H7_IND,
+
+    GAPM_LAST_MSG,
 };
 
 /// request operation type - application interface
