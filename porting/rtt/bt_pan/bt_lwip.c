@@ -43,8 +43,6 @@ struct bt_lwip_prot_des
 };
 
 extern BTS2S_ETHER_ADDR   bts2_local_ether_addr;
-extern void lwip_system_uninit(void);
-extern void lwip_sys_init();
 
 void rt_bnep_lwip_event_handle(struct rt_bnep_device_t *bt_dev, int event, int only_flag)
 {
@@ -57,11 +55,6 @@ void rt_bnep_lwip_event_handle(struct rt_bnep_device_t *bt_dev, int event, int o
     {
         LOG_D("event: CONNECT");
         lwip_prot->connected_flag = RT_TRUE;
-        if (only_flag)
-        {
-            LOG_D("sys_timeouts_init");
-            sys_timeouts_init();//to restart timer
-        }
         // netif_set_default(eth_dev->netif);
         netifapi_netif_common(eth_dev->netif, netif_set_link_up, NULL);
         if (bt_dev->mode == RT_BNEP_PANU)
@@ -104,11 +97,6 @@ void rt_bnep_lwip_event_handle(struct rt_bnep_device_t *bt_dev, int event, int o
             rt_memcpy(netif_name, lwip_prot->eth.netif->name, sizeof(lwip_prot->eth.netif->name));
             dhcpd_stop(netif_name);
 #endif
-        }
-        if (only_flag)
-        {
-            LOG_D("lwip_system_uninit");
-            lwip_system_uninit(); // to stop lwip timer
         }
         break;
     }
@@ -333,11 +321,6 @@ static struct rt_bnep_prot *rt_bt_lwip_protocol_register(struct rt_bnep_prot *pr
     rt_memcpy(&lwip_prot->prot, prot, sizeof(struct rt_bnep_prot));
     netif_set_up(eth->netif);
 
-    if (!init_ok)
-    {
-        lwip_system_uninit(); // To stop timer,and Reduce power consumption
-        init_ok = RT_TRUE;
-    }
     LOG_I("eth device init ok name:%s %p", eth_name, &lwip_prot->prot);
     return &lwip_prot->prot;
 }

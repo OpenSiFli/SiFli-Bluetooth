@@ -22,6 +22,15 @@
 
 #include "bt_prot.h"
 
+/* Optional USB-BT transparent bridge hook (weak). Override in app main.c.
+ * Return 0: frame consumed by bridge (skip lwIP); otherwise continue. */
+__attribute__((weak)) int usb_bt_bridge_on_bt_rx(void *buff, int len)
+{
+    (void)buff;
+    (void)len;
+    return -1;
+}
+
 static int running_flag = 0;
 
 #ifdef CFG_GNU
@@ -181,7 +190,15 @@ void bt_pan_set_nap_route(char *string)
 
 static int bt_pan_notify_connection_state(bt_notify_profile_state_info_t *info, uint16_t event_id)
 {
+#ifdef USB_BT_BRIDGE_NO_B0_NETIF
+    /* Transparent bridge mode (Dongle): do not create lwIP netif "b0".
+     * The bridge forwards frames directly between USB RNDIS and BT PAN,
+     * bypassing lwIP entirely, so bnep_connect_event_handle() (which
+     * allocates bnep_dev[] and registers netif "b0") is skipped. */
+#else
+    /* Normal PAN mode: register b0 netif + lwIP (e.g. headset running iperf). */
     bnep_connect_event_handle(info, event_id);
+#endif
     bt_profile_update_connection_state(BT_NOTIFY_PAN, event_id, info);
     return 0;
 }
@@ -335,11 +352,12 @@ void bt_pan_enable(bts2_app_stru *bts2_app_data)
         /*
         void pan_enb_req(BOOL the_single_user, U16  the_local_role, U16  the_rmt_role);
         */
-        // pan_enb_req(FALSE,PAN_NAP_ROLE,PAN_PANU_ROLE);
-        //modified the pan role,local is panu
+#ifdef USB_BT_BRIDGE_PAN_DUAL_ROLE
+        pan_enb_req(FALSE, PAN_PANU_ROLE | PAN_NAP_ROLE,
+                    PAN_NAP_ROLE | PAN_PANU_ROLE);
+#else
         pan_enb_req(FALSE, PAN_PANU_ROLE, PAN_NAP_ROLE);
-
-        // pan_enb_req(FALSE, PAN_PANU_ROLE | PAN_NAP_ROLE | PAN_GN_ROLE, PAN_NAP_ROLE | PAN_PANU_ROLE | PAN_GN_ROLE);
+#endif
         ptr->pan_st = PAN_IDLE_ST;
         // bt_lwip_pan_attach_tcpip();
         USER_TRACE(">> PAN enable\n");
@@ -743,6 +761,13 @@ void bt_hdl_pan_msg(bts2_app_stru *bts2_app_data)
         msg->payload[12] = (msg->ether_type >> 8);
         msg->payload[13] = (msg->ether_type & 0xff);
         if (0x86dd == msg->ether_type)
+        {
+            bfree(msg->payload);
+            break;
+        }
+
+        /* USB-BT bridge: consume the frame before it enters lwIP */
+        if (usb_bt_bridge_on_bt_rx(msg->payload, msg->len) == 0)
         {
             bfree(msg->payload);
             break;
