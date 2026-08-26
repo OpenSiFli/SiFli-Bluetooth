@@ -1734,7 +1734,7 @@ void rf_test_optimization()
     hwp_pmuc->HPSYS_VOUT = 0x8;
     rt_thread_delay(20);
     hwp_pmuc->AON_LDO &= ~(PMUC_AON_LDO_VBAT_LDO_SET_VOUT_Msk);
-    hwp_pmuc->AON_LDO |= (0xC << PMUC_AON_LDO_VBAT_LDO_SET_VOUT_Pos);
+    hwp_pmuc->AON_LDO |= (0xE << PMUC_AON_LDO_VBAT_LDO_SET_VOUT_Pos);
     rt_thread_delay(20);
     hwp_bt_phy->TX_LFP_CFG &= ~(BT_PHY_TX_LFP_CFG_TX_SDM_SEL_Msk);
     hwp_bt_phy->TX_LFP_CFG |= (0x3 << BT_PHY_TX_LFP_CFG_TX_SDM_SEL_Pos);
@@ -1870,6 +1870,10 @@ void bt_cm(uint8_t argc, char **argv)
             {
                 extern void uart_ipc_path_change(void);
                 uart_ipc_path_change();
+#if  defined(SOC_SF32LB57X) && defined(BSP_BQB_TEST)
+                hwp_pmuc->AON_LDO &= ~(PMUC_AON_LDO_VBAT_LDO_SET_VOUT_Msk);
+                hwp_pmuc->AON_LDO |= (0xE << PMUC_AON_LDO_VBAT_LDO_SET_VOUT_Pos);
+#endif
             }
 #endif //BT_RF_TEST
 #endif

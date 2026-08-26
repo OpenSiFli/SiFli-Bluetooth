@@ -1139,8 +1139,8 @@ static uint8_t loc_cmd_hdl(uint8_t *cmd, uint16_t len)
         uint8_t res = 1; // Not support
         do
         {
-#if defined(SOC_SF32LB52X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB58X)
-#if defined(SOC_SF32LB52X)
+#if defined(SOC_SF32LB52X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB58X) || defined(SOC_SF32LB57X)
+#if defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)
             if ((cmd[3] == 0x0 && len == 8) || (cmd[3] == 0x0 && len == 9))
 #else
             if (cmd[3] == 0x0 && len == 7)
@@ -1169,7 +1169,7 @@ static uint8_t loc_cmd_hdl(uint8_t *cmd, uint16_t len)
                     para->func = bt_hop_infinite_tx;
                     para->len = (uint16_t)cmd[4] | (uint16_t)cmd[5] << 8;
                     para->pkt_type = bt_pkt_mapping(cmd[6], &para->phy);
-#ifdef SOC_SF32LB52X
+#if defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)
                     para->pwr = cmd[7];
                     extern uint8_t tx_chan;
                     if (len == 8)
@@ -1283,7 +1283,11 @@ static uint8_t loc_cmd_hdl(uint8_t *cmd, uint16_t len)
                 }
                 else
                 {
+#ifndef SOC_SF32LB57X
                     ptr[7] = (uint8_t)(env->rssi_ave - 6);
+#else
+                    ptr[7] = (uint8_t)(env->rssi_ave);
+#endif
                 }
             }
             {
@@ -1390,7 +1394,11 @@ static uint8_t loc_cmd2_hdl(uint8_t *cmd, uint16_t len)
                 extern void bt_nosignal_stop(uint8_t *data);
                 bt_nosignal_stop(&ptr[6]);
 #endif
+#ifndef SOC_SF32LB57X
                 ptr[22] = (uint8_t)(env->rssi_acc / env->rssi_cnt - 6);
+#else
+                ptr[22] = (uint8_t)(env->rssi_acc / env->rssi_cnt);
+#endif
             }
             {
                 void hci_write_result(uint8_t *bufptr, uint32_t size);
