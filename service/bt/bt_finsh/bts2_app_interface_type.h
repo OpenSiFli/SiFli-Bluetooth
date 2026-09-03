@@ -252,6 +252,12 @@ typedef enum
     BT_NOTIFY_AVRCP_MEDIA_ATTRIBUTE_CFM,
     ///  remote device switch song
     BT_NOTIFY_SWITCH_SONG,
+    ///  get cover art
+    BT_NOTIFY_AVRCP_COVER_ART_DATA_IND,
+    ///  get cover art data end
+    BT_NOTIFY_AVRCP_COVER_ART_DATA_END,
+    ///  should update cover art
+    BT_NOTIFY_AVRCP_UPDATE_COVER_ART,
 } bt_notify_avrcp_event_id_t;
 
 typedef enum
@@ -764,6 +770,20 @@ typedef struct
     ///  result value
     uint8_t res;
 } bt_notify_pbap_vcard_item_cmpl_t;
+
+typedef struct
+{
+    ///  final packet flag
+    uint8_t   is_final_packet;
+    ///  the address of the device that sent the data
+    bt_notify_device_mac_t mac;
+    ///  total length
+    uint16_t  total_len;
+    ///  payload length
+    uint16_t  payload_len;
+    ///  payload pointer
+    uint8_t  payload[1];
+} bt_notify_avrcp_cover_art_ind_t;
 
 typedef union
 {
