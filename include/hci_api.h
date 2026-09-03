@@ -71,6 +71,24 @@ void hcia_acl_conn_req(BTS2S_BD_ADDR *bd, U16 pkt_type);
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
+ *     Build and send a DM_ACL_CONN_REQ message.
+ *
+ *
+ * INPUT:
+ *     BTS2S_BD_ADDR *bd: remote BLUETOOTH address.
+ *     U16 pkt_type: packet type.
+ *
+ * OUTPUT:
+ *     void.
+ *
+ * NOTE:
+ *     none.
+ *----------------------------------------------------------------------------*/
+void hcia_acl_conn_req_ext(BTS2S_BD_ADDR *bd, U16 pkt_type, U8 allow_role_switch);
+
+/*----------------------------------------------------------------------------*
+ *
+ * DESCRIPTION:
  *     Build and send a DM_ACL_DISC_REQ message.
  *
  *

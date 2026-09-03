@@ -1359,6 +1359,10 @@ U16 av_get_max_stream_buffer_cnt(void);
 
 void a2dp_reset_req(void);
 
+void av_set_max_stream_buffer_cnt(U8 count);
+
+void av_set_stream_mtu(U16 mtu);
+
 #ifdef __cplusplus
 }
 #endif

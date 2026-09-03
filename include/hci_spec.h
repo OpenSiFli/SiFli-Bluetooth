@@ -5370,6 +5370,7 @@ typedef struct
     U16 type; /* always DM_ACL_CONN_REQ */
     BTS2S_BD_ADDR bd; /* bluetooth dev addr */
     U16 pkt_type; /* set to zero for default */
+    U8 allow_role_switch;
 } BTS2S_DM_ACL_CONN_REQ;
 
 /* PURPOSE ACL conn cfm to L2C for conn to rmt bluetooth dev */

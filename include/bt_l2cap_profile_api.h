@@ -120,6 +120,7 @@ typedef struct
     U16          cid;  /* channel id */
     U16          psm;  /* the PSM on the local device */
     BTS2S_BD_ADDR bd;  /* bluetooth addr of remote device */
+    U16          app_hdl;
 } BTS2S_BT_L2CAP_CONN_IND;
 
 typedef struct

@@ -1272,7 +1272,14 @@ bts2_spp_service_list *bt_spp_get_service_list_by_srv_chl(bts2_spp_srv_inst_data
 
     if (spp_service_list == NULL)
     {
+        bts2_spp_service_list *curr_list = spp_srv_inst_ptr->spp_service_list;
+        while (curr_list)
+        {
+            BT_SPP_DEBUG("[BT_SPP_DEBUG]spp_service_list = %p\n", curr_list);
+            curr_list = (bts2_spp_service_list *)curr_list->next_struct;
+        }
         BT_SPP_DEBUG("[BT_SPP_DEBUG]why can't find specified service channel,service_list = %d\n", spp_srv_inst_ptr->service_list);
+        RT_ASSERT(0);
     }
 
     return spp_service_list;
@@ -1305,8 +1312,8 @@ void bt_spp_delete_service_list_by_srv_chl(bts2_spp_srv_inst_data *spp_srv_inst_
         {
             if (curr_list_pre == NULL)
             {
-                free(curr_list);
                 spp_srv_inst_ptr->spp_service_list = curr_list->next_struct;
+                free(curr_list);
             }
             else
             {
@@ -1377,6 +1384,11 @@ void bt_spp_dump_all_spp_connect_information(bts2_app_stru *bts2_app_data)
     }
 
     INFO_TRACE("[SPP_DEBUG]************************************************************\n");
+}
+
+void bt_spp_set_mtu_size(U16 mtu_size)
+{
+    spp_srvh_set_mtu_size(mtu_size);
 }
 /*----------------------------------------------------------------------------*/
 

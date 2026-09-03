@@ -746,6 +746,8 @@ void spp_clt_sdp_search_req(BTS2S_BD_ADDR *bd,
                             U8 *uuid,
                             U8 uuid_len);
 
+void spp_srvh_set_mtu_size(U16 mtu_size);
+
 #ifdef __cplusplus
 }
 #endif

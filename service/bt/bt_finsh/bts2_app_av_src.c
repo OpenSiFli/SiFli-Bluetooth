@@ -442,6 +442,19 @@ int bt_avsrc_get_plyback_conn(bts2s_av_inst_data *inst)
 
     return res;
 }
+
+int bt_avsrc_get_stream_conn(bts2s_av_inst_data *inst)
+{
+    for (U8 con_idx = 0; con_idx < MAX_CONNS; con_idx++)
+    {
+        if ((inst->con[con_idx].st == avconned_streaming) && (inst->con[con_idx].cfg == AV_AUDIO_SRC))
+        {
+            return con_idx;
+        }
+    }
+
+    return -1;
+}
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
@@ -1217,23 +1230,26 @@ static uint16_t bt_avsrc_send_data(struct rt_ringbuffer32 *rb)
             if (frms > 0)
             {
                 *payload_ptr = frms;
-                for (i = 0; i < MAX_CONNS; i++)
+
+                for (U8 i = 0; i < MAX_CONNS; i++)
                 {
                     if (inst->con[i].st == avconned_streaming && inst->con[i].cfg == AV_AUDIO_SRC)
                     {
-                        //U8 *send_pkt_ptr;
-                        //send_pkt_ptr = bmalloc(payload_len);
-                        //memcpy(send_pkt_ptr, pkt_ptr, payload_len);
-                        av_stream_data_req(inst->con[i].stream_hdl,
-                                           FALSE,
-                                           FALSE,
-                                           96, //any dynamic PT in the range 96 - 127
-                                           inst->time_stamp,
-                                           payload_len,
-                                           pkt_ptr); /**/
-                        //  INFO_TRACE("con_idx = %d\n", i);
+                        U8 *stream_data = bmalloc(payload_len);
+                        if (stream_data)
+                        {
+                            memcpy(stream_data, pkt_ptr, payload_len);
+                            av_stream_data_req(inst->con[i].stream_hdl,
+                                               FALSE,
+                                               FALSE,
+                                               96, //any dynamic PT in the range 96 - 127
+                                               inst->time_stamp,
+                                               payload_len,
+                                               stream_data); /**/
+                        }
                     }
                 }
+                bfree(pkt_ptr);
                 inst->time_stamp += frms * act_cfg->blocks * act_cfg->subbands;
             }
 
@@ -1283,7 +1299,7 @@ uint16_t bt_avsrc_sharing(struct rt_ringbuffer32 *rb)
     uint8_t is_empty = 0;
     uint8_t is_update_us = 0;
 
-    con_idx = bt_avsrc_get_plyback_conn(inst);
+    con_idx = bt_avsrc_get_stream_conn(inst);
 
 
     if (con_idx == - 1)
@@ -1295,11 +1311,15 @@ uint16_t bt_avsrc_sharing(struct rt_ringbuffer32 *rb)
     }
 
     //zhengyu:avoid timer timeout while waiting for suspend cfm
-    if (inst->con[con_idx].st == avconned_streaming && !inst->con[con_idx].suspend_pending)
+    if (!inst->con[con_idx].suspend_pending)
     {
         do
         {
-            U16 buffer_count = av_get_stream_buffize();
+            U32 pcm_pkg_pos;
+            U32 sb_pos = 0;
+            U32 rd_len = 0;
+            U16 pl;
+            // U16 buffer_count = av_get_stream_buffize();
 
 
             if (inst->src_data.stream_frm_time_begin != 0)
@@ -1327,11 +1347,11 @@ uint16_t bt_avsrc_sharing(struct rt_ringbuffer32 *rb)
 
             inst->src_data.stream_frm_time_begin = BTS2_GET_TIME();
 
-            if ((buffer_count >= av_get_max_stream_buffer_cnt() / 2) && (bt_av_get_src_streaming_number() == 1))
-            {
-                LOG_I("a2dp buffer more than half, should send buffered frames,count = %d\n", buffer_count);
-                break;
-            }
+            // if ((buffer_count >= av_get_max_stream_buffer_cnt() / 2) && (bt_av_get_src_streaming_number() == 1))
+            // {
+            //     LOG_I("a2dp buffer more than half, should send buffered frames,count = %d\n", buffer_count);
+            //     break;
+            // }
 
             uint16_t len = rt_ringbuffer32_data_len((struct rt_ringbuffer32 *)rb);
 
@@ -1346,6 +1366,11 @@ uint16_t bt_avsrc_sharing(struct rt_ringbuffer32 *rb)
 
                 is_empty = 1;
                 send_timer_added = 1;
+                LOG_D("m_sec_time_4_next_pkt1 = %d\n", inst->src_data.m_sec_time_4_next_pkt);
+                if ((inst->src_data.m_sec_time_4_next_pkt < 0) && ((inst->src_data.m_sec_time_4_next_pkt + inst->src_data.m_sec_per_pkt * 20) < 0))
+                {
+                    inst->src_data.m_sec_time_4_next_pkt = inst->src_data.m_sec_per_pkt;
+                }
                 inst->src_data.tid = bts2_timer_ev_add(inst->src_data.m_sec_time_4_next_pkt, bt_avsrc_sharing_cb, 0, (void *)rb);
                 return 0;
             }
@@ -1358,6 +1383,7 @@ uint16_t bt_avsrc_sharing(struct rt_ringbuffer32 *rb)
 
                 if (!pkt_ptr)
                 {
+                    LOG_D("malloc error!!!!\n");
                     if (inst->src_data.discard_data)
                         rt_ringbuffer32_get((struct rt_ringbuffer32 *)rb, inst->src_data.discard_data, pkt_len);
                     break;
@@ -1367,7 +1393,7 @@ uint16_t bt_avsrc_sharing(struct rt_ringbuffer32 *rb)
             }
 
 
-            if (inst->con[con_idx].st == avconned_streaming)
+            // if (inst->con[con_idx].st == avconned_streaming)
             {
                 bts2_sbc_cfg *cfg = &inst->con[con_idx].act_cfg;
                 U8 nb_sbc_frm = pkt_ptr[12];
@@ -1395,8 +1421,7 @@ uint16_t bt_avsrc_sharing(struct rt_ringbuffer32 *rb)
                 {
                     if (inst->con[i].st == avconned_streaming && inst->con[i].cfg == AV_AUDIO_SRC)
                     {
-                        U8 *stream_data  = bmalloc(pkt_len);
-
+                        U8 *stream_data = bmalloc(pkt_len);
                         if (stream_data)
                         {
                             memcpy(stream_data, pkt_ptr, pkt_len);
@@ -1425,7 +1450,15 @@ uint16_t bt_avsrc_sharing(struct rt_ringbuffer32 *rb)
         else
         {
             send_timer_added = 1;
-            inst->src_data.tid = bts2_timer_ev_add(0, bt_avsrc_sharing_cb, 0, (void *)rb);
+            if ((inst->src_data.m_sec_time_4_next_pkt < 0) && ((inst->src_data.m_sec_time_4_next_pkt + inst->src_data.m_sec_per_pkt * 20) < 0))
+            {
+                inst->src_data.m_sec_time_4_next_pkt = inst->src_data.m_sec_per_pkt;
+                inst->src_data.tid = bts2_timer_ev_add(inst->src_data.m_sec_time_4_next_pkt, bt_a2dp_transfor_send_cb, 0, (void *)rb);
+            }
+            else
+            {
+                inst->src_data.tid = bts2_timer_ev_add(0, bt_avsrc_sharing_cb, 0, (void *)rb);
+            }
         }
 #endif
     }

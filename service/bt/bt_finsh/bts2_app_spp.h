@@ -469,6 +469,8 @@ U8 bt_spp_get_srv_chl_by_uuid(U8 *uuid, U8 uuid_len);
  *----------------------------------------------------------------------------*/
 void bt_spp_dump_all_spp_connect_information(bts2_app_stru *bts2_app_data);
 
+void bt_spp_set_mtu_size(U16 mtu_size);
+
 
 /*----------------------------------------------------------------------------*
  *

@@ -759,6 +759,11 @@ uint8_t ble_app_dis_enable(void);
   */
 void sibles_set_dev_info(sibles_set_dis_t *param);
 
+/**
+  * @brief     set ACL 3M packet enable.
+  */
+void sibles_set_3M_enable(void);
+
 #ifdef _MSC_VER
     //#define __PACKED_STRUCT struct
 #endif

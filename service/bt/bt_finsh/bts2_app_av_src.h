@@ -177,6 +177,8 @@ void bt_avsrc_abort_stream(bts2_app_stru *bts2_app_data);
 
 int bt_avsrc_get_plyback_conn(bts2s_av_inst_data *inst);
 
+int bt_avsrc_get_stream_conn(bts2s_av_inst_data *inst);
+
 void bt_avsrc_set_start_flag(BOOL flag);
 
 BOOL bt_avsrc_get_start_flag(void);
@@ -200,6 +202,7 @@ uint16_t bt_avsrc_sharing(struct rt_ringbuffer32 *rb);
 #define bt_avsrc_recfg(bts2_app_data)
 #define bt_avsrc_abort_stream(bts2_app_data)
 #define bt_avsrc_get_plyback_conn(inst) (-1)
+#define bt_avsrc_get_stream_conn(inst) (-1)
 #define bt_avsrc_set_start_flag(flag)
 #define bt_avsrc_get_start_flag() 0
 

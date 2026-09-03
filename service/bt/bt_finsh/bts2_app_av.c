@@ -59,6 +59,7 @@ static bts2s_av_inst_data *global_inst;
 U8 BQB_TEST_CASE = BQB_TEST_RESET;
 
 extern uint8_t   bts2s_avsnk_openFlag;//0x00:dont open a2dp profile; 0x01:open a2dp profile;
+U8 disable_snk_seid = FALSE; //0x00:enable all seid; 0x01:disable all seid;
 
 static int bt_av_wait_var_set(U8 *p)
 {
@@ -477,6 +478,9 @@ static void bt_av_hdl_discover_ind(bts2_app_stru *bts2_app_data)
     INFO_TRACE(" << (d%d)indication to discover seid \n ", con_idx);
     for (iter = 0; iter < MAX_NUM_LOCAL_SEIDS; iter++)
     {
+        if (disable_snk_seid && inst->local_seid_info[iter].local_seid.sep_type == AV_SNK)
+            continue;
+
         if (!inst->local_seid_info[iter].local_seid.in_use)
         {
             seid_info[len] = inst->local_seid_info[iter].local_seid;
@@ -2142,6 +2146,10 @@ static void bt_av_hdl_stream_mtu_size_ind(bts2_app_stru *bts2_app_data)
 #ifdef AUDIO_USING_MANAGER
         audio_server_select_private_audio_device(AUDIO_TYPE_LOCAL_MUSIC, AUDIO_DEVICE_A2DP_SINK);
 #endif
+
+#if defined(CFG_AV_SHARING)
+        av_set_max_stream_buffer_cnt(4);
+#endif
     }
 #endif
 
@@ -2175,7 +2183,7 @@ static void bt_av_hdl_conn_cfm(bts2_app_stru *bts2_app_data)
     msg = (BTS2S_AV_CONN_CFM *)bts2_app_data->recv_msg;
     if (msg->res != AV_ACPT)
     {
-        if (msg->res != AV_DUPLICATE_CONNECTING)
+        if ((msg->res != AV_DUPLICATE_CONNECTING) && (msg->res != AV_CONNECT_CONFLICT))
         {
             bt_notify_profile_state_info_t profile_state = {0};
             bt_addr_convert(&msg->bd, profile_state.mac.addr);
@@ -2369,6 +2377,7 @@ void bt_av_init(bts2_app_stru *bts2_app_data)
 
     inst = bcalloc(1, sizeof(bts2s_av_inst_data));
     global_inst = inst;
+    av_set_stream_mtu(AV_MTU_SIZE);
     bt_av_init_data(inst, bts2_app_data);
 
 #ifdef CFG_AV_SNK
@@ -2416,11 +2425,15 @@ void bt_av_snk_close(void)
 
 void bt_av_unregister_sdp(U16 local_role)
 {
+    if (local_role == AV_AUDIO_SNK)
+        disable_snk_seid = TRUE;
     av_unregister_sdp(local_role); //disable the svc
 }
 
 void bt_av_register_sdp(U16 local_role)
 {
+    if (local_role == AV_AUDIO_SNK)
+        disable_snk_seid = FALSE;
     av_register_sdp(local_role); //disable the svc
 }
 

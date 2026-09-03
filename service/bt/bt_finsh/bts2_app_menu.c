@@ -5025,6 +5025,12 @@ static void bt_hdl_menu_spp_srv(bts2_app_stru *bts2_app_data)
         break;
     }
 #endif
+    case 'm':
+    {
+        int mtu_size = atoi((const char *)bts2_app_data->input_str + 1);
+        bt_spp_set_mtu_size(mtu_size);
+        break;
+    }
     default:
     {
         break;
