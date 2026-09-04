@@ -6,6 +6,10 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+#include <stdint.h>
+
+#include <zephyr/bluetooth/bluetooth.h>
 #if 0
     #include <zephyr/devicetree.h>
 #endif
@@ -279,7 +283,7 @@ struct bt_le_per_adv_sync
 struct bt_dev_le
 {
     /* LE features */
-    uint8_t         features[8];
+    uint8_t features[BT_LE_LOCAL_SUPPORTED_FEATURES_SIZE];
     /* LE states */
     uint64_t            states;
 
