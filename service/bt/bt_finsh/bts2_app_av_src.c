@@ -1453,7 +1453,7 @@ uint16_t bt_avsrc_sharing(struct rt_ringbuffer32 *rb)
             if ((inst->src_data.m_sec_time_4_next_pkt < 0) && ((inst->src_data.m_sec_time_4_next_pkt + inst->src_data.m_sec_per_pkt * 20) < 0))
             {
                 inst->src_data.m_sec_time_4_next_pkt = inst->src_data.m_sec_per_pkt;
-                inst->src_data.tid = bts2_timer_ev_add(inst->src_data.m_sec_time_4_next_pkt, bt_a2dp_transfor_send_cb, 0, (void *)rb);
+                inst->src_data.tid = bts2_timer_ev_add(inst->src_data.m_sec_time_4_next_pkt, bt_avsrc_sharing_cb, 0, (void *)rb);
             }
             else
             {
