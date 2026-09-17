@@ -1127,6 +1127,7 @@ void wvt_local_hdl_entry(void *param)
 extern uint8_t bt_pkt_mapping(uint8_t pkt_type, uint8_t *phy);
 extern void cw_config(uint8_t is_start, uint8_t pa, uint8_t channel);
 extern void cw_config_bt(uint8_t is_start, uint8_t pa, uint8_t channel);
+int8_t g_ble_tx_pwr = 0;
 static uint8_t loc_cmd_hdl(uint8_t *cmd, uint16_t len)
 {
     hci_forward_env_t *env = hci_forward_get_env();
@@ -1211,6 +1212,7 @@ static uint8_t loc_cmd_hdl(uint8_t *cmd, uint16_t len)
                     int8_t tx_pwr = cmd[4];
                     extern void blebredr_rf_power_set(uint8_t type, int8_t txpwr);
                     blebredr_rf_power_set(0, tx_pwr);
+                    g_ble_tx_pwr = tx_pwr;
                     res = 0;
                 }
                 else if (cmd[3] == 0x82)
@@ -1308,12 +1310,23 @@ static uint8_t loc_cmd2_hdl(uint8_t *cmd, uint16_t len)
     uint8_t is_handle = 0;
     uint8_t pattern[3] = {0x06, 0xEE, 0xFF};
     uint8_t ipc_rvt = 0;
+    uint8_t ble_tx_pattern[3] = {0x01, 0x34, 0x20};
     uint8_t ble_rx_pattern[3] = {0x01, 0x33, 0x20};
     uint8_t ble_rx_stop_pattern[3] = {0x01, 0x1F, 0x20};
     uint8_t bt_rx_pattern[3] = {0x01, 0x70, 0xfc};
     uint8_t bt_rx_stop_pattern[3] = {0x01, 0x72, 0xfc};
     uint8_t retlen = 5;
 
+#ifdef SOC_SF32LB57X
+    if (memcmp(ble_tx_pattern, cmd, 3) == 0)
+    {
+        if ((cmd[4] == 0) && (cmd[7] == 2))
+        {
+            extern void blebredr_rf_power_set(uint8_t type, int8_t txpwr);
+            blebredr_rf_power_set(2, g_ble_tx_pwr);
+        }
+    }
+#endif
     if (memcmp(ble_rx_pattern, cmd, 3) == 0)
     {
         env->no_signal_state = 1;
