@@ -260,25 +260,25 @@ menu "Bluetooth"
             select BT_FINSH_PAN
             default n
 
-        config USB_BT_BRIDGE_PAN_DUAL_ROLE
+        config BT_PAN_DUAL_ROLE
             bool "Enable Bluetooth PAN dual role"
             depends on CFG_PAN
             default n
             help
                 Enable both PANU and NAP roles locally and accept both
                 remote roles, so a PANU peer can connect to the local
-                NAP role (needed by the USB-BT bridge examples).
+                NAP role.
 
-        config USB_BT_BRIDGE_NO_B0_NETIF
-            bool "Skip lwIP b0 netif registration (transparent bridge mode)"
+        config BT_PAN_NO_B0_NETIF
+            bool "Skip lwIP b0 netif registration (raw RX hook mode)"
             depends on CFG_PAN
             default n
             help
                 Do not call bnep_connect_event_handle() on PAN connect,
-                so the lwIP netif "b0" is not created. Application code
-                can then forward PAN frames directly without entering
-                lwIP (needed by the transparent USB-BT bridge). Keep
-                unset for normal PAN operation (b0 netif + lwIP).
+                so the lwIP netif "b0" is not created. PAN RX frames are
+                handed to the application hook bt_pan_on_raw_rx() instead
+                of entering lwIP. Keep unset for normal PAN operation
+                (b0 netif + lwIP).
 
         config CFG_AV
             bool "Enable A2DP"

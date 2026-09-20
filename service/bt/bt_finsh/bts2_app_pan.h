@@ -33,6 +33,27 @@ void bt_pan_set_nap_route(char *string);
 void bt_pan_set_dns1(char *string);
 void bt_pan_set_dns2(char *string);
 void bt_pan_send_data(uint16_t bnep_id, void *buff, int len);
+
+#ifdef BT_PAN_NO_B0_NETIF
+/**
+ * @brief Weak hook called in the BT stack task for every ethernet frame
+ *        received over PAN/BNEP, before the frame enters the lwIP path.
+ *        Available only when the BT_PAN_NO_B0_NETIF option is enabled.
+ *
+ * The frame must be consumed synchronously during the call: @p buff is only
+ * valid until the hook returns (the receive buffer is freed by the caller
+ * right after) and the hook must not block, or PAN message handling stalls.
+ * The default weak implementation returns -1, so the frame continues to
+ * bnep_dev_recv_data().
+ *
+ * @param buff ethernet frame data, starting at the ethernet header; valid
+ *             only during the call
+ * @param len frame length in bytes
+ * @return 0: the frame has been consumed (the normal path is skipped);
+ *         non-zero: continue with the normal BNEP/lwIP path
+ */
+int bt_pan_on_raw_rx(void *buff, int len);
+#endif
 //extern BTS2S_ETHER_ADDR bt_pan_get_remote_mac_address(struct rt_bt_lwip_pan_dev *bt_dev);
 extern BTS2S_ETHER_ADDR bt_pan_get_mac_address();
 extern void lwip_sys_init(void);

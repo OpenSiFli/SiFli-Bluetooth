@@ -22,14 +22,17 @@
 
 #include "bt_prot.h"
 
-/* Optional USB-BT transparent bridge hook (weak). Override in app main.c.
- * Return 0: frame consumed by bridge (skip lwIP); otherwise continue. */
-__attribute__((weak)) int usb_bt_bridge_on_bt_rx(void *buff, int len)
+#ifdef BT_PAN_NO_B0_NETIF
+/* Default weak implementation: return -1 to keep the normal BNEP/lwIP path.
+ * The hook contract (call context, buffer lifetime, parameters) is documented
+ * at the declaration in bts2_app_pan.h. */
+__attribute__((weak)) int bt_pan_on_raw_rx(void *buff, int len)
 {
     (void)buff;
     (void)len;
     return -1;
 }
+#endif
 
 static int running_flag = 0;
 
@@ -190,11 +193,11 @@ void bt_pan_set_nap_route(char *string)
 
 static int bt_pan_notify_connection_state(bt_notify_profile_state_info_t *info, uint16_t event_id)
 {
-#ifdef USB_BT_BRIDGE_NO_B0_NETIF
-    /* Transparent bridge mode (Dongle): do not create lwIP netif "b0".
-     * The bridge forwards frames directly between USB RNDIS and BT PAN,
-     * bypassing lwIP entirely, so bnep_connect_event_handle() (which
-     * allocates bnep_dev[] and registers netif "b0") is skipped. */
+#ifdef BT_PAN_NO_B0_NETIF
+    /* Raw RX mode: do not create lwIP netif "b0". Frames received over
+     * PAN/BNEP are handed to bt_pan_on_raw_rx() instead, so
+     * bnep_connect_event_handle() (which allocates bnep_dev[] and
+     * registers netif "b0") is skipped. */
 #else
     /* Normal PAN mode: register b0 netif + lwIP (e.g. headset running iperf). */
     bnep_connect_event_handle(info, event_id);
@@ -352,7 +355,7 @@ void bt_pan_enable(bts2_app_stru *bts2_app_data)
         /*
         void pan_enb_req(BOOL the_single_user, U16  the_local_role, U16  the_rmt_role);
         */
-#ifdef USB_BT_BRIDGE_PAN_DUAL_ROLE
+#ifdef BT_PAN_DUAL_ROLE
         pan_enb_req(FALSE, PAN_PANU_ROLE | PAN_NAP_ROLE,
                     PAN_NAP_ROLE | PAN_PANU_ROLE);
 #else
@@ -766,12 +769,15 @@ void bt_hdl_pan_msg(bts2_app_stru *bts2_app_data)
             break;
         }
 
-        /* USB-BT bridge: consume the frame before it enters lwIP */
-        if (usb_bt_bridge_on_bt_rx(msg->payload, msg->len) == 0)
+#ifdef BT_PAN_NO_B0_NETIF
+        /* Raw RX hook: let the application consume the frame before it
+         * enters the normal BNEP/lwIP path. */
+        if (bt_pan_on_raw_rx(msg->payload, msg->len) == 0)
         {
             bfree(msg->payload);
             break;
         }
+#endif
 
         bnep_dev_recv_data(msg->id, (void *)msg->payload, msg->len);
         bfree(msg->payload);
