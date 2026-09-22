@@ -1127,7 +1127,7 @@ void wvt_local_hdl_entry(void *param)
 extern uint8_t bt_pkt_mapping(uint8_t pkt_type, uint8_t *phy);
 extern void cw_config(uint8_t is_start, uint8_t pa, uint8_t channel);
 extern void cw_config_bt(uint8_t is_start, uint8_t pa, uint8_t channel);
-int8_t g_ble_tx_pwr = 0;
+int8_t g_ble_tx_pwr = -128;
 static uint8_t loc_cmd_hdl(uint8_t *cmd, uint16_t len)
 {
     hci_forward_env_t *env = hci_forward_get_env();
@@ -1320,10 +1320,11 @@ static uint8_t loc_cmd2_hdl(uint8_t *cmd, uint16_t len)
 #ifdef SOC_SF32LB57X
     if (memcmp(ble_tx_pattern, cmd, 3) == 0)
     {
-        if ((cmd[4] == 0) && (cmd[7] == 2))
+        if ((cmd[4] == 0) && (cmd[7] == 2) && (g_ble_tx_pwr != -128))
         {
             extern void blebredr_rf_power_set(uint8_t type, int8_t txpwr);
             blebredr_rf_power_set(2, g_ble_tx_pwr);
+            g_ble_tx_pwr = -128;
         }
     }
 #endif
