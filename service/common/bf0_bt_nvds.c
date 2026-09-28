@@ -736,11 +736,12 @@ uint8_t sifli_nvds_read(sifli_nvds_type_t type, uint16_t *len, uint8_t *buffer)
         if (len == NULL || buffer == NULL)
             break;
 
+        uint16_t ret_len = *len;
         uint8_t *ptr = sifli_nvds_read_int(type, len);
         if (ptr == NULL)
             break;
 
-        if (*len != 0)
+        if (*len != 0 && ret_len >= *len)
         {
             memcpy(buffer, ptr, *len);
             ret = NVDS_OK;
