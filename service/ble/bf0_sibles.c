@@ -544,10 +544,39 @@ static uint8_t sifli_check_repeate_char(struct sibles_remote_svc *svc, struct si
     return ret;
 }
 
+static uint8_t sifli_remote_svc_ensure_db_len(struct sibles_remote_svc *svc, uint16_t need_len)
+{
+    uint16_t db_len;
+    uint8_t *att_db;
+
+    if (need_len <= svc->db_len)
+        return 1;
+
+    db_len = svc->db_len;
+    while (db_len < need_len)
+        db_len += sizeof(struct sibles_disc_char_desc_ind);
+
+    att_db = bt_mem_alloc(db_len);
+    BT_OOM_ASSERT(att_db);
+    if (att_db == NULL)
+        return 0;
+
+    memset(att_db, 0, db_len);
+    memcpy(att_db, svc->svc.att_db, svc->db_len);
+    bt_mem_free(svc->svc.att_db);
+    svc->svc.att_db = att_db;
+    svc->db_len = db_len;
+    LOG_I("extend svc disc db to %d", svc->db_len);
+
+    return 1;
+}
+
 static void sifli_add_remote_char_desc(struct sibles_remote_svc *svc, struct sibles_disc_char_desc_ind *disc_char_desc)
 {
     sibles_svc_search_char_t *chara = (sibles_svc_search_char_t *)svc->svc.att_db;
+    struct sibles_disc_char_desc_ind *desc;
     uint16_t offset = 0;
+    uint16_t need_len;
     uint32_t i;
     if (svc->svc.char_count == 0)
         return;
@@ -556,19 +585,31 @@ static void sifli_add_remote_char_desc(struct sibles_remote_svc *svc, struct sib
         if (disc_char_desc->attr_hdl <= (chara->pointer_hdl + chara->desc_count) &&
                 disc_char_desc->attr_hdl > chara->pointer_hdl)
         {
-            memcpy((struct sibles_disc_char_desc_ind *)&chara->desc + (disc_char_desc->attr_hdl - chara->attr_hdl) - 2,
-                   disc_char_desc, sizeof(struct sibles_disc_char_desc_ind));
+            desc = (struct sibles_disc_char_desc_ind *)&chara->desc + (disc_char_desc->attr_hdl - chara->attr_hdl) - 2;
+            need_len = (uint8_t *)desc - svc->svc.att_db + sizeof(struct sibles_disc_char_desc_ind);
+            if (!sifli_remote_svc_ensure_db_len(svc, need_len))
+                return;
+
+            chara = (sibles_svc_search_char_t *)(svc->svc.att_db + offset);
+            desc = (struct sibles_disc_char_desc_ind *)&chara->desc + (disc_char_desc->attr_hdl - chara->attr_hdl) - 2;
+            memcpy(desc, disc_char_desc, sizeof(struct sibles_disc_char_desc_ind));
             return;
         }
-        offset = sizeof(sibles_svc_search_char_t) + chara->desc_count * sizeof(struct sibles_disc_char_desc_ind);
-        chara = (sibles_svc_search_char_t *)((uint8_t *)chara + offset);
+        offset += sizeof(sibles_svc_search_char_t) + chara->desc_count * sizeof(struct sibles_disc_char_desc_ind);
+        chara = (sibles_svc_search_char_t *)((uint8_t *)chara + sizeof(sibles_svc_search_char_t) + chara->desc_count * sizeof(struct sibles_disc_char_desc_ind));
     }
 
     if (disc_char_desc->attr_hdl <= svc->svc.hdl_end && disc_char_desc->attr_hdl >= chara->attr_hdl + 2)
     {
         // Speicial handle for the last descriptor
-        memcpy((struct sibles_disc_char_desc_ind *)&chara->desc + (disc_char_desc->attr_hdl - chara->attr_hdl) - 2,
-               disc_char_desc, sizeof(struct sibles_disc_char_desc_ind));
+        desc = (struct sibles_disc_char_desc_ind *)&chara->desc + (disc_char_desc->attr_hdl - chara->attr_hdl) - 2;
+        need_len = (uint8_t *)desc - svc->svc.att_db + sizeof(struct sibles_disc_char_desc_ind);
+        if (!sifli_remote_svc_ensure_db_len(svc, need_len))
+            return;
+
+        chara = (sibles_svc_search_char_t *)(svc->svc.att_db + offset);
+        desc = (struct sibles_disc_char_desc_ind *)&chara->desc + (disc_char_desc->attr_hdl - chara->attr_hdl) - 2;
+        memcpy(desc, disc_char_desc, sizeof(struct sibles_disc_char_desc_ind));
         chara->desc_count++;
     }
 
