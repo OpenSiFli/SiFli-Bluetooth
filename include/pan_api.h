@@ -40,7 +40,8 @@ enum
     BTS2MU_PAN_DISC_IND,
     BTS2MU_PAN_STS_IND,
     BTS2MU_PAN_SVC_SRCH_CFM,
-    BTS2MU_PAN_SVC_SRCH_RSP_IND
+    BTS2MU_PAN_SVC_SRCH_RSP_IND,
+    BTS2MU_PAN_DATA_CFM,
 };
 
 #define PAN_LINK_ST_EV           ((U8) (0))
@@ -202,6 +203,13 @@ typedef struct
     BTS2S_PAN_SRCH_RECORD srch_res;
 } BTS2S_PAN_SVC_SRCH_RSP_IND;
 
+typedef struct
+{
+    U16 type;
+    U16 cid;
+    U8 buff_num;
+    U8 res;
+} BTS2S_PAN_DATA_WR_CFM;
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
@@ -334,6 +342,8 @@ void pan_svc_srch_req(U16 conn_hdl,
                       U16 role);
 
 
+U8 bnep_buff_count(U16 cid);
+void bnep_set_max_queue_len(U8 max_queue_len);
 #ifdef __cplusplus
 }
 #endif
