@@ -92,6 +92,8 @@ typedef enum
     BT_NOTIFY_COMMON_ACL_CONNECTED,
     ///  acl disconnection complete event
     BT_NOTIFY_COMMON_ACL_DISCONNECTED,
+    ///  sco connection request event
+    BT_NOTIFY_COMMON_SCO_CONNECTED_REQ,
     ///  sco connection complete event
     BT_NOTIFY_COMMON_SCO_CONNECTED,
     ///  sco disconnection complete event
@@ -223,6 +225,7 @@ typedef struct
     uint8_t *data;
     uint16_t stream_handle;
     uint16_t data_length;
+    uint8_t status;
 } bt_notify_a2dp_data_t;
 
 ///  these type are BT_NOTIFY_AVRCP event id
@@ -453,6 +456,22 @@ typedef struct
     uint8_t addr[6];
 } bt_notify_device_mac_t;
 
+typedef struct
+{
+    uint32_t lap;            /* Lower Address Part 00..23 */
+    uint8_t  uap;            /* Upper Address Part 24..31 */
+    uint16_t nap;            /* Non-significant    32..47 */
+} bt_notify_device_db_addr_t;
+
+///  bt sco connection request
+typedef struct
+{
+    uint16_t                    type;
+    bt_notify_device_db_addr_t  bd;
+    uint8_t                     mux_id;
+    uint8_t                     code_id;
+} bt_notify_device_sco_req_t;
+
 ///  bt device pair confirm information
 typedef struct
 {
@@ -637,7 +656,7 @@ typedef struct
     uint8_t sco_res;
     ///  profile channel
     uint16_t profile_channel;
-    ///  connection index, used to find the device in the device list
+    /// connection index, used to find the device in the device list
     uint8_t conn_idx;
     bt_device_sco_conn_para_t para;
 } bt_notify_device_sco_info_t;
@@ -731,7 +750,6 @@ typedef struct
     /// vcard name
     char vcard_name[BT_NOTIFY_PBAP_MAX_VCARD_CONTACT_NAME_SIZE + 1];
 } bt_notify_pbap_vcard_listing_item_t;
-
 
 ///  PABP vcard name result
 typedef struct

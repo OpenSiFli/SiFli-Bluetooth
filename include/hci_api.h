@@ -1084,7 +1084,6 @@ void hcia_rd_lp_settings(BTS2S_BD_ADDR *bd, BTS2U_HCI_MSG **pmsg);
  *----------------------------------------------------------------------------*/
 void hcia_wr_lp_settings(BTS2S_BD_ADDR *bd, U16 link_policy_setting, BTS2U_HCI_MSG **pmsg);
 
-#ifdef CFG_OPEN_FULL_HCI_FUNC
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
@@ -1154,7 +1153,6 @@ void hcia_wr_lp_settings_keep_sniff(BTS2S_BD_ADDR *bd,
                                     U16 attmpt,
                                     U16 timeout,
                                     BTS2U_HCI_MSG **pmsg);
-#endif // CFG_OPEN_FULL_HCI_FUNC
 
 void hcia_wr_lp_settings_keep_sniff_interval(BTS2S_BD_ADDR *bd,
         U16 link_policy_setting,
@@ -1165,7 +1163,6 @@ void hcia_wr_lp_settings_keep_sniff_interval(BTS2S_BD_ADDR *bd,
         U16 timeout,
         BTS2U_HCI_MSG **pmsg);
 
-#ifdef CFG_OPEN_FULL_HCI_FUNC
 
 /*----------------------------------------------------------------------------*
  *
@@ -1187,7 +1184,6 @@ void hcia_wr_lp_settings_keep_sniff_interval(BTS2S_BD_ADDR *bd,
 void hcia_wr_lp_settings_transparent(BTS2S_BD_ADDR *bd,
                                      U16 link_policy_setting,
                                      BTS2U_HCI_MSG **pmsg);
-#endif //CFG_OPEN_FULL_HCI_FUNC
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
@@ -2046,6 +2042,8 @@ void hcia_rd_cur_iac_lap(BTS2U_HCI_MSG **pmsg);
 void hcia_wr_cur_iac_lap(U8 num_iac,
                          U24 *a_iacs,
                          BTS2U_HCI_MSG **pmsg);
+
+void hcia_wr_cur_iac_lap_one(U8 num_iac, U8 *a_iacs, BTS2U_HCI_MSG **pmsg);
 
 /*----------------------------------------------------------------------------*
  *

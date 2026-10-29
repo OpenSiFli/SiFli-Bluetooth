@@ -75,7 +75,7 @@ extern "C" {
 
 
 #define CFG_PIN_CODE               "0000"
-#define CFG_MAX_HFP_CONN_NUM                2
+#define CFG_MAX_HFP_CONN_NUM                3
 
 typedef enum
 {
@@ -248,7 +248,7 @@ typedef struct
 {
     BTS2S_BD_ADDR  rmt_bd;
     U8             role;
-    ot_timer_id_t     avrcp_vol_time_handle;
+    rt_timer_t     avrcp_vol_time_handle;
     U8             play_status_notify;
     U8             ab_volume;//the absolute volue be set.
     U8             tgTlable_1;
@@ -272,7 +272,6 @@ typedef struct
 {
     bts2_avrcp_conn conn[CFG_MAX_ACL_CONN_NUM];
     os_semaphore_t       volume_change_sem;
-    U8             abs_volume_pending;
     U8             release_type;
     U8             tgTlable;
 } bts2_avrcp_inst_data;
@@ -293,6 +292,9 @@ typedef struct
     rt_timer_t     hid_time_handle;
     rt_timer_t     hid_time_handle_reset_at_middle_ios;
     rt_timer_t     hid_time_handle_reset_report;
+#ifdef BSP_BQB_TEST
+    rt_timer_t     pts_send_report;
+#endif
     U8        local_protocol_mode;
     U8        mode;
     BOOL      is_device_ios;

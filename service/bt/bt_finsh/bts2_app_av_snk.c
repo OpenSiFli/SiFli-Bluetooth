@@ -1294,7 +1294,7 @@ U16 bt_avsnk_calculate_decode_buffer_size(bts2s_av_inst_data *inst, U8 con_idx)
                      cfg->blocks,
                      cfg->subbands,
                      cfg->bit_pool);
-    frms_per_payload[con_idx] = (U16)((AV_MTU_SIZE - 14) / sbc_frame_size + 1);
+    frms_per_payload[con_idx] = (U16)((inst->con[con_idx].max_frm_size - 14) / sbc_frame_size + 1);
     pcm_samples_per_sbc_frame = bts2_sbc_calculate_pcm_samples_per_sbc_frame(cfg->blocks, cfg->subbands);
     decode_buffer_size = pcm_samples_per_sbc_frame * frms_per_payload[con_idx] * 2;
     USER_TRACE("(d%d)sbc_frame_size = %d,pcm_samples_per_sbc_frame = %d,decode_buffer_size = %d\n", con_idx,
@@ -1353,10 +1353,14 @@ void bt_avsnk_hdl_disc_handler(bts2s_av_inst_data *inst, uint8_t con_idx)
  *----------------------------------------------------------------------------*/
 int8_t bt_avsnk_hdl_start_cfm(bts2s_av_inst_data *inst, uint8_t con_idx)
 {
+#ifndef BSP_BQB_TEST
     int8_t ret = -1;
     if (!bt_avsnk_prepare_sbc(inst, con_idx))
         ret = 0;
     return ret;
+#else
+    return 0;
+#endif
 }
 /*----------------------------------------------------------------------------*
  *

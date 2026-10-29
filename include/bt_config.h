@@ -96,6 +96,11 @@
 #endif
 //#define CFG_OPNE_3WAY
 
+#ifdef BSP_BQB_TEST
+    #define CFG_BT_DIS
+    #define CFG_BQB
+#endif
+
 
 #define CFG_MAX_ACL_CONN_NUM (7)
 //support the maximum number of spp client and server.

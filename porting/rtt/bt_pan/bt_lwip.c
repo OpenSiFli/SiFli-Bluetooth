@@ -19,6 +19,7 @@
 #ifdef RT_USING_LWIP
 #include <netif/ethernetif.h>
 #include <lwip/netifapi.h>
+#include "lwip/dhcp.h"
 #include "lwip/pbuf.h"
 #include "lwip/timeouts.h"
 #ifdef LWIP_USING_DHCPD
@@ -84,8 +85,10 @@ void rt_bnep_lwip_event_handle(struct rt_bnep_device_t *bt_dev, int event, int o
         {
 #ifdef RT_LWIP_DHCP
             ip_addr_t ip_addr = { 0 };
-            dhcp_stop(eth_dev->netif);
-            netif_set_addr(eth_dev->netif, &ip_addr, &ip_addr, &ip_addr);
+            LOG_I("PAN disconnect: netif=%p dhcp=%p, stop dhcp in tcpip thread",
+                  eth_dev->netif, eth_dev->netif ? netif_dhcp_data(eth_dev->netif) : RT_NULL);
+            netifapi_dhcp_stop(eth_dev->netif);
+            netifapi_netif_set_addr(eth_dev->netif, &ip_addr, &ip_addr, &ip_addr);
 #endif
         }
         else if (bt_dev->mode == RT_BNEP_NAP)
@@ -192,7 +195,7 @@ static rt_err_t rt_bt_lwip_protocol_recv(struct rt_bnep_device_t *bt_dev, void *
 
     /*copy data dat -> pbuf*/
     pbuf_take(p, buff, len);
-    LOG_D("rt_bt_lwip_protocol_recv netif %p", eth_dev->netif);
+    //LOG_D("rt_bt_lwip_protocol_recv netif %p", eth_dev->netif);
     if ((eth_dev->netif->input(p, eth_dev->netif)) != ERR_OK)
     {
         LOG_D("F:%s L:%d IP input error", __FUNCTION__, __LINE__);
@@ -319,7 +322,7 @@ static struct rt_bnep_prot *rt_bt_lwip_protocol_register(struct rt_bnep_prot *pr
         return RT_NULL;
     }
     rt_memcpy(&lwip_prot->prot, prot, sizeof(struct rt_bnep_prot));
-    netif_set_up(eth->netif);
+    netifapi_netif_set_up(eth->netif);
 
     LOG_I("eth device init ok name:%s %p", eth_name, &lwip_prot->prot);
     return &lwip_prot->prot;

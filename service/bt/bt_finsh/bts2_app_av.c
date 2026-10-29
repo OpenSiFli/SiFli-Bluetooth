@@ -21,6 +21,7 @@
 #define DBG_TAG             "btapp.av"
 //#define DBG_LVL             DBG_INFO
 #include "rtdbg.h"
+#include "bt_connection_manager.h"
 
 
 const static U8 av_sbc_capabilities[4] = {0x3F, 0xFF, 0x02, 0x35 }; /*support all */
@@ -126,11 +127,13 @@ static void bt_av_init_data(bts2s_av_inst_data *inst, bts2_app_stru *bts2_app_da
         inst->con[i].suspend_pending = FALSE;
         inst->con[i].start_pending = FALSE;
         inst->con[i].pending_cmd = 0xff;
+        inst->con[i].discover_timer = NULL;
+        inst->con[i].max_frm_size = 672; /*tmp. init. */
+#ifdef BSP_BQB_TEST
+        inst->con[i].close_timer = NULL;
+#endif
     }
 
-
-
-    inst->max_frm_size = 672; /*tmp. init. */
     inst->time_stamp = 0;
     inst->close_pending = FALSE;
 
@@ -213,13 +216,17 @@ static uint8_t bt_av_get_local_seid(bts2s_av_inst_data *inst, uint16_t cfg, uint
 
 #ifdef CFG_AV_SRC
     if (cfg == AV_AUDIO_SRC)
-        for (i = MAX_NUM_LOCAL_SNK_SEIDS; i < MAX_NUM_LOCAL_SNK_SEIDS + MAX_NUM_LOCAL_SRC_SEIDS; i++)
+    {
+        for (U8 i = MAX_NUM_LOCAL_SNK_SEIDS; i < MAX_NUM_LOCAL_SNK_SEIDS + MAX_NUM_LOCAL_SRC_SEIDS; i++)
+        {
             if (inst->local_seid_info[i].is_enbd && !inst->local_seid_info[i].local_seid.in_use
                     && (inst->local_seid_info[i].local_seid.codec == codec))
             {
                 local_id = i;
                 break;
             }
+        }
+    }
 #endif //CFG_AV_SRC
     return local_id;
 }
@@ -394,30 +401,6 @@ static void bt_av_hdl_discover_cfm(bts2_app_stru *bts2_app_data)
 
     if (msg->res == AV_ACPT)
     {
-
-#ifdef BSP_BQB_TEST
-        switch (BQB_TEST_CASE)
-        {
-        case A2DP_SRC_AS_BV_01_I:
-        case A2DP_SRC_AS_BI_01_I:
-        case A2DP_SRC_REL_BV_01_I:
-        case A2DP_SRC_REL_BV_02_I:
-        case A2DP_SRC_SET_BV_01_I:
-        case A2DP_SRC_SET_BV_02_I:
-        case A2DP_SRC_SET_BV_03_I:
-        case A2DP_SRC_SET_BV_04_I:
-        case A2DP_SRC_SET_BV_05_I:
-        case A2DP_SRC_SET_BV_06_I:
-        case A2DP_SRC_SUS_BV_01_I:
-        case A2DP_SRC_SUS_BV_02_I:
-            USER_TRACE("BQB test for A2DP/SRC/AS/BV-01-I\n");
-            inst->con[con_idx].cfg = AV_AUDIO_SRC;
-            break;
-        default:
-            break;
-        }
-#endif
-
         for (i = 0; i < MAX_NUM_RMT_SEIDS; i++)
         {
             inst->con[con_idx].rmt_seid[i] = 0;
@@ -433,6 +416,14 @@ static void bt_av_hdl_discover_cfm(bts2_app_stru *bts2_app_data)
             if ((seid_info.media_type == AV_AUDIO)
                     && seid_info.in_use == FALSE)
             {
+                if ((inst->con[con_idx].role == ACPTOR) && (inst->con[con_idx].cfg == AV_AUDIO_NO_ROLE))
+                {
+                    if (seid_info.sep_type == AV_SRC)
+                        inst->con[con_idx].cfg = AV_AUDIO_SNK;
+                    else
+                        inst->con[con_idx].cfg = AV_AUDIO_SRC;
+                }
+
                 if (((inst->con[con_idx].cfg == AV_AUDIO_SNK) && (seid_info.sep_type == AV_SRC)) ||
                         ((inst->con[con_idx].cfg == AV_AUDIO_SRC) && (seid_info.sep_type == AV_SNK)))
                 {
@@ -447,7 +438,14 @@ static void bt_av_hdl_discover_cfm(bts2_app_stru *bts2_app_data)
             /*ask for the end - points capabilities */
             INFO_TRACE("<< (d%d)got available audio end-point\n", con_idx);
             INFO_TRACE(">> (d%d)request to get capabilities of the end-point\n", con_idx);
+#ifdef BSP_BQB_TEST
+            if (BQB_TEST_CASE == AVDTP_SNK_INT_SIG_SMG_BV_07_C)
+                av_get_all_capabilities_req(inst->con[con_idx].conn_id, inst->con[con_idx].rmt_seid[0], ASSIGN_TLABEL);
+            else
+                av_get_capabilities_req(inst->con[con_idx].conn_id, inst->con[con_idx].rmt_seid[0], ASSIGN_TLABEL);
+#else
             av_get_capabilities_req(inst->con[con_idx].conn_id, inst->con[con_idx].rmt_seid[0], ASSIGN_TLABEL);
+#endif
             inst->con[con_idx].rmt_seid_idx = 0;
         }
         else
@@ -458,6 +456,10 @@ static void bt_av_hdl_discover_cfm(bts2_app_stru *bts2_app_data)
     else
     {
         INFO_TRACE("<< (d%d)stream discover rejected, errorcode is %x\n", con_idx, msg->res);
+#ifdef BSP_BQB_TEST
+        //Pts requires the watch to actively connect a2dp and avrcp
+        bt_avrcp_conn_2_dev(&inst->con[con_idx].av_rmt_addr, FALSE);
+#endif
     }
 }
 
@@ -468,6 +470,7 @@ static void bt_av_hdl_discover_ind(bts2_app_stru *bts2_app_data)
     BTS2S_AV_SEID_INFO seid_info[MAX_NUM_LOCAL_SEIDS];
     U8 iter;
     U8 len = 0;
+    U8 i = 0;
     U8 found = FALSE;
     bts2s_av_inst_data *inst = bt_av_get_inst_data();
 
@@ -487,6 +490,34 @@ static void bt_av_hdl_discover_ind(bts2_app_stru *bts2_app_data)
             len++;
         }
     }
+
+    while ((i < MAX_CONNS) && (!found))
+    {
+        if (inst->con[i].conn_id == msg->conn_id)
+        {
+            found = TRUE;
+            break;
+        }
+        i++ ;
+    }
+
+    //!Solve the problem that some headphones actively initiate connection but will not initiate discover
+    if (inst->con[i].discover_timer)
+    {
+        rt_timer_stop(inst->con[i].discover_timer);
+        rt_timer_delete(inst->con[i].discover_timer);
+        inst->con[i].discover_timer = NULL;
+    }
+
+#ifdef BSP_BQB_TEST
+    if (BQB_TEST_CASE == AVDTP_SRC_ACP_SIG_SMG_BI_05_C)
+    {
+        USER_TRACE("AVDTP/SRC/ACP/SIG/SMG/BI-05-C test!!!!!\n");
+        av_discover_rsp_rej(msg->conn_id, msg->tlabel, AV_INVLD_CP_TYPE);
+        return;
+    }
+#endif
+
     if (len > 0)
     {
         INFO_TRACE(">> (d%d)accept the discover indication\n", con_idx);
@@ -602,7 +633,11 @@ static void bt_av_aac_cfg_para_select(bts2s_av_inst_data *inst, uint16_t con_idx
     app_serv_cap[3] = AV_MPEG24_AAC;
 
     //select object type,only support MPEG-2 AAC LC
+#ifndef BSP_BQB_TEST
     app_serv_cap[4] = *(serv_cap + 4);
+#else
+    app_serv_cap[4] = 0x80;
+#endif
 
     //select sampling frequency
     do
@@ -708,7 +743,6 @@ static void bt_av_find_sep_and_set_cfg(bts2s_av_inst_data *inst, uint16_t con_id
                     INFO_TRACE("<< (d%d)get the audio end-point capabilities successfully\n", con_idx);
                     INFO_TRACE(">> (d%d)request to set configuration of the stream\n", con_idx);
 
-                    found = TRUE;
                     uint8_t local_seid_idx = bt_av_get_local_seid(inst, inst->con[con_idx].cfg, prefer_codec[t]);
                     // Find rmt seid but local is not enough, won't start set cfg
                     if (local_seid_idx == 0xFF)
@@ -716,6 +750,7 @@ static void bt_av_find_sep_and_set_cfg(bts2s_av_inst_data *inst, uint16_t con_id
                         break;
                     }
 
+                    found = TRUE;
                     inst->con[con_idx].local_seid_idx = local_seid_idx;
                     inst->local_seid_info[local_seid_idx].local_seid.in_use = TRUE;
                     av_set_cfg_req(inst->con[con_idx].conn_id,
@@ -777,7 +812,14 @@ static void bt_av_hdl_get_cap_cfm(bts2_app_stru *bts2_app_data)
             {
                 /*ask for the next end - point capabilities */
                 INFO_TRACE(">> (d%d)request to get capabilities of the end-point\n", con_idx);
+#ifdef BSP_BQB_TEST
+                if (BQB_TEST_CASE == AVDTP_SNK_INT_SIG_SMG_BV_07_C)
+                    av_get_all_capabilities_req(inst->con[con_idx].conn_id, inst->con[con_idx].rmt_seid[inst->con[con_idx].rmt_seid_idx], ASSIGN_TLABEL);
+                else
+                    av_get_capabilities_req(inst->con[con_idx].conn_id, inst->con[con_idx].rmt_seid[inst->con[con_idx].rmt_seid_idx], ASSIGN_TLABEL);
+#else
                 av_get_capabilities_req(inst->con[con_idx].conn_id, inst->con[con_idx].rmt_seid[inst->con[con_idx].rmt_seid_idx], ASSIGN_TLABEL);
+#endif
             }
             else
             {
@@ -801,6 +843,15 @@ static void bt_av_hdl_get_cap_ind(bts2_app_stru *bts2_app_data)
     U8 con_idx;
     U8 found = FALSE;
     msg = (BTS2S_AV_GET_CAPABILITIES_IND *)bts2_app_data->recv_msg;
+
+#ifdef BSP_BQB_TEST
+    if (BQB_TEST_CASE == AVDTP_SRC_ACP_SIG_SMG_BI_06_C)
+    {
+        USER_TRACE("AVDTP/SRC/ACP/SIG/SMG/BI-06-C test!!!!!\n");
+        av_get_capabilities_rsp_rej(msg->conn_id, msg->tlabel, (U8)0xE1);
+        return;
+    }
+#endif
 
 #if defined(TP_SIG_SMG_BI_04_C)
     av_get_capabilities_rsp_rej(msg->conn_id, msg->tlabel, AV_BAD_LEN);
@@ -937,6 +988,15 @@ static void bt_av_hdl_get_all_cap_ind(bts2_app_stru *bts2_app_data)
     U8 found = FALSE;
     msg = (BTS2S_AV_GET_ALL_CAPABILITIES_IND *)bts2_app_data->recv_msg;
 
+#ifdef BSP_BQB_TEST
+    if (BQB_TEST_CASE == AVDTP_SRC_ACP_SIG_SMG_BI_33_C)
+    {
+        USER_TRACE("AVDTP/SRC/ACP/SIG/SMG/BI-33-C test!!!!!\n");
+        av_get_all_capabilities_rsp_rej(msg->conn_id, msg->tlabel, (U8)0xE1);
+        return;
+    }
+#endif
+
 #if defined(TP_SIG_SMG_BI_04_C)
     av_get_all_capabilities_rsp_rej(msg->conn_id, msg->tlabel, AV_BAD_LEN);
 #elif defined(TP_SIG_SMG_BI_06_C)
@@ -987,7 +1047,11 @@ static void bt_av_hdl_get_all_cap_ind(bts2_app_stru *bts2_app_data)
         // add delay report capability
         U8 *cap_data;
         // U8 cap_len = av_cap_rsp[codec_sel][1] + 2 + AV_DELAY_REPORT_SC_SIZE + AV_MEDIA_TRASPORT_SIZE + AV_CONTENT_PROTECTION_SIZE;
+#ifdef BSP_BQB_TEST
+        U8 cap_len = av_cap_rsp[codec_sel][1] + 2 + AV_DELAY_REPORT_SC_SIZE + AV_MEDIA_TRASPORT_SIZE;
+#else
         U8 cap_len = av_cap_rsp[codec_sel][1] + 2 + AV_MEDIA_TRASPORT_SIZE;
+#endif
         cap_data = bmalloc(cap_len);
         BT_OOM_ASSERT(cap_data);
         if (cap_data)
@@ -1007,10 +1071,10 @@ static void bt_av_hdl_get_all_cap_ind(bts2_app_stru *bts2_app_data)
             // *(cap_data + cap_len - 4) = 2;
             // *(cap_data + cap_len - 3) = 0;
 
-
-
-            // *(cap_data + cap_len - 2) = AV_SC_DELAY_REPORTING;
-            // *(cap_data + cap_len - 1) = 0;
+#ifdef BSP_BQB_TEST
+            *(cap_data + cap_len - 2) = AV_SC_DELAY_REPORTING;
+            *(cap_data + cap_len - 1) = 0;
+#endif
 
             av_get_all_capabilities_rsp_acp(msg->conn_id,
                                             msg->tlabel,
@@ -1090,7 +1154,7 @@ static void bt_av_get_sbc_cfg(uint8_t *app_serv_cap, uint8_t app_serv_length, bt
     {
         app_serv_cap[5] += 0x08;
     }
-    app_serv_cap[5] += act_cfg->alloc_method;
+    app_serv_cap[5] += 1 << act_cfg->alloc_method;
     app_serv_cap[6] = act_cfg->min_bitpool;
     app_serv_cap[7] = act_cfg->max_bitpool;
 
@@ -1142,6 +1206,15 @@ static void bt_av_hdl_get_cfg_ind(bts2_app_stru *bts2_app_data)
     con_idx = bt_av_get_idx_from_shdl(inst, msg->shdl);
     INFO_TRACE(">> (d%d)indicate to get configuration of the stream\n", con_idx);
 
+#ifdef BSP_BQB_TEST
+    if (BQB_TEST_CASE == AVDTP_SRC_ACP_SIG_SMG_BI_12_C)
+    {
+        USER_TRACE("AVDTP/SRC/ACP/SIG/SMG/BI-12-C test!!!!!\n");
+        av_get_cfg_rsp_rej(msg->shdl, msg->tlabel, 0xE1);
+        return;
+    }
+#endif
+
 #ifdef TP_SIG_SMG_BI_10_C
     av_get_cfg_rsp_rej(msg->shdl, msg->tlabel, AV_BAD_ACP_SEID);
 #elif defined(TP_SIG_SMG_BI_12_C)
@@ -1149,7 +1222,7 @@ static void bt_av_hdl_get_cfg_ind(bts2_app_stru *bts2_app_data)
 #else
     if (inst->con[con_idx].stream_hdl == msg->shdl)
     {
-        if ((inst->con[con_idx].st == avconned_open) || (inst->con[con_idx].st == avconned_streaming))
+        if ((inst->con[con_idx].st == avconned) || (inst->con[con_idx].st == avconned_streaming))
         {
             U8 app_serv_cap[SBC_MEDIA_CODEC_SC_SIZE];
             uint8_t app_serv_length = 0;
@@ -1260,116 +1333,20 @@ static void bt_av_hdl_set_cfg_ind(bts2_app_stru *bts2_app_data)
     inst->con[con_idx].stream_hdl = msg->shdl; /*get tmp. shdl */
     serv_cap = msg->serv_cap_data;
 
+#ifdef BSP_BQB_TEST
+    if (BQB_TEST_CASE == AVDTP_SRC_ACP_SIG_SMG_BI_09_C)
+    {
+        USER_TRACE("AVDTP/SRC/ACP/SIG/SMG/BI-09-C test!!!!!\n");
+        av_set_cfg_rsp_rej(msg->shdl, msg->tlabel, 0xE1, *msg->serv_cap_data);
+        return;
+    }
+#endif
+
 #if defined(TP_SIG_SMG_BI_07_C)
     av_set_cfg_rsp_rej(msg->shdl, msg->tlabel, AV_SEP_IN_USE, *msg->serv_cap_data);
 #elif defined(TP_SIG_SMG_BI_09_C)
     av_set_cfg_rsp_rej(msg->shdl, msg->tlabel, 0xE1, *msg->serv_cap_data);
 #else
-
-#ifdef BSP_BQB_TEST
-    switch (BQB_TEST_CASE)
-    {
-    case A2DP_SRC_AVP_BI_10_C:
-        USER_TRACE("A2DP/SRC/AVP/BI-10-C test!!!!!\n");
-        av_set_cfg_rsp_rej(msg->shdl, msg->tlabel, AV_INVLD_OBJ_TYPE, *msg->serv_cap_data);
-        bt_av_hdl_reset_bqb_test();
-        return;
-    case A2DP_SRC_AVP_BI_11_C:
-        USER_TRACE("A2DP/SRC/AVP/BI-11-C test!!!!!\n");
-        av_set_cfg_rsp_rej(msg->shdl, msg->tlabel, AV_INVLD_CHNLS, *msg->serv_cap_data);
-        bt_av_hdl_reset_bqb_test();
-        return;
-    case BQB_BI_03_C:
-    case A2DP_SRC_AVP_BI_12_C:
-        USER_TRACE("BQB_BI_03_C or A2DP/SRC/AVP/BI-12-C test!!!!!\n");
-        av_set_cfg_rsp_rej(msg->shdl, msg->tlabel, AV_INVLD_SAMPLING_FREQ, *msg->serv_cap_data);
-        bt_av_hdl_reset_bqb_test();
-        return;
-    case A2DP_SRC_AVP_BI_14_C:
-        USER_TRACE("A2DP/SRC/AVP/BI-14-C test!!!!!\n");
-        av_set_cfg_rsp_rej(msg->shdl, msg->tlabel, AV_NOT_SUPP_VBR, *msg->serv_cap_data);
-        bt_av_hdl_reset_bqb_test();
-        return;
-    case A2DP_SRC_AVP_BI_16_C:
-        USER_TRACE("A2DP/SRC/AVP/BI-16-C test!!!!!\n");
-        av_set_cfg_rsp_rej(msg->shdl, msg->tlabel, AV_NOT_SUPP_OBJ_TYPE, *msg->serv_cap_data);
-        bt_av_hdl_reset_bqb_test();
-        return;
-    case A2DP_SRC_AVP_BI_17_C:
-        USER_TRACE("A2DP/SRC/AVP/BI-17-C test!!!!!\n");
-        av_set_cfg_rsp_rej(msg->shdl, msg->tlabel, AV_NOT_SUPP_CHNLS, *msg->serv_cap_data);
-        bt_av_hdl_reset_bqb_test();
-        return;
-    case BQB_BI_08_C:
-    case A2DP_SRC_AVP_BI_18_C:
-        USER_TRACE("BQB_BI_08_C or A2DP/SRC/AVP/BI-18-C test!!!!!\n");
-        av_set_cfg_rsp_rej(msg->shdl, msg->tlabel, AV_NOT_SUPP_SAMPLING_FREQ, *msg->serv_cap_data);
-        bt_av_hdl_reset_bqb_test();
-        return;
-    case BQB_BI_10_C:
-    case A2DP_SRC_AVP_BI_20_C:
-        USER_TRACE("BQB_BI_10_C or A2DP/SRC/AVP/BI-20-C test!!!!!\n");
-        av_set_cfg_rsp_rej(msg->shdl, msg->tlabel, AV_INVLD_CODEC_TYPE, *msg->serv_cap_data);
-        bt_av_hdl_reset_bqb_test();
-        return;
-    case BQB_BI_20_C:
-    case A2DP_SRC_AVP_BI_30_C:
-        USER_TRACE("BQB_BI_20_C or A2DP/SRC/AVP/BI-30-C test!!!!!\n");
-        av_set_cfg_rsp_rej(msg->shdl, msg->tlabel, AV_NOT_SUPP_CODEC_TYPE, *msg->serv_cap_data);
-        bt_av_hdl_reset_bqb_test();
-        return;
-    case BQB_BI_11_C:
-    case A2DP_SRC_AVP_BI_21_C:
-        USER_TRACE("BQB_BI_11_C or A2DP/SRC/AVP/BI-21-C test!!!!!\n");
-        av_set_cfg_rsp_rej(msg->shdl, msg->tlabel, AV_INVLD_CHNL_MODE, *msg->serv_cap_data);
-        return;
-    case A2DP_SRC_AVP_BI_31_C:
-        USER_TRACE("A2DP/SRC/AVP/BI-31-C test!!!!!\n");
-        av_set_cfg_rsp_rej(msg->shdl, msg->tlabel, AV_NOT_SUPP_CHNL_MODE, *msg->serv_cap_data);
-        return;
-    case BQB_BI_12_C:
-        USER_TRACE("BQB_BI_12_C test!!!!!\n");
-        av_set_cfg_rsp_rej(msg->shdl, msg->tlabel, AV_INVLD_SUBBANDS, *msg->serv_cap_data);
-        bt_av_hdl_reset_bqb_test();
-        return;
-    case A2DP_SRC_AVP_BI_32_C:
-        USER_TRACE("A2DP/SRC/AVP/BI-32-C test!!!!!\n");
-        av_set_cfg_rsp_rej(msg->shdl, msg->tlabel, AV_NOT_SUPP_SUBBANDS, *msg->serv_cap_data);
-        bt_av_hdl_reset_bqb_test();
-        return;
-    case BQB_BI_13_C:
-        USER_TRACE("BQB_BI_13_C test!!!!!\n");
-        av_set_cfg_rsp_rej(msg->shdl, msg->tlabel, AV_INVLD_ALLOC_METHOD, *msg->serv_cap_data);
-        bt_av_hdl_reset_bqb_test();
-        return;
-    case A2DP_SRC_AVP_BI_33_C:
-        USER_TRACE("A2DP/SRC/AVP/BI-33-C test!!!!!\n");
-        av_set_cfg_rsp_rej(msg->shdl, msg->tlabel, AV_NOT_SUPP_ALLOC_METHOD, *msg->serv_cap_data);
-        bt_av_hdl_reset_bqb_test();
-        return;
-    case BQB_BI_14_C:
-    case A2DP_SRC_AVP_BI_24_C:
-        USER_TRACE("BQB_BI_14_C or A2DP/SRC/AVP/BI-24-C test!!!!!\n");
-        av_set_cfg_rsp_rej(msg->shdl, msg->tlabel, AV_INVLD_MIN_BITPOOL, *msg->serv_cap_data);
-        bt_av_hdl_reset_bqb_test();
-        return;
-    case BQB_BI_15_C:
-    case A2DP_SRC_AVP_BI_25_C:
-        USER_TRACE("BQB_BI_15_C or A2DP/SRC/AVP/BI-25-C test!!!!!\n");
-        av_set_cfg_rsp_rej(msg->shdl, msg->tlabel, AV_INVLD_MAX_BITPOOL, *msg->serv_cap_data);
-        bt_av_hdl_reset_bqb_test();
-        return;
-    case BQB_BI_16_C:
-    case A2DP_SRC_AVP_BI_26_C:
-        USER_TRACE("BQB_BI_16_C or A2DP/SRC/AVP/BI-26-C test!!!!!\n");
-        av_set_cfg_rsp_rej(msg->shdl, msg->tlabel, AV_INVLD_BLOCK_LEN, *msg->serv_cap_data);
-        bt_av_hdl_reset_bqb_test();
-        return;
-
-    default:
-        break;
-    }
-#endif
 
     while ((i < MAX_NUM_LOCAL_SEIDS) && (!found))
     {
@@ -1419,7 +1396,12 @@ static void bt_av_hdl_set_cfg_ind(bts2_app_stru *bts2_app_data)
                         }
                         else
                         {
-                            res = AV_UNSUPP_CFG;
+                            if (*(serv_cap + 3) == AV_MPEG24_AAC)
+                            {
+                                res = AV_NOT_SUPP_CODEC_TYPE;
+                            }
+                            else
+                                res = AV_INVLD_CODEC_TYPE;
                             break;
                         }
                     }
@@ -1483,7 +1465,7 @@ static void bt_av_hdl_set_cfg_ind(bts2_app_stru *bts2_app_data)
                 }
             }
             else
-                res = AV_UNSUPP_CFG;
+                res = AV_INVLD_CODEC_TYPE;
 
             USER_TRACE("CODEC %d\n", codec);
             if (res == AV_ACPT)
@@ -1494,6 +1476,109 @@ static void bt_av_hdl_set_cfg_ind(bts2_app_stru *bts2_app_data)
                 {
                     serv_cap = av_get_svc_cap(AV_SC_MEDIA_CODEC, msg->serv_cap_data, msg->serv_cap_len, &idx);
 
+#ifdef BSP_BQB_TEST
+                    U8 tmp;
+                    U8 count = 0;
+
+                    tmp = (U8)(*(serv_cap + 4) & SBC_IE_SAMPLE_FREQ_MASK);
+                    for (U8 i = 0; i < 3; i++)
+                    {
+                        if ((tmp & (0x10 << i)) != 0)
+                            count++;
+
+                        if (count > 1)
+                        {
+                            USER_TRACE("BQB_BI_03_C or A2DP/SRC/AVP/BI-12-C test!!!!!\n");
+                            res = AV_INVLD_SAMPLING_FREQ;
+                            goto __exit;
+                        }
+                        else if ((tmp & (0x10 << 2)) != 0)
+                        {
+                            USER_TRACE("BQB_BI_08_C or A2DP/SRC/AVP/BI-18-C test!!!!!\n");
+                            res = AV_NOT_SUPP_SAMPLING_FREQ;
+                            goto __exit;
+                        }
+                    }
+
+                    count = 0;
+                    tmp = (U8)(*(serv_cap + 4) & SBC_IE_CHNL_MODE_MASK);
+                    for (U8 i = 0; i < 4; i++)
+                    {
+                        if ((tmp & (0x01 << i)) != 0)
+                            count++;
+
+                        if (count > 1)
+                        {
+                            USER_TRACE("BQB_BI_11_C or A2DP/SRC/AVP/BI-21-C test!!!!!\n");
+                            res = AV_INVLD_CHNL_MODE;
+                            goto __exit;
+                        }
+                    }
+
+                    count = 0;
+                    tmp = (U8)(*(serv_cap + 5) & SBC_IE_BLOCK_MASK);
+                    for (U8 i = 0; i < 3; i++)
+                    {
+                        if ((tmp & (0x10 << i)) != 0)
+                            count++;
+
+                        if (count > 1)
+                        {
+                            USER_TRACE("A2DP/SRC/AVP/BI-16-C test!!!!!\n");
+                            res = AV_INVLD_BLOCK_LEN;
+                            goto __exit;
+                        }
+                    }
+
+                    tmp = (U8)(12 - (*(serv_cap + 5) & SBC_IE_SUBBAND_MASK));
+                    if (tmp == 0 || tmp == 12)
+                    {
+                        if (tmp == 0)
+                        {
+                            USER_TRACE("BQB_BI_12_C test!!!!!\n");
+                            res = AV_INVLD_SUBBANDS;
+                        }
+                        else if (tmp == 12)
+                        {
+                            USER_TRACE("A2DP/SRC/AVP/BI-32-C test!!!!!\n");
+                            res = AV_NOT_SUPP_SUBBANDS;
+                        }
+                        goto __exit;
+                    }
+
+                    tmp = (U8)(*(serv_cap + 5) & SBC_IE_ALLOC_METHOD_MASK);
+                    if (tmp == 0x03)
+                    {
+                        USER_TRACE("BQB_BI_13_C test!!!!!\n");
+                        res = AV_INVLD_ALLOC_METHOD;
+                        goto __exit;
+                    }
+                    else if (tmp == 0x00)
+                    {
+                        USER_TRACE("A2DP/SRC/AVP/BI-33-C test!!!!!\n");
+                        res = AV_NOT_SUPP_ALLOC_METHOD;
+                        goto __exit;
+                    }
+
+                    tmp = (U8)(*(serv_cap + 6));
+
+                    if (tmp < 2)
+                    {
+                        USER_TRACE("BQB_BI_14_C or A2DP/SRC/AVP/BI-24-C test!!!!!\n");
+                        res = AV_INVLD_MIN_BITPOOL;
+                        goto __exit;
+                    }
+
+                    tmp = (U8)(*(serv_cap + 7));
+
+                    if (tmp > 53)
+                    {
+                        USER_TRACE("BQB_BI_15_C or A2DP/SRC/AVP/BI-25-C test!!!!!\n");
+                        res = AV_INVLD_MAX_BITPOOL;
+                        goto __exit;
+                    }
+#endif
+
                     bt_av_store_sbc_cfg(&inst->con[con_idx].act_cfg, serv_cap + 4);
 
                     p_ret = bt_av_prepare_sbc(inst, con_idx);
@@ -1502,6 +1587,82 @@ static void bt_av_hdl_set_cfg_ind(bts2_app_stru *bts2_app_data)
                 {
                     //TODO: Prepare AAC
                     serv_cap = av_get_svc_cap(AV_SC_MEDIA_CODEC, msg->serv_cap_data, msg->serv_cap_len, &idx);
+
+#ifdef BSP_BQB_TEST
+                    U16 tmp;
+                    U8 count = 0;
+
+                    //!object type case
+                    tmp = (U16)(*(serv_cap + 4));
+
+                    for (U8 i = 0; i < 8; i++)
+                    {
+                        if ((tmp & (0x01 << i)) != 0)
+                            count++;
+
+                        if (count > 1)
+                        {
+                            USER_TRACE("A2DP/SNK/AVP/BI-01-C test!!!!!\n");
+                            res = AV_INVLD_OBJ_TYPE;
+                            goto __exit;
+                        }
+                    }
+
+                    if (tmp != 0x80)
+                    {
+                        USER_TRACE("A2DP/SNK/AVP/BI-06-C test!!!!!\n");
+                        res = AV_NOT_SUPP_OBJ_TYPE;
+                        goto __exit;
+                    }
+
+                    //!channel mode case
+                    count = 0;
+                    tmp = (U16)(*(serv_cap + 6) & AAC_IE_CHNL_MODE_MASK);
+
+                    for (U8 i = 0; i < 2; i++)
+                    {
+                        if ((tmp & (0x04 << i)) != 0)
+                            count++;
+
+                        if (count > 1)
+                        {
+                            USER_TRACE("A2DP/SNK/AVP/BI-02-C test!!!!!\n");
+                            res = AV_INVLD_CHNLS;
+                            goto __exit;
+                        }
+                    }
+
+                    if ((tmp & 0x0c) == 0)
+                    {
+                        USER_TRACE("A2DP/SNK/AVP/BI-07-C test!!!!!\n");
+                        res = AV_NOT_SUPP_CHNLS;
+                        goto __exit;
+                    }
+
+                    //!sampling frequency case
+                    count = 0;
+                    tmp = ((U16) * (serv_cap + 5) << 8) | (*(serv_cap + 6) & AAC_IE_SAMPLE_FREQ_MASK);
+
+                    for (U8 i = 0; i < 12; i++)
+                    {
+                        if ((tmp & (0x01 << i)) != 0)
+                            count++;
+
+                        if (count > 1)
+                        {
+                            USER_TRACE("A2DP/SNK/AVP/BI-03-C test!!!!!\n");
+                            res = AV_INVLD_SAMPLING_FREQ;
+                            goto __exit;
+                        }
+                    }
+
+                    if ((tmp & 0x0180) == 0)
+                    {
+                        USER_TRACE("A2DP/SNK/AVP/BI-08-C test!!!!!\n");
+                        res = AV_NOT_SUPP_SAMPLING_FREQ;
+                        goto __exit;
+                    }
+#endif
 
 #ifdef CFG_AV_AAC
                     bt_av_store_aac_cfg(&inst->con[con_idx].act_aac_cfg, serv_cap + 4);
@@ -1543,6 +1704,8 @@ static void bt_av_hdl_set_cfg_ind(bts2_app_stru *bts2_app_data)
     {
         res = AV_BAD_ACP_SEID;
     }
+
+__exit:
     /*reaching here means cfguration can not be approved, send rej rsp */
     INFO_TRACE(">> (d%d)reject the stream configuration indication\n", con_idx);
     av_set_cfg_rsp_rej(inst->con[con_idx].stream_hdl,
@@ -1580,6 +1743,15 @@ static void bt_av_hdl_cfg_ind(bts2_app_stru *bts2_app_data)
     U8 con_idx;
 
     msg = (BTS2S_AV_CFG_IND *)bts2_app_data->recv_msg;
+
+#ifdef BSP_BQB_TEST
+    if (BQB_TEST_CASE == AVDTP_SRC_ACP_SIG_SMG_BI_15_C)
+    {
+        USER_TRACE("AVDTP/SRC/ACP/SIG/SMG/BI-15-C test!!!!!\n");
+        av_recfg_rsp_rej(msg->shdl, msg->tlabel, 0xE1, *msg->serv_cap_data);
+        return;
+    }
+#endif
 
 #ifdef TP_SIG_SMG_BI_13_C
     INFO_TRACE(">> reject to reconfigurate the stream\n");
@@ -1697,7 +1869,19 @@ static void bt_av_hdl_cfg_ind(bts2_app_stru *bts2_app_data)
     bfree(msg->serv_cap_data);
 }
 
+#ifdef BSP_BQB_TEST
+static void bt_av_hdl_close_timer_timeout(void *parameter)
+{
+    bts2_av_conn *a2dp_conn = (bts2_av_conn *)parameter;
+    bts2s_av_inst_data *inst = bt_av_get_inst_data();
 
+    if ((a2dp_conn->st == avconned_open) || (a2dp_conn->st == avconned_streaming))
+    {
+        USER_TRACE("BQB test:close a2dp stream\n");
+        av_close_req(a2dp_conn->stream_hdl, ASSIGN_TLABEL);
+    }
+}
+#endif
 
 static void bt_av_hdl_open_cfm(bts2_app_stru *bts2_app_data)
 {
@@ -1714,6 +1898,18 @@ static void bt_av_hdl_open_cfm(bts2_app_stru *bts2_app_data)
         // INFO_TRACE(">> request to start the av stream\n");
         /*av_start_req(1, ASSIGN_TLABEL, &inst->con[con_idx].stream_hdl);*/
         inst->con[con_idx].st = avconned_open;
+#ifdef BSP_BQB_TEST
+        if (!inst->con[con_idx].close_timer)
+        {
+            inst->con[con_idx].close_timer = rt_timer_create("close_tim", bt_av_hdl_close_timer_timeout, (void *)&inst->con[con_idx],
+                                             rt_tick_from_millisecond(60 * 1000), RT_TIMER_FLAG_SOFT_TIMER);
+        }
+        else
+        {
+            rt_timer_stop(inst->con[con_idx].close_timer);
+        }
+        rt_timer_start(inst->con[con_idx].close_timer);
+#endif
     }
     else
     {
@@ -1736,6 +1932,15 @@ static void bt_av_hdl_open_ind(bts2_app_stru *bts2_app_data)
     {
         INFO_TRACE("connect index %d\n", con_idx);
     }
+
+#ifdef BSP_BQB_TEST
+    if (BQB_TEST_CASE == AVDTP_SRC_ACP_SIG_SMG_BI_18_C)
+    {
+        USER_TRACE("AVDTP/SRC/ACP/SIG/SMG/BI-18-C test!!!!!\n");
+        av_open_rsp_rej(msg->shdl, msg->tlabel, 0xE1);
+        return;
+    }
+#endif
 
 #ifdef TP_SIG_SMG_BI_16_C
     av_open_rsp_rej(msg->shdl, msg->tlabel, AV_BAD_ST);
@@ -1800,7 +2005,7 @@ static void bt_av_hdl_start_cfm(bts2_app_stru *bts2_app_data)
 #ifdef CFG_AVRCP
             bt_avrcp_change_play_status(bts2_app_data, &inst->con[con_idx].av_rmt_addr, play_status);
 #ifdef BSP_BQB_TEST
-            bt_avrcp_track_changed_register_response(bts2_app_data, &inst->con[con_idx].av_rmt_addr, AVRCP_CR_CHANGED, 0);
+            bt_avrcp_track_changed_register_response(bts2_app_data, &inst->con[con_idx].av_rmt_addr, AVRCP_CR_CHANGED, 1);
 #endif
 #endif
 #endif // CFG_AV_SRC
@@ -1836,6 +2041,15 @@ static void bt_av_hdl_start_ind(bts2_app_stru *bts2_app_data)
     U8 shdl = 0;
     U8 con_idx;
     msg = (BTS2S_AV_START_IND *)bts2_app_data->recv_msg;
+
+#ifdef BSP_BQB_TEST
+    if (BQB_TEST_CASE == AVDTP_SRC_ACP_SIG_SMG_BI_21_C)
+    {
+        USER_TRACE("AVDTP/SRC/ACP/SIG/SMG/BI-21-C test!!!!!\n");
+        av_start_rsp_rej(shdl, msg->tlabel, 0xE1, msg->list_len, &msg->first_shdl);
+        return;
+    }
+#endif
 
 #ifdef TP_SIG_SMG_BI_19_C
     av_start_rsp_rej(*(msg->first_shdl), msg->tlabel, AV_BAD_ST, msg->list_len, msg->first_shdl);
@@ -1888,6 +2102,9 @@ static void bt_av_hdl_streamdata_ind(bts2_app_stru *bts2_app_data)
     int ret = -1;
 
     msg = (BTS2S_AV_STREAM_DATA_IND *)bts2_app_data->recv_msg;
+#ifdef BSP_BQB_TEST
+    bfree(msg->data);
+#else
 
     con_idx = bt_av_get_idx_from_shdl(inst, (U8)msg->shdl);
 
@@ -1908,6 +2125,7 @@ static void bt_av_hdl_streamdata_ind(bts2_app_stru *bts2_app_data)
             bfree(msg->data);
         }
     }
+#endif
 #endif
 }
 
@@ -1986,6 +2204,16 @@ static void bt_av_hdl_suspend_ind(bts2_app_stru *bts2_app_data)
     BTS2S_AV_SUSPEND_IND *msg;
     U8 con_idx;
     msg = (BTS2S_AV_SUSPEND_IND *)bts2_app_data->recv_msg;
+
+#ifdef BSP_BQB_TEST
+    if (BQB_TEST_CASE == AVDTP_SRC_ACP_SIG_SMG_BI_27_C)
+    {
+        USER_TRACE("AVDTP/SRC/ACP/SIG/SMG/BI-27-C test!!!!!\n");
+        av_suspend_rsp_rej(msg->first_shdl, msg->tlabel, 0XE1, msg->list_len, &(msg->first_shdl));
+        return;
+    }
+#endif
+
 #ifdef TP_SIG_SMG_BI_25_C
     av_suspend_rsp_rej(msg->first_shdl, msg->tlabel, AV_BAD_ST, msg->list_len, &(msg->first_shdl));
 #elif defined(TP_SIG_SMG_BI_27_C)
@@ -2002,6 +2230,15 @@ static void bt_av_hdl_suspend_ind(bts2_app_stru *bts2_app_data)
     {
         INFO_TRACE("connect index %d\n", con_idx);
     }
+
+#ifdef BSP_BQB_TEST
+    if (inst->con[con_idx].st != avconned_streaming)
+    {
+        USER_TRACE("AVDTP/SRC/ACP/SIG/SMG/BI-26-C test!!!!!\n");
+        av_suspend_rsp_rej(inst->con[con_idx].stream_hdl, msg->tlabel, AV_BAD_ST, msg->list_len, &(msg->first_shdl));
+        return;
+    }
+#endif
 
     if (inst->con[con_idx].stream_hdl == msg->first_shdl)
     {
@@ -2072,6 +2309,15 @@ static void bt_av_hdl_close_ind(bts2_app_stru *bts2_app_data)
     U8 con_idx;
     msg = (BTS2S_AV_CLOSE_IND *)bts2_app_data->recv_msg;
 
+#ifdef BSP_BQB_TEST
+    if (BQB_TEST_CASE == AVDTP_SRC_ACP_SIG_SMG_BI_24_C)
+    {
+        USER_TRACE("AVDTP/SRC/ACP/SIG/SMG/BI-24-C test!!!!!\n");
+        av_close_rsp_rej(msg->shdl, msg->tlabel, 0xE1);
+        return;
+    }
+#endif
+
 #ifdef TP_SIG_SMG_BI_22_C
     av_close_rsp_rej(msg->shdl, msg->tlabel, AV_BAD_ST);
 
@@ -2125,22 +2371,23 @@ static void bt_av_hdl_stream_mtu_size_ind(bts2_app_stru *bts2_app_data)
     U8 con_idx;
 
     msg = (BTS2S_AV_STREAM_MTU_SIZE_IND *)bts2_app_data->recv_msg;
-    inst->max_frm_size = msg->rmt_mtu_size;
+
+    con_idx = bt_av_get_idx_from_shdl(inst, msg->shdl);
 
     U16 dft_mtu_size = bts2_get_l2cap_default_mtu_size();
     /*if def_max_MTU < rmt MTU < (2 *def_max_MTU + 2), use def_max_MTU which
        matches the payload size of a DH5 pkt */
-    if ((msg->rmt_mtu_size < ((dft_mtu_size   << 1) + 2))
-            && (msg->rmt_mtu_size > dft_mtu_size))
-    {
-        inst->max_frm_size = dft_mtu_size ;
-    }
+    // if ((msg->rmt_mtu_size < ((dft_mtu_size   << 1) + 2))
+    //         && (msg->rmt_mtu_size > dft_mtu_size))
+    // {
+    //     inst->con[con_idx].max_frm_size = dft_mtu_size ;
+    // }
 
-    con_idx = bt_av_get_idx_from_shdl(inst, msg->shdl);
+    inst->con[con_idx].max_frm_size = msg->rmt_mtu_size;
 
-    INFO_TRACE("<< (d%d)recive remote av MUT information,max_frm_size = %d\n", con_idx, inst->max_frm_size);
+    INFO_TRACE("<< (d%d)recive remote av MUT information,max_frm_size = %d\n", con_idx, inst->con[con_idx].max_frm_size);
 
-#ifdef RT_USING_UTEST
+#if defined(RT_USING_UTEST) || defined(BSP_BQB_TEST)
     if (inst->con[con_idx].cfg == AV_AUDIO_SRC)
     {
 #ifdef AUDIO_USING_MANAGER
@@ -2229,6 +2476,18 @@ static void bt_av_hdl_conn_cfm(bts2_app_stru *bts2_app_data)
     }
 }
 
+//Some devices will not send discover command, even if it initiates a2dp connection
+static void bt_av_hdl_discover_timer_timeout(void *parameter)
+{
+    bts2_av_conn *a2dp_conn = (bts2_av_conn *)parameter;
+    bts2s_av_inst_data *inst = bt_av_get_inst_data();
+
+    if (a2dp_conn->st == avconned)
+    {
+        USER_TRACE("<< peer device did not send discover command in time\n");
+        av_discover_req(a2dp_conn->conn_id, ASSIGN_TLABEL);
+    }
+}
 
 static void bt_av_hdl_conn_ind(bts2_app_stru *bts2_app_data)
 {
@@ -2258,25 +2517,17 @@ static void bt_av_hdl_conn_ind(bts2_app_stru *bts2_app_data)
 
         INFO_TRACE("(d%d)URC av conn,ind\n", i);
 
-#ifdef BSP_BQB_TEST
-        switch (BQB_TEST_CASE)
+        //Some devices will not send discover command, even if it initiates a2dp connection
+        if (!inst->con[i].discover_timer)
         {
-        case A2DP_SRC_AS_BV_01_I:
-        case A2DP_SRC_AS_BI_01_I:
-        case A2DP_SRC_REL_BV_01_I:
-        case A2DP_SRC_REL_BV_02_I:
-        case A2DP_SRC_SET_BV_01_I:
-        case A2DP_SRC_SET_BV_03_I:
-        case A2DP_SRC_SET_BV_05_I:
-        case A2DP_SRC_SUS_BV_01_I:
-        case A2DP_SRC_SUS_BV_02_I:
-            USER_TRACE("BQB test for A2DP/SRC/AS/BV-01-I or A2DP/SRC/AS/BI-01-I\n");
-            av_discover_req(inst->con[i].conn_id, ASSIGN_TLABEL);
-            break;
-        default:
-            break;
+            inst->con[i].discover_timer = rt_timer_create("discover", bt_av_hdl_discover_timer_timeout, (void *)&inst->con[i],
+                                          rt_tick_from_millisecond(1800), RT_TIMER_FLAG_SOFT_TIMER);
         }
-#endif
+        else
+        {
+            rt_timer_stop(inst->con[i].discover_timer);
+        }
+        rt_timer_start(inst->con[i].discover_timer);
     }
     else
     {
@@ -2521,6 +2772,7 @@ void bt_av_msg_handler(bts2_app_stru *bts2_app_data)
         break;
     }
     case BTS2MU_AV_GET_CAPABILITIES_CFM:
+    case BTS2MU_AV_GET_ALL_CAPABILITIES_CFM:
     {
         bt_av_hdl_get_cap_cfm(bts2_app_data);
         break;
@@ -2800,6 +3052,7 @@ void bt_av_suspend_stream(uint8_t con_idx)
 void bt_av_start_stream(uint8_t con_idx)
 {
     bts2s_av_inst_data *inst = bt_av_get_inst_data();
+    int8_t ret = -1;
 
     if (inst->con[con_idx].start_pending)
     {
@@ -2825,6 +3078,19 @@ void bt_av_start_stream(uint8_t con_idx)
         else
         {
             USER_TRACE(" -- the stream(%d) can not start due to status error!\n", con_idx);
+#ifdef BSP_BQB_TEST
+            if (inst->con[con_idx].st == avconned_streaming)
+            {
+                if (inst->con[con_idx].cfg == AV_AUDIO_SRC)
+                    ret = bt_avsrc_hdl_start_cfm(inst, con_idx);
+
+                if (!ret)
+                {
+                    bt_avsrc_set_start_flag(TRUE);
+                    bt_avsrc_hdl_streaming_start(inst, con_idx);
+                }
+            }
+#endif // CFG_AV_SRC
         }
     }
 }

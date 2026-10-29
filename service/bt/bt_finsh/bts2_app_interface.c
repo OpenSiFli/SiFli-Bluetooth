@@ -414,6 +414,18 @@ int8_t bt_interface_disconnect_req(unsigned char *mac)
     return bt_disconnect_req(&bd_addr);
 }
 
+int8_t bt_interface_sco_connect_res(bt_notify_device_sco_req_t *msg)
+{
+    if (msg->code_id == 0)
+    {
+        return gap_sync_conn_res((BTS2S_BD_ADDR *)&msg->bd, (U8)msg->code_id, 0);
+    }
+    else
+    {
+        return gap_sync_conn_res((BTS2S_BD_ADDR *)&msg->bd, (U8)msg->code_id, 1);
+    }
+}
+
 int8_t bt_interface_io_req_res(unsigned char *mac, BTS2E_SC_IO_CAPABILITY io_capability, uint8_t mitm, uint8_t bonding)
 {
     BTS2S_BD_ADDR bd_addr;
@@ -577,6 +589,24 @@ void bt_interface_set_sniff_enable(uint8_t enable)
     hcia_set_sniff_mode_enable(enable);
 }
 
+void bt_interface_stay_active(unsigned char *mac)
+{
+    BTS2S_BD_ADDR bd_addr;
+
+    bt_addr_convert_to_bts((bd_addr_t *)mac, &bd_addr);
+
+    gap_link_policy_or_mode_change_req(bd_addr, 0, NULL, DM_LINK_POLICY_KEEP_ACT);
+}
+
+void bt_interface_resume_sniff(unsigned char *mac)
+{
+    BTS2S_BD_ADDR bd_addr;
+
+    bt_addr_convert_to_bts((bd_addr_t *)mac, &bd_addr);
+
+    gap_link_policy_or_mode_change_req(bd_addr, ENB_SNIFF, NULL, DM_LINK_POLICY_RESUME_SNIFF);
+}
+
 void bt_interface_enable_pincode_pair_mode(uint8_t enable)
 {
     gap_enable_pincode_pair_mode(enable);
@@ -724,6 +754,20 @@ void bt_interface_close_avrcp(void)
     bt_avrcp_close();
 }
 
+void bt_interface_avrcp_volume_up(void)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+
+    bt_avrcp_volume_up(bts2_app_data, &bts2_app_data->avrcp_inst.conn[0].rmt_bd);
+}
+
+void bt_interface_avrcp_volume_down(void)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+
+    bt_avrcp_volume_down(bts2_app_data, &bts2_app_data->avrcp_inst.conn[0].rmt_bd);
+}
+
 //!todo:Divided into multiple connections
 // @deprecated - please use bt_interface_avrcp_next_ext
 void bt_interface_avrcp_next(void)
@@ -823,6 +867,29 @@ void bt_interface_avrcp_rewind(bt_notify_device_mac_t *mac)
 
     bt_addr_convert_to_bts((bd_addr_t *)mac, &bd_addr);
     bt_avrcp_rewind(bts2_app_data, &bd_addr);
+}
+
+void bt_interface_avrcp_rewind_ext(void)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+
+    bt_avrcp_rewind(bts2_app_data, &bts2_app_data->avrcp_inst.conn[0].rmt_bd);
+}
+
+void bt_interface_avrcp_fast_forward(bt_notify_device_mac_t *mac)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    BTS2S_BD_ADDR     bd_addr;
+
+    bt_addr_convert_to_bts((bd_addr_t *)mac, &bd_addr);
+    bt_avrcp_fast_forward(bts2_app_data, &bd_addr);
+}
+
+void bt_interface_avrcp_fast_forward_ext(void)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+
+    bt_avrcp_fast_forward(bts2_app_data, &bts2_app_data->avrcp_inst.conn[0].rmt_bd);
 }
 
 // @deprecated - please use bt_interface_avrcp_set_absolute_volume_as_ct_role_ext

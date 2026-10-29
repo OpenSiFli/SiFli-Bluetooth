@@ -387,6 +387,9 @@ void bt_hid_init(bts2_app_stru *bts2_app_data)
         bts2_app_data->hid_inst.conn[i].hid_time_handle_reset_report = NULL;
         bts2_app_data->hid_inst.conn[i].hid_time_handle_reset_at_middle_ios = NULL;
         bts2_app_data->hid_inst.conn[i].local_protocol_mode = HID_REPORT_PROTOCOL_MODE;
+#ifdef BSP_BQB_TEST
+        bts2_app_data->hid_inst.conn[i].pts_send_report = NULL;
+#endif
     }
 #ifdef CFG_OPEN_HID
     bts2s_hid_openFlag = 1;
@@ -1310,6 +1313,15 @@ static void bt_hid_timeout_handler_reset_report(void *parameter)
     }
 }
 
+#ifdef BSP_BQB_TEST
+void bt_hid_pts_send_report(void *parameter)
+{
+    bts2_app_stru *bts2_app_data = (bts2_app_stru *)parameter;
+    USER_TRACE("[U-L]hid pts send report\n");
+    bt_hid_mouse_left_click(bts2_app_data, 0);
+}
+#endif
+
 
 /*
 Description:
@@ -1884,6 +1896,15 @@ static void hid_receive_set_report_handle(bts2_app_stru *bts2_app_data)
         }
     }
 
+#ifdef BSP_BQB_TEST
+    if (report_data_len < 6 && report_id == HID_BOOT_PROTOCOL_MOUSE_REPORT_ID)
+    {
+        USER_TRACE("%s report data len too short\n", __func__);
+        hid_send_handshake(bts2_app_data, conn_idx,  HID_HANDSHAKE_PARAM_TYPE_ERR_INVALID_PARAMETER);
+        return;
+    }
+#endif
+
     if (report_data_len > HID_FRAME_DATA_MAX_LEN)
     {
         USER_TRACE("%s report data len too long\n", __func__);
@@ -2195,6 +2216,21 @@ void bt_hid_msg_handler(bts2_app_stru *bts2_app_data)
         msg = (BTS2S_HID_CONN_IND *)bts2_app_data->recv_msg;
         if (msg->local_psm == BT_PSM_HID_CTRL)
         {
+            U8 idx = CFG_MAX_HID_CONN_NUM;
+
+            idx = bt_hid_get_available_connection();
+
+            if (idx == CFG_MAX_HID_CONN_NUM)
+            {
+                USER_TRACE("The connection is full\n");
+                hid_disc_req_ext(&msg->bd);
+                break;
+            }
+            else
+            {
+                bd_copy(&bts2_app_data->hid_inst.conn[idx].rmt_bd, &msg->bd);
+                bts2_app_data->hid_inst.conn[idx].is_hid_device_role = TRUE;
+            }
             USER_TRACE("[L-U]remote connect HID control channel success\n");
         }
         else if (msg->local_psm == BT_PSM_HID_INTR)
@@ -2202,28 +2238,14 @@ void bt_hid_msg_handler(bts2_app_stru *bts2_app_data)
 
             U8 idx = CFG_MAX_HID_CONN_NUM;
 
-            if (bt_hid_check_connection_by_addr(&msg->bd, &idx))
+            if (!bt_hid_check_connection_by_addr(&msg->bd, &idx))
             {
-                USER_TRACE("[U-L] why receive repeated connection...\n");
+                USER_TRACE("[U-L] why receive un-except connection...\n");
                 hid_disc_req_ext(&msg->bd);
                 break;
             }
             else
             {
-                idx = bt_hid_get_available_connection();
-
-                if (idx == CFG_MAX_HID_CONN_NUM)
-                {
-                    USER_TRACE("The connection is full\n");
-                    hid_disc_req_ext(&msg->bd);
-                    break;
-                }
-                else
-                {
-                    bd_copy(&bts2_app_data->hid_inst.conn[idx].rmt_bd, &msg->bd);
-                    bts2_app_data->hid_inst.conn[idx].is_hid_device_role = TRUE;
-                }
-
                 USER_TRACE("[L-U]remote connect HID interrupt channel success\n");
                 bt_notify_profile_state_info_t profile_state;
                 bt_addr_convert(&msg->bd, profile_state.mac.addr);
@@ -2232,6 +2254,18 @@ void bt_hid_msg_handler(bts2_app_stru *bts2_app_data)
                 bt_profile_update_connection_state(BT_NOTIFY_HID, BT_NOTIFY_HID_PROFILE_CONNECTED, &profile_state);
 
                 bt_hid_mouse_reset_at_middle(bts2_app_data, idx);
+#ifdef BSP_BQB_TEST
+                if (!bts2_app_data->hid_inst.conn[idx].pts_send_report)
+                {
+                    bts2_app_data->hid_inst.conn[idx].pts_send_report = rt_timer_create("hid_pts", bt_hid_pts_send_report, (void *)bts2_app_data,
+                            rt_tick_from_millisecond(8000), RT_TIMER_FLAG_SOFT_TIMER);
+                }
+                else
+                {
+                    rt_timer_stop(bts2_app_data->hid_inst.conn[idx].pts_send_report);
+                }
+                rt_timer_start(bts2_app_data->hid_inst.conn[idx].pts_send_report);
+#endif
             }
         }
         break;

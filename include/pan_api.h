@@ -341,7 +341,6 @@ void pan_svc_srch_req(U16 conn_hdl,
                       BTS2S_BD_ADDR *bd_addr,
                       U16 role);
 
-
 U8 bnep_buff_count(U16 cid);
 void bnep_set_max_queue_len(U8 max_queue_len);
 #ifdef __cplusplus

@@ -1616,7 +1616,6 @@ static void bt_disply_menu_gen_9(void)
     printf("\n");
 }
 
-
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
@@ -3896,10 +3895,18 @@ extern void l2ca_cfg_req(U16 cid,
                          U16 outgoing_flush_timeout,
                          BOOL more);
 extern void l2ca_conn_req(BTS2S_BD_ADDR *bd, U16 local_psm, U16 rmt_psm);
-extern void l2ca_ping_req(BTS2S_BD_ADDR *bd, U8 *data, U16 len, U16 local_psm);
 extern void l2ca_datawr_req(U16 cid, U16 len, void *data);
-
-//extern void l2ca_get_info_req(BTS2S_BD_ADDR *bd, U16 info_type, U16 local_psm);
+extern void l2ca_disc_rsp(U8 id, U16 cid);
+extern void l2ca_ping_req(BTS2S_BD_ADDR *bd, U8 *data, U16 len, U16 local_psm);
+extern void l2ca_get_info_req(BTS2S_BD_ADDR *bd, U16 info_type, U16 local_psm);
+extern void l2ca_enre_conn_req(BTS2S_BD_ADDR *bd, U16 local_psm, U16 rmt_psm);
+extern void l2ca_enre_cfg_req(U16 cid,
+                              U16 option,
+                              U16 incoming_mtu,
+                              BTS2S_RETRA_OPT *rfc_opt,
+                              BTS2S_FCS_OPT *fcs_opt,
+                              BOOL more);
+extern void l2ca_disc_rsp(U8 id, U16 cid);
 
 static void bt_hdl_menu_l2cap(bts2_app_stru *bts2_app_data)
 {
@@ -3911,47 +3918,46 @@ static void bt_hdl_menu_l2cap(bts2_app_stru *bts2_app_data)
         break;
     }
 
+    case '9':
+    {
+        l2ca_disc_rsp(4, 0xff); //disc the first l2cap
+        break;
+    }
+
     case '2':
     {
-        l2ca_cfg_req(0xff, 0, 0, NULL, 0, FALSE);
+        BTS2S_BD_ADDR bd;
+        int reuslt = 0;
+        uint32_t mac[6];
+        reuslt = sscanf((const char *)bts2_app_data->input_str + 1, "%02X%02X%02X%02X%02X%02X", \
+                        &mac[0], &mac[1], \
+                        &mac[2], &mac[3], \
+                        &mac[4], &mac[5]);
+        bd.lap = (mac[3] << 16) | (mac[4] << 8) | mac[5];
+        bd.uap = (U8)mac[2];
+        bd.nap = (U16)((mac[0] << 8) | mac[1]);
+
+        l2ca_conn_req(&bd, BT_PSM_SDP, BT_PSM_SDP);
         break;
     }
 
     case '3':
     {
-        BTS2S_BD_ADDR temp = {0xffffff, 0xff, 0xffff};
-
-        if (0 != memcmp(&(bts2_app_data->bd_list[bts2_app_data->dev_idx]), &temp, sizeof(BTS2S_BD_ADDR)))
-        {
-            l2ca_conn_req(&(bts2_app_data->bd_list[bts2_app_data->dev_idx]), BT_PSM_SDP, BT_PSM_SDP);
-        }
-        else if (0 != memcmp(&(bts2_app_data->last_conn_bd), &temp, sizeof(BTS2S_BD_ADDR)))
-        {
-            l2ca_conn_req(&(bts2_app_data->last_conn_bd), BT_PSM_SDP, BT_PSM_SDP);
-            bts2_app_data->last_conn_bd = temp;
-        }
-
-        break;
-    }
-
-    case '4':
-    {
-        BTS2S_BD_ADDR temp = {0xffffff, 0xff, 0xffff};
+        BTS2S_BD_ADDR bd;
+        int reuslt = 0;
+        uint32_t mac[6];
+        reuslt = sscanf((const char *)bts2_app_data->input_str + 1, "%02X%02X%02X%02X%02X%02X", \
+                        &mac[0], &mac[1], \
+                        &mac[2], &mac[3], \
+                        &mac[4], &mac[5]);
+        bd.lap = (mac[3] << 16) | (mac[4] << 8) | mac[5];
+        bd.uap = (U8)mac[2];
+        bd.nap = (U16)((mac[0] << 8) | mac[1]);
 
         U8 *tmp = bmalloc(10);
         bmemcpy(tmp, "echo test!", 10);
 
-        if (0 != memcmp(&(bts2_app_data->bd_list[bts2_app_data->dev_idx]), &temp, sizeof(BTS2S_BD_ADDR)))
-        {
-            l2ca_ping_req(&(bts2_app_data->bd_list[bts2_app_data->dev_idx]), tmp, 10, BT_PSM_SDP);
-        }
-        else if (0 != memcmp(&(bts2_app_data->last_conn_bd), &temp, sizeof(BTS2S_BD_ADDR)))
-        {
-            l2ca_ping_req(&(bts2_app_data->last_conn_bd), tmp, 10, BT_PSM_SDP);
-            bts2_app_data->last_conn_bd = temp;
-        }
-
-
+        l2ca_ping_req(&bd, tmp, 10, BT_PSM_SDP);
         break;
     }
 
@@ -3960,6 +3966,60 @@ static void bt_hdl_menu_l2cap(bts2_app_stru *bts2_app_data)
         U8 *tmp = bmalloc(48);
         memset(tmp, 0x01, 48);
         l2ca_datawr_req(0xff, 48, tmp);
+        break;
+    }
+
+    case '6':
+    {
+        BTS2S_BD_ADDR bd;
+        int reuslt = 0;
+        uint32_t mac[6];
+        reuslt = sscanf((const char *)bts2_app_data->input_str + 1, "%02X%02X%02X%02X%02X%02X", \
+                        &mac[0], &mac[1], \
+                        &mac[2], &mac[3], \
+                        &mac[4], &mac[5]);
+        bd.lap = (mac[3] << 16) | (mac[4] << 8) | mac[5];
+        bd.uap = (U8)mac[2];
+        bd.nap = (U16)((mac[0] << 8) | mac[1]);
+
+
+        l2ca_get_info_req(&bd, 0x0002, BT_PSM_SDP);
+        break;
+    }
+
+    case '7':
+    {
+        BTS2S_BD_ADDR bd;
+        int reuslt = 0;
+        uint32_t mac[6];
+        reuslt = sscanf((const char *)bts2_app_data->input_str + 1, "%02X%02X%02X%02X%02X%02X", \
+                        &mac[0], &mac[1], \
+                        &mac[2], &mac[3], \
+                        &mac[4], &mac[5]);
+        bd.lap = (mac[3] << 16) | (mac[4] << 8) | mac[5];
+        bd.uap = (U8)mac[2];
+        bd.nap = (U16)((mac[0] << 8) | mac[1]);
+
+        l2ca_enre_conn_req(&bd, BT_PSM_SDP, BT_PSM_SDP);
+        break;
+    }
+
+    case '8':
+    {
+        BTS2S_RETRA_OPT   *rfc_opt;
+        rfc_opt = (BTS2S_RETRA_OPT *)bmalloc(sizeof(BTS2S_RETRA_OPT));
+        rfc_opt->mode = L2CAP_MODE_ENHANCED_RETRANSMISSION;
+        rfc_opt->txwindow = L2CAP_TX_WINDOW_SIZE;
+        rfc_opt->maxtransmit = L2CAP_MAX_TRANSMIT;
+        rfc_opt->retransmission_timeout = L2CAP_RETRANS_TIMEOUT;
+        rfc_opt->monitor_timeout = L2CAP_MONITOR_TIMEOUT;
+        rfc_opt->mps = L2CAP_MAX_PDU_PAYLOAD_SIZE;
+
+        BTS2S_FCS_OPT   *fcs_opt;
+        fcs_opt = (BTS2S_FCS_OPT *)bmalloc(sizeof(BTS2S_FCS_OPT));
+        fcs_opt->mode = L2CAP_FCS_TYPE_16_BIT;
+
+        l2ca_enre_cfg_req(0xff, SPECIFY_RETRANS_FC | SPECIFY_FCS, 0, rfc_opt, fcs_opt, FALSE);
         break;
     }
 
@@ -4332,6 +4392,20 @@ static void bt_hdl_menu_avrcp(bts2_app_stru *bts2_app_data)
         bt_avrcp_get_play_status_request(bts2_app_data, &(bts2_app_data->avrcp_inst.conn[idx].rmt_bd));
     }
     break;
+    case 'k':
+    {
+        U8 idx = bts2_app_data->input_str[1] - '0';
+        U8 track_changed = bts2_app_data->input_str[2] - '0';
+        bt_avrcp_track_changed_register_response(bts2_app_data, &(bts2_app_data->avrcp_inst.conn[idx].rmt_bd), AVRCP_CR_CHANGED, track_changed);
+    }
+    break;
+    case 'l':
+    {
+        U8 idx = bts2_app_data->input_str[1] - '0';
+        U8 track_changed = bts2_app_data->input_str[2] - '0';
+        bt_avrcp_track_changed_register_response(bts2_app_data, &(bts2_app_data->avrcp_inst.conn[idx].rmt_bd), AVRCP_CR_INTERIM, track_changed);
+    }
+    break;
     case 'p':
         bt_avrcp_dump_connection_info(bts2_app_data);
         break;
@@ -4374,7 +4448,7 @@ static void bt_hdl_menu_avrcp_a(bts2_app_stru *bts2_app_data)
         U8   volume;
         volume  = atoi((const char *)bts2_app_data->input_str);
 
-        bt_avrcp_change_volume(bts2_app_data, &(bts2_app_data->bd_list[bts2_app_data->dev_idx]), volume);
+        bt_avrcp_change_volume(bts2_app_data, &(bts2_app_data->avrcp_inst.conn[0].rmt_bd), volume);
     }
 }
 #endif
@@ -4447,7 +4521,6 @@ static void bt_hdl_menu_hid(bts2_app_stru *bts2_app_data)
         bd.lap = (mac[3] << 16) | (mac[4] << 8) | mac[5];
         bd.uap = (U8)mac[2];
         bd.nap = (U16)((mac[0] << 8) | mac[1]);
-
         bt_hid_disc_2_dev(&bd);
         break;
     }
@@ -4698,6 +4771,12 @@ static void bt_hdl_menu_av_src(bts2_app_stru *bts2_app_data)
         break;
     case 's':
         bt_disply_menu(bts2_app_data);
+        break;
+    case 'g':
+        bt_avsrc_get_cfg(bts2_app_data);
+        break;
+    case 'h':
+        bt_avsrc_abort_stream(bts2_app_data);
         break;
     case 'r':
         bts2_app_data->menu_id = menu_main;
@@ -5765,7 +5844,6 @@ static void bt_hdl_menu_pbap_clt(bts2_app_stru *bts2_app_data)
         pbap_clt_pull_pb_next_req_ext(srm, srmp, is_final);
         break;
     }
-
     case 's':
     {
         bt_disply_menu(bts2_app_data);

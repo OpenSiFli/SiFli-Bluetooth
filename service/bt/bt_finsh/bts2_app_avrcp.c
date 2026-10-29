@@ -15,6 +15,7 @@
 
 #include "drivers/bt_device.h"
 #include "bt_connection_manager.h"
+#include "bf0_sibles.h"
 
 #ifdef CFG_AVRCP
 
@@ -33,9 +34,6 @@ static int tlabel = 0;
 
 extern bts2_app_stru *bts2g_app_p;
 uint8_t   bts2s_avrcp_openFlag;//0x00:dont open avrcp profile; 0x01:open avrcp profile;
-#ifdef BSP_BQB_TEST
-    extern U8 BQB_TEST_CASE;
-#endif
 
 
 #define BEGIN_ACCESS_VAR()              {os_sem_take(bts2g_app_p->avrcp_inst.volume_change_sem, OS_WAIT_FORVER);  \
@@ -68,7 +66,6 @@ bt_notify_avrcp_music_detail_t music_detail_info;
 void bt_avrcp_init(bts2_app_stru *bts2_app_data)
 {
     bts2_app_data->avrcp_inst.volume_change_sem = os_sem_create("bt_avrcp_vol_change", 1);
-    bts2_app_data->avrcp_inst.abs_volume_pending = 0;
     bts2_app_data->avrcp_inst.release_type = 0x00;
 
     for (U8 idx = 0; idx < CFG_MAX_AVRCP_CONN_NUM; idx++)
@@ -79,6 +76,7 @@ void bt_avrcp_init(bts2_app_stru *bts2_app_data)
         bts2_app_data->avrcp_inst.conn[idx].ab_volume = 20;//default value;
         bts2_app_data->avrcp_inst.conn[idx].playback_status = 0;
         bts2_app_data->avrcp_inst.conn[idx].abs_vol_support = 0;
+        bts2_app_data->avrcp_inst.conn[idx].abs_volume_pending = 0;
         bts2_app_data->avrcp_inst.conn[idx].role = AVRCP_NO_ROLE;
         bts2_app_data->avrcp_inst.conn[idx].element_support = ATTRIBUTES_IDX(AVRCP_MEDIA_ATTRIBUTES_TITLE) |  \
                 ATTRIBUTES_IDX(AVRCP_MEDIA_ATTRIBUTES_ARTIST) | \
@@ -314,6 +312,7 @@ void bt_avrcp_pop(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR bd, U8 stateOpe)
                            data);
 }
 
+
 void bt_avrcp_timeout_handler(void *parameter)
 {
     bts2_app_stru *bts2_app_data = bts2g_app_p;
@@ -340,7 +339,6 @@ void bt_avrcp_vol_timeout_handler(void *parameter)
     bt_avrcp_volume_register_request(bts2_app_data, bd);
     USER_TRACE("can't receive interim notify,re-try register volume changed\n");
 }
-
 
 void bt_avrcp_ply(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
 {
@@ -374,6 +372,20 @@ void bt_avrcp_ply(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
 void bt_avrcp_rewind(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
 {
     U8 data[3] = {0x7c, 0x48, 0x00}; /*rewind*/
+    avrcp_cmd_data_req_ext(bd,
+                           bts2_app_data->phdl,
+                           ASSIGN_TLABEL,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_CTRL,
+                           AVRCP_PASS_THROUGH_SUBUNIT_TYPE,
+                           AVRCP_PASS_THROUGH_SUBUNIT_ID,
+                           3,
+                           data);
+}
+
+void bt_avrcp_fast_forward(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
+{
+    U8 data[3] = {0x7c, 0x49, 0x00}; /*rewind*/
     avrcp_cmd_data_req_ext(bd,
                            bts2_app_data->phdl,
                            ASSIGN_TLABEL,
@@ -440,6 +452,7 @@ void bt_avrcp_select_sound(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
                            3,
                            data);
 }
+
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:
@@ -528,6 +541,34 @@ void bt_avrcp_forward(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
                            data);
 
 
+}
+
+void bt_avrcp_volume_up(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
+{
+    U8 data[3] = {0x7c, 0x41, 0x00};
+    avrcp_cmd_data_req_ext(bd,
+                           bts2_app_data->phdl,
+                           ASSIGN_TLABEL,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_CTRL,
+                           AVRCP_PASS_THROUGH_SUBUNIT_TYPE,
+                           AVRCP_PASS_THROUGH_SUBUNIT_ID,
+                           3,
+                           data);
+}
+
+void bt_avrcp_volume_down(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd)
+{
+    U8 data[3] = {0x7c, 0x42, 0x00};
+    avrcp_cmd_data_req_ext(bd,
+                           bts2_app_data->phdl,
+                           ASSIGN_TLABEL,
+                           BT_UUID_AVRCP_CT,
+                           AVRCP_CR_CTRL,
+                           AVRCP_PASS_THROUGH_SUBUNIT_TYPE,
+                           AVRCP_PASS_THROUGH_SUBUNIT_ID,
+                           3,
+                           data);
 }
 
 /*----------------------------------------------------------------------------*
@@ -1099,7 +1140,11 @@ void bt_avrcp_get_capabilities_confirm(bts2_app_stru *bts2_app_data, BTS2S_AVRCP
                     {
                         bt_avrcp_track_register_request(bts2_app_data, &avrcmsg->bd);
                     }
+#ifndef BSP_BQB_TEST
                     else if ((event == AVRCP_VENDOR_DEPENDENT_EVENT_VOLUME_CHANGED) && (role == AVRCP_TG))
+#else
+                    else if (event == AVRCP_VENDOR_DEPENDENT_EVENT_VOLUME_CHANGED)
+#endif
                     {
                         U8 idx = bt_avrcp_get_connection_by_addr(bts2_app_data, &avrcmsg->bd);
                         bts2_app_data->avrcp_inst.conn[idx].rmt_abs_sup = 1;
@@ -1182,6 +1227,11 @@ bt_err_t bt_avrcp_change_play_status(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR
     }
 }
 
+void bt_avrcp_get_element_attributes_request_ext(BTS2S_BD_ADDR *bd, U8 media_attribute)
+{
+    bts2_app_stru *bts2_app_data = bts2g_app_p;
+    bt_avrcp_get_element_attributes_request(bts2_app_data, bd, media_attribute);
+}
 
 void bt_avrcp_get_element_attributes_request(bts2_app_stru *bts2_app_data, BTS2S_BD_ADDR *bd, U8 media_attribute)
 {
@@ -1247,17 +1297,79 @@ static void bt_avrcp_get_element_attributes_confirm(bts2_app_stru *bts2_app_data
     U32 media_attribute;
     paramter_length = ((avrcmsg->data[6] << 8) | (avrcmsg->data[7]));
 
+    static U16 data_len_all = 0;
+    if (((avrcmsg->data[5] & 0x03) == AVRCP_PACKET_TYPE_START || (avrcmsg->data[5] & 0x03) == AVRCP_PACKET_TYPE_CONTINUE) \
+            && (paramter_length <= 0x200) && (data_len_all < 0x400))
+    {
+        USER_TRACE("avrcp attr_cfm start packet!\n");
+        data_len_all += paramter_length;
+        U8 data_len = 9;
+        U8 data[data_len];
+        bmemcpy(data, VENDOR_DEPENDENT_BLUETOOTH_SIG_ID, 4);
+
+        *(data + 4) = AVRCP_VENDOR_DEPENDENT_PDU_ID_REQUEST_CONTINUING_RESPONSE;
+        *(data + 5) = 0;
+
+        // parameter length
+        *(data + 6) = 0;
+
+        U8 para_len = 1;
+        *(data + 7) = para_len;
+
+        // parameter
+        *(data + 8) = AVRCP_VENDOR_DEPENDENT_PDU_ID_GET_ELEMENT_ATTRIBUTES;
+
+        avrcp_cmd_data_req_ext(&avrcmsg->bd, bts2_app_data->phdl,
+                               ASSIGN_TLABEL,
+                               BT_UUID_AVRCP_CT,
+                               AVRCP_CR_CTRL,
+                               AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
+                               AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
+                               data_len,
+                               data);
+    }
+    else if (data_len_all > 0x400)
+    {
+        data_len_all = 0;
+
+        U8 data_len = 9;
+        U8 data[data_len];
+        bmemcpy(data, VENDOR_DEPENDENT_BLUETOOTH_SIG_ID, 4);
+
+        *(data + 4) = AVRCP_VENDOR_DEPENDENT_PDU_ID_ABORT_CONTINUING_RESPONSE;
+        *(data + 5) = 0;
+
+        // parameter length
+        *(data + 6) = 0;
+
+        U8 para_len = 1;
+        *(data + 7) = para_len;
+
+        // parameter
+        *(data + 8) = AVRCP_VENDOR_DEPENDENT_PDU_ID_GET_ELEMENT_ATTRIBUTES;
+
+        avrcp_cmd_data_req_ext(&avrcmsg->bd, bts2_app_data->phdl,
+                               ASSIGN_TLABEL,
+                               BT_UUID_AVRCP_CT,
+                               AVRCP_CR_CTRL,
+                               AVRCP_VENDOR_DEPENDENT_SUBUNIT_TYPE,
+                               AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
+                               data_len,
+                               data);
+    }
 
     U8 attribute_rej;
     if (paramter_length == 1)
     {
         attribute_rej = *(avrcmsg->data + 8);
         USER_TRACE("avrcp attr_cfm reject %d\n", attribute_rej);
+        return;
     }
 
     if (paramter_length < 9)
     {
         USER_TRACE("avrcp attr_cfm short len %d\n", paramter_length);
+        return;
     }
     else
     {
@@ -1474,8 +1586,10 @@ void bt_avrcp_get_play_status_confirm(bts2_app_stru *bts2_app_data, BTS2S_AVRCP_
 
 #if defined(CFG_AVRCP)
     //solution 0x00:playing ;0x01:paused
-    uint8_t play_status_notify = play_status - 1;
-    bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_PLAY_STATUS, &play_status_notify, sizeof(uint8_t));
+    bt_media_play_status_t play_status_notify;
+    play_status_notify.status = play_status - 1;
+    bt_addr_convert_to_general(&avrcmsg->bd, (bd_addr_t *)&play_status_notify.mac);
+    bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_PLAY_STATUS, &play_status_notify, sizeof(bt_media_play_status_t));
 #endif
 }
 
@@ -1549,12 +1663,17 @@ void bt_avrcp_track_changed_register_response(bts2_app_stru *bts2_app_data, BTS2
     *(data + 8) = AVRCP_VENDOR_DEPENDENT_EVENT_TRACK_CHANGED;
     if (track_changed == 0)
     {
+#ifdef BSP_BQB_TEST
+        memset(data + 9, 0x11, 8);
+#else
         memset(data + 9, 0xff, 8);
+#endif
     }
     else
     {
         memset(data + 9, 0, 8);
     }
+
     if (bt_avrcp_check_connection_by_addr(bts2_app_data, bd, &con_idx))
     {
         avrcp_cmd_data_rsp_ext(bd, bts2_app_data->phdl,
@@ -1603,7 +1722,7 @@ bt_err_t bt_avrcp_set_absolute_volume_request(bts2_app_stru *bts2_app_data, BTS2
         return BT_ERROR_UNSUPPORTED;
     }
 
-    if (bts2_app_data->avrcp_inst.abs_volume_pending == 1)
+    if (bts2_app_data->avrcp_inst.conn[idx].abs_volume_pending == 1)
     {
         return BT_ERROR_STATE;
     }
@@ -1636,7 +1755,7 @@ bt_err_t bt_avrcp_set_absolute_volume_request(bts2_app_stru *bts2_app_data, BTS2
                                AVRCP_VENDOR_DEPENDENT_SUBUNIT_ID,
                                data_len,
                                data);
-        bts2_app_data->avrcp_inst.abs_volume_pending = 1;
+        bts2_app_data->avrcp_inst.conn[idx].abs_volume_pending = 1;
         free(data);
         return BT_EOK;
     }
@@ -1658,6 +1777,12 @@ void bt_avrcp_set_absolute_volume_response(bts2_app_stru *bts2_app_data, BTS2S_B
     *(data + 7) = 1;
 
     // parameter
+#ifdef BSP_BQB_TEST
+    if (volume == 255)
+    {
+        volume &= 0x7f;
+    }
+#endif
     *(data + 8) = volume;
     avrcp_cmd_data_rsp_ext(bd, bts2_app_data->phdl,
                            avrcmsg->tlabel,
@@ -1722,20 +1847,12 @@ static void bt_avrcp_hdl_vendor_depend_cmd_ind(bts2_app_stru *bts2_app_data)
                 case AVRCP_VENDOR_DEPENDENT_EVENT_TRACK_CHANGED:
                 {
                     bts2_app_data->avrcp_inst.conn[idx].tgTlable_2  = avrcmsg->tlabel;
-#ifdef BSP_BQB_TEST
-                    switch (BQB_TEST_CASE)
-                    {
-                    case AVRCP_TG_NFY_BV_05_C:
-                    case AVRCP_TG_NFY_BV_08_C:
+                    U8 play_status = bt_av_get_a2dp_stream_state(&avrcmsg->bd);
+
+                    if (play_status == AVRCP_PLAY_STATUS_PLAYING)
                         bt_avrcp_track_changed_register_response(bts2_app_data, &avrcmsg->bd, AVRCP_CR_INTERIM, 1);
-                        break;
-                    default:
+                    else
                         bt_avrcp_track_changed_register_response(bts2_app_data, &avrcmsg->bd, AVRCP_CR_INTERIM, 0);
-                        break;
-                    }
-#else
-                    bt_avrcp_track_changed_register_response(bts2_app_data, &avrcmsg->bd, AVRCP_CR_INTERIM, 0);
-#endif
                     break;
                 }
                 case AVRCP_VENDOR_DEPENDENT_EVENT_PLAYBACK_STATUS_CHANGED:
@@ -1812,9 +1929,16 @@ static void bt_avrcp_hdl_vendor_depend_cmd_ind(bts2_app_stru *bts2_app_data)
 
                 // TODO: set volume
                 bts2_app_data->avrcp_inst.conn[idx].ab_volume = volume;
+#ifdef AUDIO_USING_MANAGER
+                bt_volume_set_t volume_info;
+                volume_info.mode = BT_VOLUME_MEDIA;
+                bt_addr_convert_to_general(&avrcmsg->bd, (bd_addr_t *)&volume_info.mac);
+                volume_info.volume.media_volume = bt_interface_avrcp_abs_vol_2_local_vol(volume, audio_server_get_max_volume());
 
-                bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_ABSOLUTE_VOLUME, &volume, sizeof(uint8_t));
-                USER_TRACE("<< set absolute volume %d \n", volume);
+                bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_ABSOLUTE_VOLUME, &volume_info, sizeof(bt_volume_set_t));
+
+                USER_TRACE("<< set absolute volume %d relative_volume:%d\n", volume, volume_info.volume.media_volume);
+#endif
 
                 bt_avrcp_set_absolute_volume_response(bts2_app_data, &avrcmsg->bd, volume);
                 break;
@@ -1835,6 +1959,17 @@ static void bt_avrcp_hdl_vendor_depend_cmd_ind(bts2_app_stru *bts2_app_data)
                 break;
             }
             }
+        }
+        else
+        {
+            avrcp_cmd_data_rsp_ext(&avrcmsg->bd, bts2_app_data->phdl,
+                                   avrcmsg->tlabel,
+                                   avrcmsg->prof_id,
+                                   AVRCP_CR_INVLD_PID,
+                                   avrcmsg->subunit_type,
+                                   avrcmsg->subunit_id,
+                                   0,
+                                   NULL);
         }
     }
     else if (avrcmsg->c_type == AVRCP_CR_STS)
@@ -1970,9 +2105,12 @@ static void bt_avrcp_hdl_vendor_depend_cmd_cfm(bts2_app_stru *bts2_app_data)
                     INFO_TRACE("<< VOLUME_CHANGED  volume%x\n", volume);
 
 #ifdef AUDIO_USING_MANAGER
-                    uint8_t relative_volume = bt_interface_avrcp_abs_vol_2_local_vol(volume, audio_server_get_max_volume());
+                    bt_volume_set_t volume_info;
+                    volume_info.mode = BT_VOLUME_MEDIA;
+                    bt_addr_convert_to_general(&avrcmsg->bd, (bd_addr_t *)&volume_info.mac);
+                    volume_info.volume.media_volume =  bt_interface_avrcp_abs_vol_2_local_vol(volume, audio_server_get_max_volume());;
 #if defined(CFG_AVRCP)
-                    bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_ABSOLUTE_VOLUME, &relative_volume, sizeof(uint8_t));
+                    bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_ABSOLUTE_VOLUME, &volume_info, sizeof(bt_volume_set_t));
 #endif
 #endif
 
@@ -1995,6 +2133,7 @@ static void bt_avrcp_hdl_vendor_depend_cmd_cfm(bts2_app_stru *bts2_app_data)
                         if (bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle)
                         {
                             rt_timer_stop(bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle);
+                            bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle = NULL;
                         }
                     }
                     break;
@@ -2015,17 +2154,18 @@ static void bt_avrcp_hdl_vendor_depend_cmd_cfm(bts2_app_stru *bts2_app_data)
                     //solution 0x00:playing ;0x01:paused
                     if (bts2_app_data->avrcp_inst.conn[idx].playback_status != play_status)
                     {
-                        uint8_t play_status_notify;
+                        bt_media_play_status_t play_status_notify;
                         if (play_status != 0)
                         {
-                            play_status_notify = play_status - 1;
+                            play_status_notify.status = play_status - 1;
                         }
                         else
                         {
-                            play_status_notify = 1;
+                            play_status_notify.status = 1;
                         }
 
-                        bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_PLAY_STATUS, &play_status_notify, sizeof(uint8_t));
+                        bt_addr_convert_to_general(&avrcmsg->bd, (bd_addr_t *)&play_status_notify.mac);
+                        bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_PLAY_STATUS, &play_status_notify, sizeof(bt_media_play_status_t));
                     }
 #endif
 
@@ -2049,7 +2189,10 @@ static void bt_avrcp_hdl_vendor_depend_cmd_cfm(bts2_app_stru *bts2_app_data)
                         break;
                     }
 #if defined(CFG_AVRCP)
-                    bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_SONG_PROGREAS_STATUS, &play_pos, sizeof(U32));
+                    bt_media_play_progress_t play_progress;
+                    play_progress.progress = play_pos;
+                    bt_addr_convert_to_general(&avrcmsg->bd, (bd_addr_t *)&play_progress.mac);
+                    bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_SONG_PROGREAS_STATUS, &play_progress, sizeof(bt_media_play_progress_t));
 #endif
 
                     break;
@@ -2174,7 +2317,7 @@ static void bt_avrcp_hdl_vendor_depend_cmd_cfm(bts2_app_stru *bts2_app_data)
         if (pdu_id == AVRCP_VENDOR_DEPENDENT_PDU_ID_SET_ABSOLUTE_VOLUME)
         {
             INFO_TRACE("set absolute volume success\n");
-            bts2_app_data->avrcp_inst.abs_volume_pending = 0;
+            bts2_app_data->avrcp_inst.conn[idx].abs_volume_pending = 0;
         }
     }
 
@@ -2235,8 +2378,10 @@ static void bt_avrcp_hdl_pass_through_cmd_ind(bts2_app_stru *bts2_app_data)
                         inst->src_data.input_cb(as_callback_cmd_play_resume, NULL, 0);
 #elif defined(CFG_AVRCP)
                     //solution 0x00:playing ;0x01:paused
-                    uint8_t play_status_notify = 0;
-                    bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_PLAY_STATUS, &play_status_notify, sizeof(uint8_t));
+                    bt_media_play_status_t play_status_notify;
+                    play_status_notify.status = 0;
+                    bt_addr_convert_to_general(&avrcmsg->bd, (bd_addr_t *)&play_status_notify.mac);
+                    bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_PLAY_STATUS, &play_status_notify, sizeof(bt_media_play_status_t));
 #endif
                 }
                 else
@@ -2267,8 +2412,10 @@ static void bt_avrcp_hdl_pass_through_cmd_ind(bts2_app_stru *bts2_app_data)
                         inst->src_data.input_cb(as_callback_cmd_play_pause, NULL, 0);
 #elif defined(CFG_AVRCP)
                     //solution 0x00:playing ;0x01:paused
-                    uint8_t play_status_notify = 1;
-                    bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_PLAY_STATUS, &play_status_notify, sizeof(uint8_t));
+                    bt_media_play_status_t play_status_notify;
+                    play_status_notify.status = 1;
+                    bt_addr_convert_to_general(&avrcmsg->bd, (bd_addr_t *)&play_status_notify.mac);
+                    bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_PLAY_STATUS, &play_status_notify, sizeof(bt_media_play_status_t));
 #endif
                 }
                 else
@@ -2300,8 +2447,10 @@ static void bt_avrcp_hdl_pass_through_cmd_ind(bts2_app_stru *bts2_app_data)
                         inst->src_data.input_cb(as_callback_cmd_play_pause, NULL, 0);
 #elif defined(CFG_AVRCP)
                     //solution 0x00:playing ;0x01:paused
-                    uint8_t play_status_notify = 1;
-                    bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_PLAY_STATUS, &play_status_notify, sizeof(uint8_t));
+                    bt_media_play_status_t play_status_notify;
+                    play_status_notify.status = 1;
+                    bt_addr_convert_to_general(&avrcmsg->bd, (bd_addr_t *)&play_status_notify.mac);
+                    bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_PLAY_STATUS, &play_status_notify, sizeof(bt_media_play_status_t));
 #endif
                 }
                 else
@@ -2319,6 +2468,7 @@ static void bt_avrcp_hdl_pass_through_cmd_ind(bts2_app_stru *bts2_app_data)
                     USER_TRACE("FORWARD OFF\n");
                     // input_ev(inst->input, EV_KEY, KEY_NEXTSONG, 0);
                     /*  avrcp_target(BT_AVRCP_FORWARD, NULL);*/
+
 #if defined(AUDIO_USING_MANAGER) && defined(SDK_AVRCP_USE_PASS_THROUGH) && defined(CFG_AV_SRC)
                     bts2s_av_inst_data *inst = bt_av_get_inst_data();
                     int con_idx;
@@ -2462,12 +2612,14 @@ static void bt_avrcp_hdl_conn_cfm(bts2_app_stru *bts2_app_data)
 
             //!How to determine the avrcp role of the local device
             U8 role = bt_avrcp_get_role_by_addr(bts2_app_data, &msg->bd);
+#ifndef BSP_BQB_TEST
             bt_avrcp_get_capabilities_request(bts2_app_data, &msg->bd);
             if (role == AVRCP_CT)
             {
                 bt_avrcp_get_play_status_request(bts2_app_data, &msg->bd);
-                bts2_app_data->avrcp_inst.abs_volume_pending = 0;
+                bts2_app_data->avrcp_inst.conn[idx].abs_volume_pending = 0;
             }
+#endif
         }
         else
         {
@@ -2478,11 +2630,14 @@ static void bt_avrcp_hdl_conn_cfm(bts2_app_stru *bts2_app_data)
     {
         USER_TRACE("<< confirmation connect failed \n");
 #if defined(CFG_AVRCP)
-        bt_notify_profile_state_info_t profile_state;
-        bt_addr_convert(&msg->bd, profile_state.mac.addr);
-        profile_state.profile_type = BT_NOTIFY_AVRCP;
-        profile_state.res = msg->res;
-        bt_profile_update_connection_state(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_PROFILE_DISCONNECTED, &profile_state);
+        if ((msg->res != BTS2_ALREADY_CONNECTING) && (msg->res != BTS2_ALREADY_CONNECTED))
+        {
+            bt_notify_profile_state_info_t profile_state;
+            bt_addr_convert(&msg->bd, profile_state.mac.addr);
+            profile_state.profile_type = BT_NOTIFY_AVRCP;
+            profile_state.res = msg->res;
+            bt_profile_update_connection_state(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_PROFILE_DISCONNECTED, &profile_state);
+        }
 #endif
     }
 
@@ -2502,6 +2657,7 @@ void bt_avrcp_close_boundary_condition(bts2_app_stru *bts2_app_data)
             bts2_app_data->avrcp_inst.conn[idx].abs_vol_support = 0;
             bts2_app_data->avrcp_inst.conn[idx].play_status_notify = 0;
         }
+
 #if defined(CFG_AVRCP)
         bt_interface_bt_event_notify(BT_NOTIFY_AVRCP, BT_NOTIFY_AVRCP_CLOSE_COMPLETE, NULL, 0);
         INFO_TRACE("<< URC av had been disabled \n");
@@ -2595,12 +2751,14 @@ void bt_avrcp_msg_handler(bts2_app_stru *bts2_app_data)
 #endif
             //!How to determine the avrcp role of the local device
             U8 role = bt_avrcp_get_role_by_addr(bts2_app_data, &msg->bd);
+#ifndef BSP_BQB_TEST
             bt_avrcp_get_capabilities_request(bts2_app_data, &msg->bd);
             if (role == AVRCP_CT)
             {
                 bt_avrcp_get_play_status_request(bts2_app_data, &msg->bd);
-                bts2_app_data->avrcp_inst.abs_volume_pending = 0;
+                bts2_app_data->avrcp_inst.conn[idx].abs_volume_pending = 0;
             }
+#endif
         }
         else
         {
@@ -2612,8 +2770,6 @@ void bt_avrcp_msg_handler(bts2_app_stru *bts2_app_data)
     {
         BTS2S_AVRCP_DISC_IND *msg;
         msg = (BTS2S_AVRCP_DISC_IND *)bts2_app_data->recv_msg;
-
-        bts2_app_data->avrcp_inst.abs_volume_pending = 0;
         USER_TRACE("bd : %4lx %4x %4x\n", msg->bd.lap, msg->bd.nap, msg->bd.uap);
         USER_TRACE("<< avrcp indicate to disconnect with remote device\n");
 
@@ -2636,6 +2792,7 @@ void bt_avrcp_msg_handler(bts2_app_stru *bts2_app_data)
                     rt_timer_delete(bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle);
                     bts2_app_data->avrcp_inst.conn[idx].avrcp_vol_time_handle = RT_NULL;
                 }
+                bts2_app_data->avrcp_inst.conn[idx].abs_volume_pending = 0;
                 break;
             }
         }

@@ -24,31 +24,31 @@ extern "C" {
 #ifdef CFG_BT_DBG
 
 #ifdef CFG_MS
-    #include <stdlib.h>
-    #ifdef CFG_DBG_MEM_LEAK
-        #define _CRTDBG_MAP_ALLOC
-        #include <crtdbg.h>
+#include <stdlib.h>
+#ifdef CFG_DBG_MEM_LEAK
+#define _CRTDBG_MAP_ALLOC
+#include <crtdbg.h>
 
-        /*----------------------------------------------------------------------------*
-        *
-        * DESCRIPTION:
-        *      Dump out the memory leak information of BTS2.
-        *
-        * INPUT:
-        *      void
-        *
-        * OUTPUT:
-        *      void.
-        *
-        * NOTE:
-        *      windows function.
-        *
-        *----------------------------------------------------------------------------*/
-        void mem_leak_dump(void);
+/*----------------------------------------------------------------------------*
+*
+* DESCRIPTION:
+*      Dump out the memory leak information of BTS2.
+*
+* INPUT:
+*      void
+*
+* OUTPUT:
+*      void.
+*
+* NOTE:
+*      windows function.
+*
+*----------------------------------------------------------------------------*/
+void mem_leak_dump(void);
 
-    #else
+#else
 
-    #endif
+#endif
 #endif
 
 #define SAVE_MEM_PATH       "bts2_mem.log"
@@ -89,9 +89,6 @@ extern U16 bts2g_dbg_set;
 #define BT_DBG_I(...) bt_log_output(BT_TAG_I, __VA_ARGS__)
 #define BT_DBG_W(...) bt_log_output(BT_TAG_W, __VA_ARGS__)
 #define BT_DBG_E(...) bt_log_output(BT_TAG_E, __VA_ARGS__)
-
-//#define BT_ASSERT(expr) RT_ASSERT(expr)
-//#define BT_OOM_ASSERT(expr) RT_ASSERT(expr)
 
 typedef void (*bt_fsm_hook_function)(const uint8_t *string, uint8_t state, uint8_t evt);
 void bt_log_output(uint8_t tag, char *fmt, ...);
@@ -143,23 +140,24 @@ void dbg_trace_data(U8 *data, U16 len, char *indicator);
 #define DBG_TRACE(T)
 #define DBG_DATA(A,B,C)
 #define DBG_MSG(A,B,C,D)
+#ifndef DBG_WARNING
 #define DBG_WARNING(W)
+#endif
+#ifndef DBG_ERROR
 #define DBG_ERROR(E)
+#endif
 #define DBG_BREAK(B)
 #ifdef CFG_BT_DBG_EXT
-    #define BT_DBG_D(...) bt_log_output(BT_TAG_D, __VA_ARGS__)
-    #define BT_DBG_I(...) bt_log_output(BT_TAG_I, __VA_ARGS__)
-    #define BT_DBG_W(...) bt_log_output(BT_TAG_W, __VA_ARGS__)
-    #define BT_DBG_E(...) bt_log_output(BT_TAG_E, __VA_ARGS__)
+#define BT_DBG_D(...) bt_log_output(BT_TAG_D, __VA_ARGS__)
+#define BT_DBG_I(...) bt_log_output(BT_TAG_I, __VA_ARGS__)
+#define BT_DBG_W(...) bt_log_output(BT_TAG_W, __VA_ARGS__)
+#define BT_DBG_E(...) bt_log_output(BT_TAG_E, __VA_ARGS__)
 #else // !CFG_BT_DBG_EXT
-    #define BT_DBG_D(...)
-    #define BT_DBG_I(...)
-    #define BT_DBG_W(...)
-    #define BT_DBG_E(...)
+#define BT_DBG_D(...)
+#define BT_DBG_I(...)
+#define BT_DBG_W(...)
+#define BT_DBG_E(...)
 #endif
-
-//#define BT_ASSERT(expr) RT_ASSERT(expr)
-//#define BT_OOM_ASSERT(expr) RT_ASSERT(expr)
 typedef void (*bt_fsm_hook_function)(const uint8_t *string, uint8_t state, uint8_t evt);
 void bt_log_output(uint8_t tag, char *fmt, ...);
 void bt_fsm_hook_set(bt_fsm_hook_function hook);
@@ -168,32 +166,32 @@ void bt_fsm_hook_set(bt_fsm_hook_function hook);
 
 #ifdef CFG_BT_DBG_MEM2
 
-    // #define DBG_IN(F)               {DBG_FUNC(F);  dbg_stk_in(F);}
-    // #define DBG_OUT()               dbg_stk_out();
-    // #define DBG_STK_START(FLAG)     dbg_stk_start(FLAG);
-    // #define DBG_STK_STOP()          dbg_stk_stop();
-    // #define DBG_STK_RESET()         dbg_stk_reset();
-    // #define DBG_STK_TASK(IDX)       dbg_stk_task(IDX);
-    //#define DBG_IN(F)  {DBG_FUNC(F);  DBG_PRINT("%s\n",F);}
-    #define DBG_IN(F)
-    #define DBG_OUT()
-    #define DBG_STK_START(FLAG)
-    #define DBG_STK_STOP()
-    #define DBG_STK_RESET()
-    #define DBG_STK_TASK(IDX)
+// #define DBG_IN(F)               {DBG_FUNC(F);  dbg_stk_in(F);}
+// #define DBG_OUT()               dbg_stk_out();
+// #define DBG_STK_START(FLAG)     dbg_stk_start(FLAG);
+// #define DBG_STK_STOP()          dbg_stk_stop();
+// #define DBG_STK_RESET()         dbg_stk_reset();
+// #define DBG_STK_TASK(IDX)       dbg_stk_task(IDX);
+//#define DBG_IN(F)  {DBG_FUNC(F);  DBG_PRINT("%s\n",F);}
+#define DBG_IN(F)
+#define DBG_OUT()
+#define DBG_STK_START(FLAG)
+#define DBG_STK_STOP()
+#define DBG_STK_RESET()
+#define DBG_STK_TASK(IDX)
 #else
-    #ifdef CFG_BT_DBG
-        #define DBG_IN(F) {DBG_FUNC(F);  DBG_PRINT("%s\n",F);}
-    #elif defined(CFG_BT_DBG_EXT) && defined(BSP_USING_PC_SIMULATOR) // CFG_BT_DBG
-        #define DBG_IN(...) bt_log_output(BT_TAG_V,__VA_ARGS__);
-    #else
-        #define DBG_IN(F)
-    #endif // CFG_BT_DBG
-    #define DBG_OUT()
-    #define DBG_STK_START(FLAG)
-    #define DBG_STK_STOP()
-    #define DBG_STK_RESET()
-    #define DBG_STK_TASK(IDX)
+#ifdef CFG_BT_DBG
+#define DBG_IN(F) {DBG_FUNC(F);  DBG_PRINT("%s\n",F);}
+#elif defined(CFG_BT_DBG_EXT) && defined(BSP_USING_PC_SIMULATOR) // CFG_BT_DBG
+#define DBG_IN(...) bt_log_output(BT_TAG_V,__VA_ARGS__);
+#else
+#define DBG_IN(F)
+#endif // CFG_BT_DBG
+#define DBG_OUT()
+#define DBG_STK_START(FLAG)
+#define DBG_STK_STOP()
+#define DBG_STK_RESET()
+#define DBG_STK_TASK(IDX)
 
 #endif
 
@@ -210,109 +208,109 @@ typedef struct BTS2S_STK_INFO_TAG
 } BTS2S_STK_INFO;
 
 #ifdef CFG_BT_DBG_MEM2
-    /*----------------------------------------------------------------------------*
-    *
-    * DESCRIPTION:
-    *      Initialize variables, save the original stack address.
-    *
-    * INPUT:
-    *      U8 flag.
-    *
-    * OUTPUT:
-    *      void.
-    *
-    * NOTE:
-    *      none.
-    *
-    *----------------------------------------------------------------------------*/
-    void dbg_stk_start(U8 flag);
+/*----------------------------------------------------------------------------*
+*
+* DESCRIPTION:
+*      Initialize variables, save the original stack address.
+*
+* INPUT:
+*      U8 flag.
+*
+* OUTPUT:
+*      void.
+*
+* NOTE:
+*      none.
+*
+*----------------------------------------------------------------------------*/
+void dbg_stk_start(U8 flag);
 
-    /*----------------------------------------------------------------------------*
-    *
-    * DESCRIPTION:
-    *      Print the used stack information, call it when program exit.
-    *
-    * INPUT:
-    *      void.
-    *
-    * OUTPUT:
-    *      void.
-    *
-    * NOTE:
-    *      none.
-    *
-    *----------------------------------------------------------------------------*/
-    void dbg_stk_stop();
+/*----------------------------------------------------------------------------*
+*
+* DESCRIPTION:
+*      Print the used stack information, call it when program exit.
+*
+* INPUT:
+*      void.
+*
+* OUTPUT:
+*      void.
+*
+* NOTE:
+*      none.
+*
+*----------------------------------------------------------------------------*/
+void dbg_stk_stop();
 
-    /*----------------------------------------------------------------------------*
-    *
-    * DESCRIPTION:
-    *      Push function name into memory, if the stack peak value is big than saved
-    *      value, note it.
-    *
-    * INPUT:
-    *      char *func: function name.
-    *
-    * OUTPUT:
-    *      current used stack peak value.
-    *
-    * NOTE:
-    *      none.
-    *
-    *----------------------------------------------------------------------------*/
-    U32 dbg_stk_in(const char *func);
+/*----------------------------------------------------------------------------*
+*
+* DESCRIPTION:
+*      Push function name into memory, if the stack peak value is big than saved
+*      value, note it.
+*
+* INPUT:
+*      char *func: function name.
+*
+* OUTPUT:
+*      current used stack peak value.
+*
+* NOTE:
+*      none.
+*
+*----------------------------------------------------------------------------*/
+U32 dbg_stk_in(const char *func);
 
-    /*----------------------------------------------------------------------------*
-    *
-    * DESCRIPTION:
-    *      Delete function name from memory when this function close, make buffer
-    *      depict function call stack in time.
-    *
-    * INPUT:
-    *      none.
-    *
-    * OUTPUT:
-    *      void.
-    *
-    * NOTE:
-    *      none.
-    *
-    *----------------------------------------------------------------------------*/
-    void dbg_stk_out();
+/*----------------------------------------------------------------------------*
+*
+* DESCRIPTION:
+*      Delete function name from memory when this function close, make buffer
+*      depict function call stack in time.
+*
+* INPUT:
+*      none.
+*
+* OUTPUT:
+*      void.
+*
+* NOTE:
+*      none.
+*
+*----------------------------------------------------------------------------*/
+void dbg_stk_out();
 
-    /*----------------------------------------------------------------------------*
-    *
-    * DESCRIPTION:
-    *      Flush statistic value for saved next task information.
-    *
-    * INPUT:
-    *
-    *
-    * OUTPUT:
-    *      void.
-    *
-    * NOTE:
-    *      none.
-    *
-    *----------------------------------------------------------------------------*/
-    void dbg_stk_reset();
+/*----------------------------------------------------------------------------*
+*
+* DESCRIPTION:
+*      Flush statistic value for saved next task information.
+*
+* INPUT:
+*
+*
+* OUTPUT:
+*      void.
+*
+* NOTE:
+*      none.
+*
+*----------------------------------------------------------------------------*/
+void dbg_stk_reset();
 
-    /*----------------------------------------------------------------------------*
-    *
-    * DESCRIPTION:
-    *      Save one task stack information when a task loop end.
-    *
-    * INPUT:
-    *      U16 id: task number.
-    *
-    * OUTPUT:
-    *      void.
-    *
-    * NOTE:
-    *      none.
-    *
-    *----------------------------------------------------------------------------*/
-    void dbg_stk_task(U16 id);
+/*----------------------------------------------------------------------------*
+*
+* DESCRIPTION:
+*      Save one task stack information when a task loop end.
+*
+* INPUT:
+*      U16 id: task number.
+*
+* OUTPUT:
+*      void.
+*
+* NOTE:
+*      none.
+*
+*----------------------------------------------------------------------------*/
+void dbg_stk_task(U16 id);
 
 #endif
 

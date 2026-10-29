@@ -166,8 +166,8 @@ uint8_t bt_cm_get_conn_num(void);
 
 bt_cm_dev_acl_info_t *bt_cm_conn_alloc(bt_cm_device_manager_t *env, BTS2S_BD_ADDR *bd_addr, uint8_t link_type);
 bt_cm_dev_acl_info_t *bt_cm_get_conn_by_addr(bt_cm_device_manager_t *env, BTS2S_BD_ADDR *bd_addr);
-uint8_t bt_cm_get_bond_index_by_addr(uint8_t *addr);
-uint8_t bt_cm_get_addr_by_bond_index(uint8_t idx, BTS2S_BD_ADDR *addr);
+// uint8_t bt_cm_get_bond_index_by_addr(uint8_t *addr);
+// uint8_t bt_cm_get_addr_by_bond_index(uint8_t idx, BTS2S_BD_ADDR *addr);
 
 #endif // BSP_BT_CONNECTION_MANAGER
 #endif // _BT_CONNECTION_MANAGER_H_

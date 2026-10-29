@@ -5717,7 +5717,7 @@ typedef struct
 #define SSI_SPP                    (SSI_AUTHEN | SSI_ENCRPT | SSI_AUTHOR)
 #define SSI_FAX_GW                 (SSI_AUTHEN | SSI_ENCRPT | SSI_AUTHOR)
 #define SSI_AV                     (SSI_AUTHEN | SSI_ENCRPT | SSI_AUTHOR)
-#define SSI_AVRCP                  (SS_NULL)
+#define SSI_AVRCP                  (SSI_AUTHEN | SSI_ENCRPT | SSI_AUTHOR)
 #define SSI_HID_HOST               (SSI_AUTHEN | SSI_ENCRPT | SSI_AUTHOR)
 #define SSI_BIP_SRV                (SSI_AUTHEN | SSI_ENCRPT | SSI_AUTHOR)
 #define SSI_BPP_SRV                (SSI_AUTHEN | SSI_ENCRPT | SSI_AUTHOR)
@@ -6935,9 +6935,10 @@ typedef struct
 #define DM_LINK_POLICY_KEEP_ACT        ((U8)0x01)
 #define DM_LINK_POLICY_KEEP_SNIFF      ((U8)0x02)
 #define DM_LINK_POLICY_TRANSPARENT     ((U8)0x04)
-#define DM_LINK_POLICY_NO_CHANGE       ((U8)0x05)
+#define DM_ONLY_CHANGE_LINK_POLICY     ((U8)0x05)
 #define DM_LINK_POLICY_TWO_STAGE_SNIFF ((U8)0x06)
-#define DM_LINK_POLICY_KEEP_SNIFF_INTERVAL ((U8)0x07)
+#define DM_LINK_POLICY_RESUME_SNIFF    ((U8)0x07)
+#define DM_LINK_EXIT_SNIFF_MODE        ((U8)0x08)
 
 #define HCI_LINK_POLICY_NO_CHANGE      ((U16)0xffff)
 
@@ -7569,6 +7570,13 @@ typedef struct
 } BTS2S_DM_HCI_RD_CUR_IAC_LAP_COMP;
 
 typedef BTS2S_HCI_WR_CUR_IAC_LAP DMHCI_WR_CUR_IAC_LAP;
+
+typedef struct
+{
+    BTS2S_HCI_CMD_COMMON common;
+    U8  num_cur_iac;
+    U8 iac_lap[0];
+} DMHCI_WR_CUR_IAC_LAP_1;
 
 /* wr cur iac lap comp */
 

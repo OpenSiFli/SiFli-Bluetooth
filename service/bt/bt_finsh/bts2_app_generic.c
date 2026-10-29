@@ -89,7 +89,11 @@ int8_t bt_start_inquiry(bts2_app_stru *bts2_app_data, U32 dev_mask_cls, U16 time
     U8 i = 0;
 
     inq_filter.filter = BTS2_INQ_FILTER_CLEAR;
-    inq_filter.dev_mask_cls = dev_mask_cls;
+#ifdef BSP_BQB_TEST
+    inq_filter.dev_mask_cls = BT_DEVCLS_MISC;
+#else
+    inq_filter.dev_mask_cls = BT_DEVCLS_AUDIO;
+#endif
     bts2_app_data->bd_list_num = 0;
     bts2_app_data->inquiry_list_num = 0;
     bts2_app_data->inquiry_flag = TRUE;
@@ -190,7 +194,11 @@ void bt_add_eir_data(U8 type, U8 length, U8 *data)
 
 __WEAK uint32_t bt_get_class_of_device(void)
 {
+#ifndef BSP_BQB_TEST
     return 0x240704;
+#else
+    return 0x2C0704;
+#endif
 }
 
 __WEAK void bt_sc_io_capability_rsp(BTS2S_BD_ADDR *bd)
@@ -648,14 +656,7 @@ void bt_get_rssi(bts2_app_stru *bts2_app_data)
  *----------------------------------------------------------------------------*/
 void bt_wr_link_policy(BTS2S_BD_ADDR *bd, uint16_t link_policy_mode)
 {
-
-    // gap_wr_link_policy_req(bts2_task_get_app_task_id(),
-    //                    *bd,
-    //                    link_policy_mode,
-    //                    TRUE,
-    //                    NULL,
-    //                    NULL);
-    hcia_wr_lp_settings(bd, link_policy_mode, NULL);
+    gap_link_policy_or_mode_change_req(*bd, link_policy_mode, NULL, DM_ONLY_CHANGE_LINK_POLICY);
 }
 
 void bt_etner_sniff_mode(BTS2S_BD_ADDR *bd, uint16_t interval, uint16_t attmpt)
@@ -2102,8 +2103,6 @@ void bt_hdl_gap_msg(bts2_app_stru *bts2_app_data)
         USER_TRACE("BTS2MU_GAP_WR_AFH_CHNL_CLS_CFM res:%d\n", msg->res);
         break;
     }
-
-
 #if 0
     case BTS2MU_GAP_HCI_RESET_CFM:
         /* set application inst data flag to BTS2_BT_READY */

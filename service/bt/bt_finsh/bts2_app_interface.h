@@ -152,6 +152,14 @@ int8_t bt_interface_cancel_connect_req(unsigned char *mac);
 int8_t bt_interface_disconnect_req(unsigned char *mac);
 
 /**
+ * @brief                   sco connect request repaly
+ * @param[in] msg           repaly msg
+ *
+ * @return                  int8_t
+ **/
+int8_t bt_interface_sco_connect_res(bt_notify_device_sco_req_t *msg);
+
+/**
  * @brief                   To report IO capabilities of the peer
  *                          device for the Simple pairing process
  * @param[in] mac           Remote device address
@@ -295,6 +303,18 @@ void bt_interface_set_linkpolicy(uint16_t lp_in, uint16_t lp_out);
 void bt_interface_set_sniff_enable(uint8_t enable);
 
 /**
+ * @brief            Keep the connection in active mode at all time
+ * @param[in] mac    Device mac address(eg:char mac[6] = {11,22,33,44,55,66})
+ **/
+void bt_interface_stay_active(unsigned char *mac);
+
+/**
+ * @brief            Resume sniff mode of the specified device
+ * @param[in] mac    Device mac address(eg:char mac[6] = {11,22,33,44,55,66})
+ **/
+void bt_interface_resume_sniff(unsigned char *mac);
+
+/**
  * @brief            Enable pincode pair mode
  * @param[in] enable Whether the flag of pincode pair mode is enabled or not
  **/
@@ -400,6 +420,10 @@ void bt_interface_open_avrcp(void);
  **/
 void bt_interface_close_avrcp(void);
 
+void bt_interface_avrcp_volume_up(void);
+
+void bt_interface_avrcp_volume_down(void);
+
 /**
  * @deprecated - please use bt_interface_avrcp_next_ext
  * @brief            Control the phone to switch to the next music
@@ -465,6 +489,10 @@ void bt_interface_avrcp_previous_ext(bt_notify_device_mac_t *mac);
  * @param[in] mac    Remote device address
  **/
 void bt_interface_avrcp_rewind(bt_notify_device_mac_t *mac);
+void bt_interface_avrcp_rewind_ext(void);
+
+void bt_interface_avrcp_fast_forward(bt_notify_device_mac_t *mac);
+void bt_interface_avrcp_fast_forward_ext(void);
 
 /**
  * @deprecated - please use bt_interface_avrcp_set_absolute_volume_as_ct_role_ext
@@ -1470,6 +1498,7 @@ void bt_interface_update_pan_addr(BTS2S_BD_ADDR *bd_addr);
  *
  **/
 void bt_interface_update_pan_addr_ext(bt_notify_device_mac_t *local_addr);
+
 /// @}  BT_PAN_SRV
 #endif
 

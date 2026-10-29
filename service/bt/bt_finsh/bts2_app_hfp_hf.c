@@ -1840,6 +1840,16 @@ void bt_hfp_hf_msg_hdl(bts2_app_stru *bts2_app_data)
     }
     case BTS2MU_HF_AUDIO_IND:
     {
+        BTS2S_HF_AUDIO_CONN_IND *msg;
+        msg = (BTS2S_HF_AUDIO_CONN_IND *)bts2_app_data->recv_msg;
+        bt_notify_device_sco_req_t sco_conn;
+        sco_conn.type = msg->type;
+        sco_conn.bd.lap = msg->bd.lap;
+        sco_conn.bd.uap = msg->bd.uap;
+        sco_conn.bd.nap = msg->bd.nap;
+        sco_conn.mux_id = msg->mux_id;
+        sco_conn.code_id = msg->code_id;
+        bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_SCO_CONNECTED_REQ, &sco_conn, sizeof(bt_notify_device_sco_req_t));
         break;
     }
     case BTS2MU_HF_AT_CMD_CFM:

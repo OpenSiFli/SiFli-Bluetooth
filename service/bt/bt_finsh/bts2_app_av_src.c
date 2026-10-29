@@ -7,6 +7,8 @@
 #include "rtthread.h"
 #include "bts2_app_inc.h"
 #include "ipc/ringbuffer.h"
+#include "ipc/ringbuffer32.h"
+
 #ifdef CFG_AV_SRC
 
 #define LOG_TAG         "audio_av_src"
@@ -200,7 +202,28 @@ void bt_avsrc_get_cfg(bts2_app_stru *bts2_app_data)
  *----------------------------------------------------------------------------*/
 void bt_avsrc_recfg(bts2_app_stru *bts2_app_data)
 {
-// TODO: recfg
+    U8 app_serv_cap[SBC_MEDIA_CODEC_SC_SIZE];
+    U8 i;
+    bts2s_av_inst_data *inst = bt_av_get_inst_data();
+
+    for (i = 0; i < MAX_CONNS; i++)
+    {
+        if (inst->con[i].st == avconned_open)
+        {
+            app_serv_cap[0] = AV_SC_MEDIA_CODEC;
+            app_serv_cap[1] = SBC_MEDIA_CODEC_SC_SIZE - 2;
+            app_serv_cap[2] = AV_AUDIO << 4;
+            app_serv_cap[3] = AV_SBC;
+            app_serv_cap[4] = 0x21;
+            app_serv_cap[5] = 0x15;
+            app_serv_cap[6] = 0x02;
+            app_serv_cap[7] = 0x35;
+
+            bt_av_store_sbc_cfg(&inst->con[i].act_cfg, app_serv_cap + 4);
+            INFO_TRACE(">> reset the configuration of the stream\n");
+            av_recfg_req(inst->con[i].stream_hdl, ASSIGN_TLABEL, SBC_MEDIA_CODEC_SC_SIZE, app_serv_cap);
+        }
+    }
 #if 0
     bts2s_avsrc_inst_data *inst;
     U8 app_serv_cap[SBC_MEDIA_CODEC_SC_SIZE];
@@ -537,6 +560,17 @@ U8 bt_avsrc_prepare_sbc(bts2s_av_inst_data *inst, U8 con_idx)
     U8 bit_pool_alt;
     U8 toggle_period;
     bts2_sbc_cfg *cfg = &inst->con[con_idx].act_cfg;
+
+#ifdef BSP_BQB_TEST
+    if (cfg->min_bitpool == cfg->max_bitpool)
+    {
+        cfg->bit_pool = cfg->max_bitpool;
+    }
+    else
+    {
+        cfg->bit_pool = 53;
+    }
+#else
     cfg->bit_pool = bts2_sbc_calc_bit_pool(&bit_pool_alt,
                                            &toggle_period,
                                            cfg->chnl_mode,
@@ -549,6 +583,7 @@ U8 bt_avsrc_prepare_sbc(bts2s_av_inst_data *inst, U8 con_idx)
     {
         cfg->bit_pool = cfg->max_bitpool;
     }
+#endif
 
     LOG_D("chnl_mode = %d,alloc_method = %d,sample_freq = %d\n", cfg->chnl_mode,
           cfg->alloc_method,
@@ -556,39 +591,6 @@ U8 bt_avsrc_prepare_sbc(bts2s_av_inst_data *inst, U8 con_idx)
     LOG_D("blocks = %d,subbands = %d,bit_pool = %d\n", cfg->blocks,
           cfg->subbands,
           cfg->bit_pool);
-
-#ifdef BSP_BQB_TEST
-    switch (BQB_TEST_CASE)
-    {
-    case A2DP_SRC_CC_BV_09_I:
-        cfg->chnl_mode = SBC_JOINT_STEREO;
-        cfg->sample_freq = 44100;
-        cfg->blocks = 16;
-        cfg->subbands = 8;
-        cfg->bit_pool = 53;
-        cfg->alloc_method = SBC_METHOD_LOUDNESS;
-        break;
-    case A2DP_SRC_CC_BV_10_I:
-        cfg->chnl_mode = SBC_JOINT_STEREO;
-        cfg->sample_freq = 48000;
-        cfg->blocks = 16;
-        cfg->subbands = 8;
-        cfg->bit_pool = 51;
-        cfg->alloc_method = SBC_METHOD_LOUDNESS;
-        break;
-    case A2DP_SRC_SET_BV_04_I:
-    case A2DP_SRC_SET_BV_06_I:
-        cfg->chnl_mode = SBC_MONO;
-        cfg->sample_freq = 48000;
-        cfg->blocks = 16;
-        cfg->subbands = 4;
-        cfg->bit_pool = 18;
-        cfg->alloc_method = SBC_METHOD_SNR;
-        break;
-    default:
-        break;
-    }
-#endif
 
     cfg->frmsize = bts2_sbc_encode_cfg(cfg->chnl_mode,
                                        cfg->alloc_method,
@@ -602,7 +604,7 @@ U8 bt_avsrc_prepare_sbc(bts2s_av_inst_data *inst, U8 con_idx)
     if (cfg->frmsize != 0)
     {
         /* calculate how many sbc frms fit into maximum size payload pkt */
-        cfg->frms_per_payload = (U16)((inst->max_frm_size - 14) / cfg->frmsize);
+        cfg->frms_per_payload = (U16)((inst->con[con_idx].max_frm_size - 14) / cfg->frmsize);
         //cfg->frms_per_payload = 7;
 
         if (cfg->frms_per_payload > MAX_FRM_PER_PAYLOAD)
@@ -1274,7 +1276,6 @@ static uint16_t bt_avsrc_send_data(struct rt_ringbuffer32 *rb)
 
     return bytes_rd;
 }
-
 
 #ifdef CFG_AV_SHARING
 static void bt_avsrc_sharing_cb(uint16_t m, void *para)

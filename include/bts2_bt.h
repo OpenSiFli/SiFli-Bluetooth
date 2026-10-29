@@ -720,6 +720,64 @@ typedef enum
 } BTS2E_PAGE_SCAN;
 #endif
 
+/* configure request for a particular channel */
+#define SPECIFY_MTU        ((U16)0x0001)
+#define SPECIFY_FLUSH      ((U16)0x0002)
+#define SPECIFY_QOS        ((U16)0x0004)
+//#ifdef CFG_BQB
+#define SPECIFY_RETRANS_FC ((U16)0x0008)
+#define SPECIFY_FCS        ((U16)0x0010)
+//#endif
+
+#define L2CAP_MODE_BASE 0
+#define L2CAP_MODE_RETRANSMISSION   1
+#define L2CAP_MODE_FLOWCONTROL  2
+#define L2CAP_MODE_ENHANCED_RETRANSMISSION  3
+#define L2CAP_MODE_STREAMING    4
+
+#define L2CAP_FCS_TYPE_NONE     0x00
+#define L2CAP_FCS_TYPE_16_BIT   0x01
+
+/**
+ * L2cap Enhanced Retransmission Mode Support
+ */
+#define L2CAP_TX_WINDOW_SIZE    5 // max num of I-frames can rx w/o ack
+
+#define L2CAP_MAX_TRANSMIT      1
+
+#define L2CAP_RETRANS_TIMEOUT   2000
+
+#define L2CAP_MONITOR_TIMEOUT   12000
+
+#define L2CAP_MAX_PDU_PAYLOAD_SIZE 662
+
+typedef struct
+{
+    U8  svc_type;     /* best effort, etc */
+    U32 token_rate;   /* token rate */
+    U32 token_bucket; /* token bucket */
+    U32 peak_bw;      /* peak bandwidth */
+    U32 latency;      /* latency */
+    U32 delay_var;    /* delay variation */
+} BTS2S_QOS_FLOW;
+
+typedef struct __attribute__((packed))
+{
+    U8    mode;
+    U8    txwindow;
+    U8    maxtransmit;
+    U16   retransmission_timeout;
+    U16   monitor_timeout;
+    U16   mps;
+}
+BTS2S_RETRA_OPT;
+
+typedef struct __attribute__((packed))
+{
+    U8    mode;
+}
+BTS2S_FCS_OPT;
+
 typedef struct BTS2S_ETHER_ADDR
 {
     U16 w[3]; /* big endian */

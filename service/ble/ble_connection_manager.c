@@ -18,7 +18,7 @@
 #include "bf0_sibles_nvds.h"
 #include "stdlib.h"
 
-#ifdef BT_USING_GATT
+#ifdef CFG_BR_GATT_SRV
     #include "bts2_msg.h"
     #include "bt_gatt_api.h"
 #endif
@@ -3065,7 +3065,7 @@ uint8_t connection_manager_gatt_over_bredr_service_register(uint16_t uuid)
                 if (memcmp(svc[i].uuid, &uuid, ATT_UUID_16_LEN) == 0)
                 {
                     LOG_I("REG %d, %d!", svc[i].start_handle, svc[i].end_handle);
-#ifdef BT_USING_GATT
+#ifdef CFG_BR_GATT_SRV
                     bt_gatt_create_sdp_record(svc[i].uuid_len, svc[i].uuid, svc[i].start_handle, svc[i].end_handle);
                     ret = 1;
 #endif
@@ -3091,7 +3091,7 @@ uint8_t connection_manager_gatt_over_bredr_service_register_128(uint8_t *uuid)
                 if (memcmp(svc[i].uuid, uuid, ATT_UUID_128_LEN) == 0)
                 {
                     LOG_I("REG %d, %d!", svc[i].start_handle, svc[i].end_handle);
-#ifdef BT_USING_GATT
+#ifdef CFG_BR_GATT_SRV
                     bt_gatt_create_sdp_record(svc[i].uuid_len, svc[i].uuid, svc[i].start_handle, svc[i].end_handle);
                     ret = 1;
 #endif
@@ -3105,7 +3105,7 @@ uint8_t connection_manager_gatt_over_bredr_service_register_128(uint8_t *uuid)
 
 uint8_t connection_manager_gatt_over_bredr_unregister(uint32_t handle)
 {
-#ifdef BT_USING_GATT
+#ifdef CFG_BR_GATT_SRV
     bt_gatt_create_sdp_unreg(handle);
     return 0;
 #else

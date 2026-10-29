@@ -107,6 +107,9 @@ void bt_init_profile(bts2_app_stru *bts2_app_data)
     bt_spp_init(bts2_app_data);
     bt_spp_srv_start_enb(bts2_app_data);
 #endif
+#ifdef BSP_BQB_TEST
+    bt_dis_app_sdp_reg();
+#endif
 }
 
 /*----------------------------------------------------------------------------*

@@ -617,6 +617,10 @@ Modify:
 */
 U8 bt_hid_get_available_connection(void);
 
+#ifdef BSP_BQB_TEST
+void bt_hid_pts_send_report(void *parameter);
+#endif
+
 #endif
 
 #ifdef __cplusplus

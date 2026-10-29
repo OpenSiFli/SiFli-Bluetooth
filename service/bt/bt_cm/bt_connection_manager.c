@@ -215,6 +215,12 @@ static uint8_t bt_cm_get_bond_info_from_flash()
     {
         LOG_E("read bt bonded failed!");
     }
+    else if (len != sizeof(g_bt_bonded_dev))
+    {
+        ret = NVDS_LENGTH_OUT_OF_RANGE;
+        memset(&g_bt_bonded_dev, 0, sizeof(bt_cm_bonded_dev_t));
+        LOG_E("read bt bonded len failed!");
+    }
 
     /*
         LOG_D("read_bt_bond_infor_from_flash: %d\n", ret);
@@ -252,6 +258,7 @@ void bt_cm_delete_bonded_devs_and_linkkey(uint8_t *addr)
 
 void bt_cm_delete_bonded_devs_and_linkkey_by_addr(BTS2S_BD_ADDR *bd_addr)
 {
+#ifndef BSP_BQB_TEST
     uint8_t i;
     for (i = 0; i < BT_CM_MAX_BOND; i ++)
     {
@@ -262,6 +269,10 @@ void bt_cm_delete_bonded_devs_and_linkkey_by_addr(BTS2S_BD_ADDR *bd_addr)
             sc_unpair_req(bts2_task_get_app_task_id(), bd_addr);
         }
     }
+#else
+    sifli_nvds_write(SIFLI_NVDS_TYPE_BT_CM, sizeof(bt_cm_bonded_dev_t), (uint8_t *)&g_bt_bonded_dev);
+    sc_unpair_req(bts2_task_get_app_task_id(), bd_addr);
+#endif
 }
 
 bt_cm_dev_info_t *bt_cm_get_bonded_dev_by_addr(uint8_t *addr)
@@ -279,6 +290,7 @@ bt_cm_dev_info_t *bt_cm_get_bonded_dev_by_addr(uint8_t *addr)
     return NULL;
 }
 
+#if 0
 uint8_t bt_cm_get_bond_index_by_addr(uint8_t *addr)
 {
 #if defined(BT_CONNECT_SUPPORT_MULTI_LINK) && (BT_CM_MAX_BOND > 1)
@@ -308,6 +320,7 @@ uint8_t bt_cm_get_addr_by_bond_index(uint8_t idx, BTS2S_BD_ADDR *addr)
     memcpy(addr, &g_bt_bonded_dev.info[idx].bd_addr, sizeof(BTS2S_BD_ADDR));
     return 0;
 }
+#endif
 /*************************************bt connection manager bonded info end *************************************/
 
 /*************************************bt connection manager acl info start *************************************/
@@ -358,7 +371,7 @@ bt_cm_dev_acl_info_t *bt_cm_get_conn_by_addr(bt_cm_device_manager_t *env, BTS2S_
     uint8_t i;
     for (i = 0; i < BT_CM_DEVICE_MAX_CONN; i++)
     {
-        if (env->bt_devices[i].state != BT_CM_ACL_STATE_DISCONNECTED
+        if (env->bt_devices[i].is_use
                 && (bd_eq(bd_addr, &env->bt_devices[i].info.bd_addr) == TRUE))
         {
             return &env->bt_devices[i];
@@ -373,7 +386,7 @@ static bt_cm_dev_acl_info_t *bt_cm_get_conn_by_hdl(bt_cm_device_manager_t *env, 
     uint8_t i;
     for (i = 0; i < BT_CM_DEVICE_MAX_CONN; i++)
     {
-        if (env->bt_devices[i].state != BT_CM_ACL_STATE_DISCONNECTED
+        if (env->bt_devices[i].is_use
                 && (env->bt_devices[i].conn_hdl == hdl))
         {
             return &env->bt_devices[i];
@@ -401,7 +414,9 @@ uint8_t bt_cm_get_conn_num(void)
 void init_bt_cm()
 {
     bt_cm_device_manager_t *env = bt_cm_get_env();
+
     memset(env, 0, sizeof(bt_cm_device_manager_t));
+    memset(&g_bt_bonded_dev, 0, sizeof(g_bt_bonded_dev));
 
 #ifdef CFG_OPEN_SCAN
     env->close_process = BT_CM_OPENED;
@@ -410,7 +425,6 @@ void init_bt_cm()
 #endif
 
     bt_cm_get_bond_info_from_flash();
-
 }
 
 uint8_t bt_open_bt_request(void)
@@ -449,7 +463,7 @@ uint8_t bt_close_bt_request(void)
         env->close_process = BT_CM_CLOSED;
         for (i = 0; i < BT_CM_DEVICE_MAX_CONN; i++)
         {
-            env->bt_devices[i].state =  BT_CM_ACL_STATE_DISCONNECTED;
+            bt_cm_conn_dealloc(env, &env->bt_devices[i]);
         }
         // Cal AVRCP
         bt_interface_bt_event_notify(BT_NOTIFY_COMMON, BT_NOTIFY_COMMON_CLOSE_COMPLETE, NULL, 0);
@@ -1057,8 +1071,6 @@ static void bt_cm_hci_acl_connect_complete_event_hdl(BTS2S_DM_EN_ACL_OPENED_IND 
         conn->link_dir = ind->incoming;
         conn->state = BT_CM_ACL_STATE_CONNECTED;
         conn->info.is_reconn = bt_cm_get_reconnect_flag_by_role(conn->info.link_type);
-        hcia_wr_lp_settings_keep_sniff_interval(&ind->bd, HCI_LINK_POLICY_NO_CHANGE, BT_CM_SNIFF_ENTER_TIME,
-                                                BT_CM_SNIFF_INV, BT_CM_SNIFF_INV, BT_CM_SNIFF_ATTEMPT, BT_CM_SNIFF_TIMEOUT, NULL);
     }
     else if (conn && (ind->st != HCI_SUCC))
     {
@@ -1077,6 +1089,9 @@ static void bt_cm_hci_acl_connect_complete_event_hdl(BTS2S_DM_EN_ACL_OPENED_IND 
             return;
         }
     }
+
+    hcia_wr_lp_settings_keep_sniff_interval(&ind->bd, HCI_LINK_POLICY_NO_CHANGE, BT_CM_SNIFF_ENTER_TIME,
+                                            BT_CM_SNIFF_INV, BT_CM_SNIFF_INV, BT_CM_SNIFF_ATTEMPT, BT_CM_SNIFF_TIMEOUT, NULL);
 
     LOG_I("%s conn:%p", __func__, conn);
     if ((bt_cm_get_conn_num() + 1) > BT_CM_DEVICE_MAX_CONN)
@@ -1941,7 +1956,10 @@ void bt_cm(uint8_t argc, char **argv)
                   bd_addr.nap,
                   bd_addr.uap,
                   bd_addr.lap);
-            bt_av_conn(&bd_addr, AV_SNK);
+            if (atoi(argv[5]))
+                bt_av_conn(&bd_addr, AV_SRC);
+            else
+                bt_av_conn(&bd_addr, AV_SNK);
         }
         else if (strcmp(argv[1], "av_disconn") == 0)
         {
@@ -1950,6 +1968,14 @@ void bt_cm(uint8_t argc, char **argv)
         else if (strcmp(argv[1], "release_a2dp") == 0)
         {
             bt_av_release_stream(0);
+        }
+        else if (strcmp(argv[1], "start_a2dp") == 0)
+        {
+            bt_av_start_stream(0);
+        }
+        else if (strcmp(argv[1], "suspend_a2dp") == 0)
+        {
+            bt_av_suspend_stream(0);
         }
 #endif
 #ifdef CFG_AVRCP
@@ -1970,7 +1996,63 @@ void bt_cm(uint8_t argc, char **argv)
         }
         else if (strcmp(argv[1], "avrcp_dis") == 0)
         {
-            avrcp_disc_req();
+            BTS2S_BD_ADDR bd_addr;
+            bd_addr.nap = strtol(argv[2], NULL, 0);
+            bd_addr.uap = strtol(argv[3], NULL, 0);
+            bd_addr.lap = strtol(argv[4], NULL, 0);
+            LOG_I("avrcp disconn addr: %04X:%02X:%06lX",
+                  bd_addr.nap,
+                  bd_addr.uap,
+                  bd_addr.lap);
+            bt_avrcp_disc_2_dev(&bd_addr);
+        }
+        else if (strcmp(argv[1], "avrcp_play") == 0)
+        {
+            bt_interface_avrcp_play();
+        }
+        else if (strcmp(argv[1], "avrcp_pause") == 0)
+        {
+            bt_interface_avrcp_pause();
+        }
+        else if (strcmp(argv[1], "avrcp_stop") == 0)
+        {
+            bt_interface_avrcp_stop();
+        }
+        else if (strcmp(argv[1], "avrcp_rewind") == 0)
+        {
+            bt_interface_avrcp_rewind_ext();
+        }
+        else if (strcmp(argv[1], "avrcp_fast") == 0)
+        {
+            bt_interface_avrcp_fast_forward_ext();
+        }
+        else if (strcmp(argv[1], "avrcp_next") == 0)
+        {
+            bt_interface_avrcp_next();
+        }
+        else if (strcmp(argv[1], "avrcp_prev") == 0)
+        {
+            bt_interface_avrcp_previous();
+        }
+        else if (strcmp(argv[1], "avrcp_volume_up") == 0)
+        {
+            bt_interface_avrcp_volume_up();
+        }
+        else if (strcmp(argv[1], "avrcp_volume_down") == 0)
+        {
+            bt_interface_avrcp_volume_down();
+        }
+        else if (strcmp(argv[1], "set_abs") == 0)
+        {
+            bt_interface_avrcp_set_absolute_volume_as_tg_role(atoi(argv[2]));
+        }
+        else if (strcmp(argv[1], "avrcp_get") == 0)
+        {
+            BTS2S_BD_ADDR bd_addr;
+            bd_addr.nap = strtol(argv[2], NULL, 0);
+            bd_addr.uap = strtol(argv[3], NULL, 0);
+            bd_addr.lap = strtol(argv[4], NULL, 0);
+            bt_avrcp_get_element_attributes_request_ext(&bd_addr, atoi(argv[5]));
         }
 #ifdef CFG_AVRCP_COVER_ART
         else if (strcmp(argv[1], "get_art") == 0)
@@ -2023,7 +2105,39 @@ void bt_cm(uint8_t argc, char **argv)
             bt_pbap_client_connect_request(&bd_addr, FALSE);
         }
 #endif
-        else if (strcmp(argv[1], "hci_dis") == 0)
+#ifdef BSP_BQB_TEST
+        else if (strcmp(argv[1], "a2dp_bqb") == 0)
+        {
+            bt_av_hdl_set_bqb_test(atoi(argv[2]));
+        }
+#endif
+#ifdef CFG_HID
+        else if (strcmp(argv[1], "hid_dis") == 0)
+        {
+            BTS2S_BD_ADDR bd_addr;
+            bd_addr.nap = strtol(argv[2], NULL, 0);
+            bd_addr.uap = strtol(argv[3], NULL, 0);
+            bd_addr.lap = strtol(argv[4], NULL, 0);
+            bt_hid_disc_2_dev(&bd_addr);
+        }
+        else if (strcmp(argv[1], "hid_con") == 0)
+        {
+            BTS2S_BD_ADDR bd_addr;
+            bd_addr.nap = strtol(argv[2], NULL, 0);
+            bd_addr.uap = strtol(argv[3], NULL, 0);
+            bd_addr.lap = strtol(argv[4], NULL, 0);
+            bt_hid_connect_requset(&bd_addr);
+        }
+#endif
+        else if (strcmp(argv[1], "acl_con") == 0)
+        {
+            BTS2S_BD_ADDR bd_addr;
+            bd_addr.nap = strtol(argv[2], NULL, 0);
+            bd_addr.uap = strtol(argv[3], NULL, 0);
+            bd_addr.lap = strtol(argv[4], NULL, 0);
+            hcia_acl_conn_req(&bd_addr, DEFAULT_ACL_PKT_TYPE);
+        }
+        else if (strcmp(argv[1], "acl_dis") == 0)
         {
             BTS2S_BD_ADDR bd_addr;
             bd_addr.nap = strtol(argv[2], NULL, 0);
@@ -2034,6 +2148,44 @@ void bt_cm(uint8_t argc, char **argv)
                   bd_addr.uap,
                   bd_addr.lap);
             gap_disconnect_req(&bd_addr);
+        }
+        else if (strcmp(argv[1], "del_link") == 0)
+        {
+            BTS2S_BD_ADDR bd_addr;
+            bd_addr.nap = strtol(argv[2], NULL, 0);
+            bd_addr.uap = strtol(argv[3], NULL, 0);
+            bd_addr.lap = strtol(argv[4], NULL, 0);
+            bt_cm_delete_bonded_devs_and_linkkey_by_addr(&bd_addr);
+        }
+        else if (strcmp(argv[1], "qos") == 0)
+        {
+            BTS2S_BD_ADDR bd_addr;
+            bd_addr.nap = strtol(argv[2], NULL, 0);
+            bd_addr.uap = strtol(argv[3], NULL, 0);
+            bd_addr.lap = strtol(argv[4], NULL, 0);
+            hcia_qos_setup_req(&bd_addr, 0, 1, 31803, 3, 530000000, 600, NULL);
+        }
+        else if (strcmp(argv[1], "giac") == 0)
+        {
+            U8 liac[3] = {0x00, 0x8B, 0x9E};
+            hcia_wr_cur_iac_lap_one(1, liac, NULL);
+        }
+        else if (strcmp(argv[1], "io_cap") == 0)
+        {
+            BTS2S_BD_ADDR bd_addr;
+            bd_addr.nap = strtol(argv[2], NULL, 0);
+            bd_addr.uap = strtol(argv[3], NULL, 0);
+            bd_addr.lap = strtol(argv[4], NULL, 0);
+            U8 io_cap = atoi(argv[5]);
+            U8 mitm = atoi(argv[6]);
+            U8 bond = atoi(argv[7]);
+            bt_io_capability_rsp(&bd_addr, io_cap, mitm, bond);
+        }
+        else if (strcmp(argv[1], "set_refuse") == 0)
+        {
+            extern void gap_set_l2cap_refuse(U8 enable);
+            U8 enable = atoi(argv[2]);
+            gap_set_l2cap_refuse(enable);
         }
     }
 }

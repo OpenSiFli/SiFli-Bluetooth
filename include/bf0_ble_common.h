@@ -169,7 +169,6 @@ typedef struct
     #define BT_EVENT_REGISTER_LOW(func, context) SIFLI_BT_REGISTER(func, context, ".bt_sifli_reg$3")
 #endif
 
-
 #define BT_RESET_MASK_BLE (1 << 0)
 #define BT_RESET_MASK_BT (1 << 1)
 

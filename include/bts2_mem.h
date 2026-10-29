@@ -37,12 +37,10 @@ void *bt_mem_calloc(size_t count, size_t nbytes);
 void bt_mem_free(void *ptr);
 
 
-//void *bmalloc(U32 nbytes);
 #define bmalloc(size) bt_mem_alloc(size)
 #define bcalloc(count, nbytes) bt_mem_calloc(count, nbytes)
 #define bfree(ptr) bt_mem_free(ptr)
-//void *bcalloc(rt_size_t count, rt_size_t nbytes);
-//void bfree(void *ptr);
+
 #ifndef malloc
 #define malloc bmalloc
 #endif

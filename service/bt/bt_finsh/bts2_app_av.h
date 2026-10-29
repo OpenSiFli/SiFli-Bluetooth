@@ -80,6 +80,9 @@
 #define AV_MEDIA_TRASPORT_SIZE (2)
 #define AV_CONTENT_PROTECTION_SIZE (4)
 
+#define AAC_IE_CHNL_MODE_MASK    ((U8)0x0c)
+#define AAC_IE_SAMPLE_FREQ_MASK  ((U8)0xF0)
+
 
 #ifndef MAX_BUFF_SIZE
     #define MAX_BUFF_SIZE      (24 * 1024)
@@ -149,6 +152,17 @@ typedef enum
     A2DP_SRC_SET_BV_06_I,
     A2DP_SRC_SUS_BV_01_I,
     A2DP_SRC_SUS_BV_02_I,
+    AVDTP_SRC_ACP_SIG_SMG_BI_05_C,
+    AVDTP_SRC_ACP_SIG_SMG_BI_06_C,
+    AVDTP_SRC_ACP_SIG_SMG_BI_09_C,
+    AVDTP_SRC_ACP_SIG_SMG_BI_12_C,
+    AVDTP_SRC_ACP_SIG_SMG_BI_15_C,
+    AVDTP_SRC_ACP_SIG_SMG_BI_18_C,
+    AVDTP_SRC_ACP_SIG_SMG_BI_21_C,
+    AVDTP_SRC_ACP_SIG_SMG_BI_24_C,
+    AVDTP_SRC_ACP_SIG_SMG_BI_27_C,
+    AVDTP_SRC_ACP_SIG_SMG_BI_33_C,
+    AVDTP_SNK_INT_SIG_SMG_BV_07_C,    //Decide whether to send get all capability.
     BQB_TEST_RESET = 0xff
 } BQB_TEST;
 
@@ -276,6 +290,10 @@ typedef struct
     U8 rmt_seid_idx;
     U8 is_suspend_cfg;
     U8 is_start_cfg;
+    rt_timer_t discover_timer;
+#ifdef BSP_BQB_TEST
+    rt_timer_t close_timer;
+#endif
     BTS2S_BD_ADDR av_rmt_addr;
 
 #ifdef CFG_AV_SNK
@@ -284,6 +302,7 @@ typedef struct
     U8 pending_cmd;
     BOOL suspend_pending;
     BOOL start_pending;
+    U16 max_frm_size;
 } bts2_av_conn;
 
 #ifdef CFG_AV_SRC
@@ -311,7 +330,6 @@ typedef struct
 {
     bts2_av_conn con[MAX_CONNS];
     U32 time_stamp;
-    U16 max_frm_size;
     U16 seq_no;
     U8  tlabel;
     U8  con_idx;
@@ -395,6 +413,7 @@ U8 bt_av_get_src_streaming_number(void);
 U8 bt_av_get_idx_from_shdl(bts2s_av_inst_data *inst, U8 shdl);
 U8 bt_av_get_idx_from_addr(bts2s_av_inst_data *inst, BTS2S_BD_ADDR *bd_addr);
 U8 bt_av_get_src_connected_number(void);
+void bt_av_store_sbc_cfg(bts2_sbc_cfg *cfg, U8 *sbc_ie);
 
 #else
 

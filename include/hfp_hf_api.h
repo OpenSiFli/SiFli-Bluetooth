@@ -446,6 +446,13 @@ typedef struct
     uint8_t value;
 } BTS2S_HF_INDICATOR_STATUS;
 
+typedef struct
+{
+    U16 type;
+    BTS2S_BD_ADDR bd;
+    U8  mux_id;
+    U8  code_id;
+} BTS2S_HF_AUDIO_CONN_IND;
 /*----------------------------------------------------------------------------*
  *
  * DESCRIPTION:

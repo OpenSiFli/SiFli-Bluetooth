@@ -418,6 +418,7 @@ typedef struct
     U16                         type;
     BTS2S_BD_ADDR               bd;
     U8                          code_id;
+    U8                          srv_chnl;
 } BTS2S_GAP_SCO_REMOTE_CONN_REQ;
 
 typedef struct
@@ -909,12 +910,10 @@ void gap_role_discov_req(U16 app_hdl, BTS2S_BD_ADDR bd);
  *      none.
  *
  *----------------------------------------------------------------------------*/
-void gap_wr_link_policy_req(U16 app_hdl,
-                            BTS2S_BD_ADDR bd,
-                            U16 link_policy_setting,
-                            BOOL setup_link_policy_setting,
-                            BTS2S_SNIFF_SETTINGS *sniff_setting,
-                            BTS2S_HOLD_SETTINGS *hold_setting);
+void gap_link_policy_or_mode_change_req(BTS2S_BD_ADDR bd,
+                                        U16 link_policy_setting,
+                                        BTS2S_SNIFF_SETTINGS *sniff_setting,
+                                        U8 trigger_type);
 
 /*----------------------------------------------------------------------------*
  *
@@ -1129,8 +1128,13 @@ typedef void (bts2_data_info_cb_fn_type)(U8 dir, U8 type, U16 len, const U8 *dat
  *----------------------------------------------------------------------------*/
 void gap_reg_bts2_data_info_callback(bts2_data_info_cb_fn_type *fn);
 
+
 void gap_set_sco_res_by_app_flag(U8 flag);
 void gap_enable_pincode_pair_mode(U8 enable);
+
+void gap_set_l2cap_refuse(U8 enable);
+
+U8 gap_get_l2cap_refuse(void);
 #ifdef __cplusplus
 }
 #endif

@@ -18,7 +18,6 @@
 #define USER_ID             "BTS2_TEST"
 #define TEMP_PHONEBOOK_NAME "temp_phone_book.vcf"
 
-
 typedef enum
 {
     BT_PBAPC_IDLE_ST,
@@ -61,8 +60,8 @@ static bts2s_pbap_clt_inst_data *local_inst = NULL;
 TUserData userData = {0, 0, 0, 0, NULL};
 CARD_Parser vp = NULL;
 
-int count = 0;
-int pring_count = 1;
+// int count = 0;
+// int pring_count = 1;
 int type = BT_PBAP_CLT_VCARD_IDLE;
 
 static const char *pbap_find_char(const char *data, int len, char ch)
@@ -212,8 +211,8 @@ continue_parse_value:
 
 static void bt_pbap_clt_dump_vcard(void)
 {
-    LOG_D("*********************************************\n");
-    LOG_D("pbap_vcard[%d]:\n", pring_count++);
+    // LOG_D("*********************************************\n");
+    // LOG_D("pbap_vcard[%d]:\n", pring_count++);
 
     bt_notify_pbap_vcard_item_t vcard_item;
 
@@ -245,12 +244,12 @@ static void bt_pbap_clt_dump_vcard(void)
         vcard_item.vcard_type = local_inst->pbab_vcard->call_type;
     }
 
-    LOG_D("[name]  ");
-    LOG_D("%s", vcard_item.vcard_name);
-    LOG_D("\n");
-    LOG_D("[time]  ");
-    LOG_D("%s", vcard_item.vcard_time);
-    LOG_D("\n");
+    // LOG_D("[name]  ");
+    // LOG_D("%s", vcard_item.vcard_name);
+    // LOG_D("\n");
+    // LOG_D("[time]  ");
+    // LOG_D("%s", vcard_item.vcard_time);
+    // LOG_D("\n");
 
     vcard_tel_list *tmp = local_inst->pbab_vcard->v_tel;
     if (tmp && (tmp->length > BT_NOTIFY_PBAP_MAX_VCARD_SIZE))
@@ -266,18 +265,18 @@ static void bt_pbap_clt_dump_vcard(void)
         vcard_item.vcard_number_len = tmp->length;
     }
 
-    while (tmp)
-    {
-        LOG_D("[tel]  ");
-        LOG_D("%d", tmp->length);
-        LOG_D("%s", tmp->tel);
-        LOG_D("\n");
-        tmp = tmp->next_struct;
-    }
+    // while (tmp)
+    // {
+    //     LOG_D("[tel]  ");
+    //     LOG_D("%d", tmp->length);
+    //     LOG_D("%s", tmp->tel);
+    //     LOG_D("\n");
+    //     tmp = tmp->next_struct;
+    // }
     vcard_item.phone_book = local_inst->curr_phonebook;
     bt_interface_bt_event_notify(BT_NOTIFY_PBAP, BT_NOTIFY_PBAP_VCARD_ITEM_IND,
                                  &vcard_item, sizeof(bt_notify_pbap_vcard_item_t));
-    LOG_D("*********************************************\n");
+    // LOG_D("*********************************************\n");
 }
 
 static bt_pbap_call_type_t bt_pbap_parse_call_type(const CARD_Char **params)
@@ -1421,8 +1420,8 @@ void bt_pbap_clt_hdl_msg(bts2_app_stru *bts2_app_data)
         {
             USER_TRACE(">> Pbap get phonebook failed\n");
         }
-        count = 0;
-        pring_count = 1;
+        // count = 0;
+        // pring_count = 1;
         bt_notify_pbap_vcard_item_cmpl_t vcard_item_cmpl;
         vcard_item_cmpl.phone_book = local_inst->curr_phonebook;
         vcard_item_cmpl.res = msg->res;
