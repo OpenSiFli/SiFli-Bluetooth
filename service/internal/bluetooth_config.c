@@ -1596,6 +1596,24 @@ void uart_ipc_path_change(void)
     HAL_RCC_HCPU_ClockSelect(RCC_CLK_MOD_HP_TICK, RCC_CLK_TICK_HXT48);
     CLEAR_BIT(hwp_pmuc->HRC_CR, PMUC_HRC_CR_EN);
 #endif
+#if  defined(SOC_SF32LB57X) && defined(BSP_BQB_TEST)
+    HAL_RCC_HCPU_ClockSelect(RCC_CLK_MOD_HP_PERI,
+                             RCC_CLK_TICK_HXT48);
+    HAL_RCC_HCPU_ClockSelect(RCC_CLK_MOD_HP_TICK, RCC_CLK_TICK_HXT48);
+
+    hwp_pmuc->HRC_CR1 &= ~(PMUC_HRC_CR1_FREQ_TRIM_Msk);
+    hwp_pmuc->HRC_CR1 |= (0x250 << PMUC_HRC_CR1_FREQ_TRIM_Pos);
+    rt_thread_delay(20);
+
+    //HAL_RCC_HCPU_ClockSelect(RCC_CLK_MOD_HP_PERI,
+    //                         RCC_CLK_TICK_HRC48);
+    HAL_RCC_HCPU_ClockSelect(RCC_CLK_MOD_HP_TICK, RCC_CLK_TICK_HRC48);
+    hwp_hpsys_rcc->CSR &= ~(HPSYS_RCC_CSR_SEL_SYS_Msk);
+    hwp_hpsys_rcc->CSR |= (0x0 << HPSYS_RCC_CSR_SEL_SYS_Pos);
+
+    hwp_pmuc->HXT_CR1 &= ~(PMUC_HXT_CR1_LDO_VREF_Msk);
+    hwp_pmuc->HXT_CR1 |= (0x6 << PMUC_HXT_CR1_LDO_VREF_Pos);
+#endif
 #endif
 
     env->ipc_port = mbox_env.ipc_port;
