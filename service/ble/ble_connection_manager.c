@@ -66,8 +66,6 @@ conn_manager_t g_conn_manager[MAX_CONNECTION_LINK_NUM];
 // local info
 static connection_manager_env_t g_cm_env;
 
-rt_timer_t g_time_handle;
-
 static void cm_timeout_handler(void *parameter);
 
 static connection_manager_env_t *cm_get_env()
@@ -2000,51 +1998,55 @@ void connection_manager_create_bond_bqb(uint8_t conn_idx, uint8_t command)
 }
 #endif //BLE_CM_BOND_DISABLE
 
-static void cm_timeout_handler(void *parameter)
+static uint16_t cm_get_le_time(uint8_t phy, uint16_t tx_octets)
 {
-    connection_manager_env_t *env = cm_get_env();
-    ble_gap_update_data_len_t len;
-    len.conn_idx = g_conn_manager[env->manager_index].conn_idx;
-    if (g_conn_manager[env->manager_index].mtu > 251)
+    uint16_t tx_time;
+
+    switch (phy)
     {
-        len.tx_octets = 251;
-    }
-    else
-    {
-        len.tx_octets = g_conn_manager[env->manager_index].mtu;
+    case GAP_PHY_TYPE_LE_1M:
+        /* Preamble (1), access address (4), header (2), MIC (4), CRC (3). */
+        tx_time = CM_TX_TIME_1M(tx_octets);
+        break;
+    case GAP_PHY_TYPE_LE_2M:
+        /* The 2M PHY has a two-byte preamble. */
+        tx_time = CM_TX_TIME_2M(tx_octets);
+        break;
+    case GAP_PHY_TYPE_LE_CODED:
+        tx_time = CM_TX_TIME_CODED_S8(tx_octets);
+        break;
+    default:
+        return L2CAP_MAX_TIME;
     }
 
-    len.tx_time = 2120;
-
-    //LOG_I("cm_timeout_handler");
-    ble_gap_update_data_len(&len);
+    /* HCI LE Set Data Length accepts a minimum transmit time of 328 us. */
+    return tx_time < L2CAP_MIN_TIME ? L2CAP_MIN_TIME : tx_time;
 }
 
-void update_data_length(uint8_t conn_idx, uint16_t mtu)
+void update_data_length(uint8_t conn_idx)
 {
+    ble_gap_update_data_len_t len;
+    len.conn_idx = conn_idx;
     LOG_I("update_data_length");
-    connection_manager_env_t *env = cm_get_env();
+
     uint8_t manager_index = get_manager_index_by_connection_index(conn_idx);
     if (manager_index == CM_CONN_INDEX_ERROR)
     {
         return;
     }
 
-    g_conn_manager[manager_index].mtu = mtu;
-    env->manager_index = manager_index;
-
-    if (!g_time_handle)
+    if (g_conn_manager[manager_index].mtu > L2CAP_MAX_OCTETS - L2CAP_HEADER_LEN)
     {
-        g_time_handle = rt_timer_create("ble_cm", cm_timeout_handler, NULL,
-                                        rt_tick_from_millisecond(500), RT_TIMER_FLAG_SOFT_TIMER);
+        len.tx_octets = L2CAP_MAX_OCTETS;
     }
     else
     {
-        rt_timer_stop(g_time_handle);
+        len.tx_octets = g_conn_manager[manager_index].mtu + L2CAP_HEADER_LEN;
     }
-    rt_timer_start(g_time_handle);
 
-    //ble_gap_update_data_len(&len);
+    len.tx_time = cm_get_le_time(g_conn_manager[manager_index].tx_phy, len.tx_octets);
+
+    ble_gap_update_data_len(&len);
 }
 
 int ble_connection_manager_handler(uint16_t event_id, uint8_t *data, uint16_t len, uint32_t context)
@@ -2077,6 +2079,31 @@ int ble_connection_manager_handler(uint16_t event_id, uint8_t *data, uint16_t le
         LOG_I("GAPC_CONNECTION_CFM");
         break;
     }
+    case BLE_GAP_REMOTE_PHY_IND:
+    {
+        ble_gap_remote_phy_ind_t *ind = (ble_gap_remote_phy_ind_t *)data;
+
+        uint8_t manager_index = get_manager_index_by_connection_index(ind->conn_idx);
+        if (manager_index == CM_CONN_INDEX_ERROR)
+        {
+            break;
+        }
+
+        uint8_t need_update = 0;
+        if (g_conn_manager[manager_index].tx_phy != ind->tx_phy)
+        {
+            need_update = 1;
+        }
+
+        g_conn_manager[manager_index].rx_phy = ind->rx_phy;
+        g_conn_manager[manager_index].tx_phy = ind->tx_phy;
+
+        if (need_update)
+        {
+            update_data_length(ind->conn_idx);
+        }
+        break;
+    }
     case BLE_GAP_CONNECTED_IND:
     {
         LOG_I("BLE_GAP_CONNECTED_IND");
@@ -2107,6 +2134,10 @@ int ble_connection_manager_handler(uint16_t event_id, uint8_t *data, uint16_t le
         g_conn_manager[manager_index].connection_latency = ind->con_latency;
         g_conn_manager[manager_index].supervision_timeout = ind->sup_to;
         g_conn_manager[manager_index].update_state = UPDATE_PARAMETER_NONE;
+
+        g_conn_manager[manager_index].rx_phy = 0;
+        g_conn_manager[manager_index].tx_phy = 0;
+        g_conn_manager[manager_index].mtu = 23;
 
         ind->config_info.auth = env->connected_auth;
         for (int i = 0; i < MAX_PAIR_DEV; i++)
@@ -2182,12 +2213,6 @@ int ble_connection_manager_handler(uint16_t event_id, uint8_t *data, uint16_t le
     case BLE_GAP_DISCONNECTED_IND:
     {
         // read_bond_infor_from_flash();
-
-        if (g_time_handle)
-        {
-            rt_timer_stop(g_time_handle);
-        }
-
         ble_gap_disconnected_ind_t *ind = (ble_gap_disconnected_ind_t *)data;
         LOG_I("BLE_GAP_DISCONNECTED_IND, %d", ind->reason);
         uint8_t connection_index = ind->conn_idx;
@@ -2378,7 +2403,24 @@ int ble_connection_manager_handler(uint16_t event_id, uint8_t *data, uint16_t le
     {
         sibles_mtu_exchange_ind_t *ind = (sibles_mtu_exchange_ind_t *)data;
         LOG_I("SIBLES_MTU_EXCHANGE_IND %d, %d", ind->conn_idx, ind->mtu);
-        update_data_length(ind->conn_idx, ind->mtu);
+
+        uint8_t manager_index = get_manager_index_by_connection_index(ind->conn_idx);
+        if (manager_index == CM_CONN_INDEX_ERROR)
+        {
+            break;
+        }
+        g_conn_manager[manager_index].mtu = ind->mtu;
+
+        if (g_conn_manager[manager_index].tx_phy == GAP_PHY_ANY)
+        {
+            ble_gap_get_phy_t phy;
+            phy.conn_idx = ind->conn_idx;
+            ble_gap_get_remote_physical(&phy);
+        }
+        else
+        {
+            update_data_length(ind->conn_idx);
+        }
         break;
     }
 #ifndef BLE_CM_BOND_DISABLE
@@ -2569,6 +2611,71 @@ __WEAK void connection_parameter_get_low_power(uint16_t *interval_min, uint16_t 
     *timeout = DEFAULT_TIMEOUT;
 }
 
+static uint16_t ble_ce_len(uint16_t tx_len,
+                           uint16_t rx_len,
+                           uint8_t tx_phy,
+                           uint8_t rx_phy)
+{
+    /* CE duration = TX duration + IFS (150 us) + RX duration. */
+    uint32_t duration_us = cm_get_le_time(tx_phy, tx_len);
+
+    duration_us += LE_IFS_TIME;
+    duration_us += cm_get_le_time(rx_phy, rx_len);
+
+    /* ce_len is expressed in 625 us units and rounded up. */
+    return (uint16_t)((duration_us + LE_SLOT_SIZE - 1) / LE_SLOT_SIZE);
+}
+
+static uint16_t cm_get_max_tx_octets(uint8_t conn_idx)
+{
+    uint8_t max_len;
+    uint8_t manager_index = get_manager_index_by_connection_index(conn_idx);
+    if (manager_index == CM_CONN_INDEX_ERROR)
+    {
+        return L2CAP_MAX_OCTETS;
+    }
+
+    if (g_conn_manager[manager_index].mtu > L2CAP_MAX_OCTETS - L2CAP_HEADER_LEN)
+    {
+        max_len = L2CAP_MAX_OCTETS;
+    }
+    else
+    {
+        max_len = g_conn_manager[manager_index].mtu + L2CAP_HEADER_LEN;
+    }
+    return max_len;
+}
+
+static uint16_t cm_get_max_rx_octets(uint8_t conn_idx)
+{
+    uint8_t max_len;
+    uint8_t manager_index = get_manager_index_by_connection_index(conn_idx);
+    if (manager_index == CM_CONN_INDEX_ERROR)
+    {
+        return L2CAP_MAX_OCTETS;
+    }
+
+    if (g_conn_manager[manager_index].mtu > L2CAP_MAX_OCTETS - L2CAP_HEADER_LEN)
+    {
+        max_len = L2CAP_MAX_OCTETS;
+    }
+    else
+    {
+        max_len = g_conn_manager[manager_index].mtu + L2CAP_HEADER_LEN;
+    }
+    return max_len;
+}
+
+static uint16_t cm_get_min_rx_octets(uint8_t conn_idx)
+{
+    return L2CAP_MIN_OCTETS;
+}
+
+static uint16_t cm_get_min_tx_octets(uint8_t conn_idx)
+{
+    return L2CAP_MIN_OCTETS;
+}
+
 static uint8_t cm_update_parameter(uint8_t conn_idx, uint8_t interval_level, uint8_t *data, enum connection_manager_update_type type)
 {
     connection_manager_env_t *env = cm_get_env();
@@ -2674,9 +2781,24 @@ static uint8_t cm_update_parameter(uint8_t conn_idx, uint8_t interval_level, uin
     conn_para.conn_idx = conn_idx;
     conn_para.intv_max = interval_max;
     conn_para.intv_min = interval_min;
-    /* value = argv * 1.25 */
-    conn_para.ce_len_max = 0x100;
-    conn_para.ce_len_min = 0x1;
+
+    if (g_conn_manager[manager_index].tx_phy == 0 || g_conn_manager[manager_index].rx_phy == 0)
+    {
+        conn_para.ce_len_max = 0x100;
+        conn_para.ce_len_min = 0x1;
+    }
+    else
+    {
+        conn_para.ce_len_max = ble_ce_len(cm_get_max_tx_octets(conn_idx),
+                                          cm_get_max_rx_octets(conn_idx),
+                                          g_conn_manager[manager_index].tx_phy,
+                                          g_conn_manager[manager_index].rx_phy);
+        conn_para.ce_len_min = ble_ce_len(cm_get_min_tx_octets(conn_idx),
+                                          cm_get_min_rx_octets(conn_idx),
+                                          g_conn_manager[manager_index].tx_phy,
+                                          g_conn_manager[manager_index].rx_phy);
+    }
+
     conn_para.latency = latency;
     conn_para.time_out = time_out;
     ble_connect_para_ind.interval_min = interval_min;

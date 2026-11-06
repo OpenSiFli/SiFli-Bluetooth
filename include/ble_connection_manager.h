@@ -19,6 +19,60 @@
 
 #define CM_GATT_OVER_BREDR_CONIDX (MAX_CONNECTION_LINK_NUM - 1)
 
+#define LE_PACKET_1M_PREAMBLE_LEN                (1)
+#define LE_PACKET_2M_PREAMBLE_LEN                (2)
+#define LE_PACKET_ACCESS_ADDR_LEN                (4)
+#define LE_PACKET_PDU_HEADER_LEN                 (2)
+#define LE_PACKET_MIC_LEN                        (4)
+#define LE_PACKET_CRC_LEN                        (3)
+
+#define LE_PACKET_1M_TIME_PER_BYTE               (8)
+#define LE_PACKET_2M_TIME_PER_BYTE               (4)
+
+
+// 80 symbols, 1 us per symbol
+#define LE_PACKET_CODED_PREAMBLE_TIME            (80)
+#define LE_PACLET_CODED_ACCESS_ADDRESS_BIT       (32)
+#define LE_PACKET_CODED_CI_BIT                   (2)
+#define LE_PACKET_CODED_TERM1_BIT                (3)
+#define LE_PACKET_CODED_TERM2_BIT                (3)
+
+#define L2CAP_HEADER_LEN (4)
+
+#define L2CAP_MIN_TIME   (328)
+#define L2CAP_MAX_TIME   (2120)
+#define L2CAP_MAX_OCTETS (251)
+#define L2CAP_MIN_OCTETS (27)
+
+// 150 us
+#define LE_IFS_TIME    (150)
+#define LE_SLOT_SIZE   (625)
+
+/* Packet transmission time in microseconds, including MIC. */
+#define CM_TX_TIME_1M(tx_octets) \
+    (((tx_octets) + LE_PACKET_1M_PREAMBLE_LEN + LE_PACKET_ACCESS_ADDR_LEN + \
+      LE_PACKET_PDU_HEADER_LEN + LE_PACKET_MIC_LEN + LE_PACKET_CRC_LEN) * \
+     LE_PACKET_1M_TIME_PER_BYTE)
+
+#define CM_TX_TIME_2M(tx_octets) \
+    (((tx_octets) + LE_PACKET_2M_PREAMBLE_LEN + LE_PACKET_ACCESS_ADDR_LEN + \
+      LE_PACKET_PDU_HEADER_LEN + LE_PACKET_MIC_LEN + LE_PACKET_CRC_LEN) * \
+     LE_PACKET_2M_TIME_PER_BYTE)
+
+/* Use S=8 (125 kbps) when the coded PHY rate is unknown. */
+#define CM_TX_TIME_CODED_S8(tx_octets) \
+    (LE_PACKET_CODED_PREAMBLE_TIME + \
+     (LE_PACLET_CODED_ACCESS_ADDRESS_BIT + LE_PACKET_CODED_CI_BIT + LE_PACKET_CODED_TERM1_BIT) * 8 + \
+     (((tx_octets) + LE_PACKET_PDU_HEADER_LEN + LE_PACKET_MIC_LEN + LE_PACKET_CRC_LEN) * 8 + \
+      LE_PACKET_CODED_TERM2_BIT) * 8)
+
+/* Use S=2 (500 kbps). */
+#define CM_TX_TIME_CODED_S2(tx_octets) \
+    (LE_PACKET_CODED_PREAMBLE_TIME + \
+     (LE_PACLET_CODED_ACCESS_ADDRESS_BIT + LE_PACKET_CODED_CI_BIT + LE_PACKET_CODED_TERM1_BIT) * 8 + \
+     (((tx_octets) + LE_PACKET_PDU_HEADER_LEN + LE_PACKET_MIC_LEN + LE_PACKET_CRC_LEN) * 8 + \
+      LE_PACKET_CODED_TERM2_BIT) * 2)
+
 typedef struct
 {
     uint8_t conn_idx;
@@ -39,6 +93,11 @@ typedef struct
     bool sec_con_enabled;
     uint16_t mtu;
     uint8_t update_state;
+
+    // current LE PHY for data transmission (@see enum gap_phy_type)
+    uint8_t tx_phy;
+    // current LE PHY for data reception (@see enum gap_phy_type)
+    uint8_t rx_phy;
 } conn_manager_t;
 
 typedef struct
