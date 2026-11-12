@@ -291,6 +291,8 @@ enum gapm_msg_id
     GAPM_AES_H7_CMD,
     GAPM_AES_H7_IND,
 
+    GAPM_CON_LIMIT_EXCEED_IND,
+
     GAPM_LAST_MSG,
 };
 

@@ -155,6 +155,7 @@ enum ble_gap_event_t
     BLE_GAP_SCAN_GET_ADV_FILTER_IND,         /**< This event indicates the config of according idx in get adv filter.
                                                   Only generated when get adv filter successfully. */
     BLE_GAP_SCAN_CLEAR_ADV_FILTER_CNF,       /**< This event indicates the result of clear adv filter. */
+    BLE_GAP_CONNECTION_REJECTED_IND,         /**< Connection rejected due to the host connection limit. */
 };
 
 /**
@@ -1644,6 +1645,22 @@ typedef struct
     uint8_t reason;
 } ble_gap_disconnected_ind_t;
 
+/**
+ * @brief The structure of #BLE_GAP_CONNECTION_REJECTED_IND.
+ */
+typedef struct
+{
+    /// Peer address type
+    uint8_t peer_addr_type;
+    /// Peer device address
+    bd_addr_t peer_addr;
+    /// Controller connection handle
+    uint16_t conhdl;
+    /// Connection role
+    uint8_t role;
+    /// Rejection reason (@see enum co_error)
+    uint8_t reason;
+} ble_gap_connection_rejected_ind_t;
 
 /**
  * @brief The structure of #BLE_GAP_PERIODIC_ADV_SYNC_CREATED_IND.

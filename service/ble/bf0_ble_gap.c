@@ -1413,6 +1413,18 @@ void ble_gap_event_process(sibles_msg_para_t *header, uint8_t *data_ptr, uint16_
         break;
     }
 #endif // !SOC_SF32LB55X
+    case GAPM_CON_LIMIT_EXCEED_IND:
+    {
+        struct gapm_con_limit_exceed_ind *ind = (struct gapm_con_limit_exceed_ind *)data_ptr;
+        ble_gap_connection_rejected_ind_t evt;
+        evt.peer_addr_type = ind->peer_addr_type;
+        evt.peer_addr = ind->peer_addr;
+        evt.conhdl = ind->conhdl;
+        evt.role = ind->role;
+        evt.reason = ind->reason;
+        ble_event_publish(BLE_GAP_CONNECTION_REJECTED_IND, &evt, sizeof(evt));
+        break;
+    }
     case GAPM_CMP_EVT:
     {
         struct gapm_cmp_evt *evt = (struct gapm_cmp_evt *)data_ptr;

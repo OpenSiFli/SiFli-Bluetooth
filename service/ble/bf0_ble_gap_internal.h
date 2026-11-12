@@ -498,6 +498,20 @@ struct gapm_activity_stopped_ind
     uint8_t per_adv_stop;
 };
 
+/// Indicate connection rejection due to host connection slot exhaustion
+struct gapm_con_limit_exceed_ind
+{
+    /// Peer address type
+    uint8_t peer_addr_type;
+    /// Peer device address
+    bd_addr_t peer_addr;
+    /// Controller connection handle
+    uint16_t conhdl;
+    /// Connection role
+    uint8_t role;
+    /// HCI rejection reason
+    uint8_t reason;
+};
 
 /// Set advertising, scan response or periodic advertising data command
 /*@TRACE*/
