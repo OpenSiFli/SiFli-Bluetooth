@@ -610,6 +610,10 @@ RT_WEAK uint8_t bt_pkt_mapping(uint8_t pkt_type, uint8_t *phy)
 {
     return 0xFF;
 }
+RT_WEAK uint8_t bt_afh_test_map_conf(uint8_t *map_addr)
+{
+    return 1;
+}
 RT_WEAK uint8_t tx_chan;
 
 #ifdef USING_IPC_QUEUE
@@ -1142,7 +1146,7 @@ static uint8_t loc_cmd_hdl(uint8_t *cmd, uint16_t len)
         {
 #if defined(SOC_SF32LB52X) || defined(SOC_SF32LB56X) || defined(SOC_SF32LB58X) || defined(SOC_SF32LB57X)
 #if defined(SOC_SF32LB52X) || defined(SOC_SF32LB57X)
-            if ((cmd[3] == 0x0 && len == 8) || (cmd[3] == 0x0 && len == 9))
+            if ((cmd[3] == 0x0 && len == 8) || (cmd[3] == 0x0 && len == 9) || (cmd[3] == 0x20 && len == 18))
 #else
             if (cmd[3] == 0x0 && len == 7)
 #endif
@@ -1176,6 +1180,17 @@ static uint8_t loc_cmd_hdl(uint8_t *cmd, uint16_t len)
                     if (len == 8)
                     {
                         tx_chan = 0xFF;
+                    }
+                    else if (len == 18)
+                    {
+                        tx_chan = 0xFF;
+                        if (bt_afh_test_map_conf(&cmd[8]) != 0)
+                        {
+                            LOG_E("AFH test map config failed!!");
+                            res = 3;
+                            free(para);
+                            break;
+                        }
                     }
                     else
                     {
