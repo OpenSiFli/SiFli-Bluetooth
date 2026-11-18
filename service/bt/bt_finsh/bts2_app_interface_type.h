@@ -11,6 +11,7 @@
 extern "C" {
 #endif
 
+
 #define BT_NOTIFY_PBAP_MAX_VCARD_ENTRY_HANDLE_SIZE    (42)
 #define BT_NOTIFY_PBAP_MAX_VCARD_CONTACT_NAME_SIZE    (80)
 #define BT_NOTIFY_MAX_FRIENDLY_NAME_LEN               (60)
@@ -894,6 +895,23 @@ typedef struct
     ///  payload pointer
     uint8_t  payload[1];
 } bt_notify_ag_at_arg_t;
+
+/** PBAP phonebook repository values exposed by the public BT interface. */
+typedef enum
+{
+    BT_PBAP_REPOSITORY_CURRENT = 0,
+    BT_PBAP_REPOSITORY_LOCAL,
+    BT_PBAP_REPOSITORY_SIM1,
+    BT_PBAP_REPOSITORY_UNKNOWN
+} bt_notify_pbap_phone_repository_t;
+
+typedef enum
+{
+    PBAP_SEARCH_BY_NAME = 0x00,
+    PBAP_SEARCH_BY_NUMBER = 0x01,
+    PBAP_SEARCH_BY_SOUND = 0x02
+} bt_notify_pbap_search_type_t;
+
 /// @}  BT_interface_type
 #ifdef __cplusplus
 }

@@ -55,6 +55,7 @@ typedef enum
     BT_PBAP_ELEM_VCARD_IDLE = 0x00,
     BT_PBAP_ELEM_FN         = 0x01,
     BT_PBAP_ELEM_TEL        = 0x02,
+    BT_PBAP_ELEM_N          = 0x04,
     BT_PBAP_ELEM_MAX        = 0xff
 } BT_PBAP_ELEM_VCARD;
 
@@ -141,8 +142,9 @@ bt_err_t bt_pbap_client_connect_request(BTS2S_BD_ADDR *bd, BOOL auth_flag);
 bt_err_t bt_pbap_client_disconnect(BTS2S_BD_ADDR *bd);
 bt_err_t bt_pbap_client_pull_pb(BTS2E_PBAP_PHONE_REPOSITORY repos, U8 phone_book, U16 max_size);
 bt_err_t bt_pbap_client_set_pb(BTS2E_PBAP_PHONE_REPOSITORY repos, U8 phone_book);
-bt_err_t bt_pbap_client_pull_vcard_list(bts2_app_stru *bts2_app_data);
-bt_err_t bt_pbap_client_pull_vcard(U8 *p, U8 len);
+bt_err_t bt_pbap_client_pull_vcard_list(bt_notify_pbap_search_type_t search_by,
+                                        const U8 *keyword, U8 keyword_len);
+bt_err_t bt_pbap_client_pull_vcard(const U8 *vcard_handle, U8 handle_len);
 bt_err_t bt_pbap_client_get_name_by_number(char *phone_number, U16 phone_len);
 bt_err_t bt_pbap_client_auth(U8 *password, U8 len);
 void bt_pbap_client_pull_pb_ext(U8 reset_new_missed_calls, BTS2S_PBAP_SRM_PARAM  *srm_params,

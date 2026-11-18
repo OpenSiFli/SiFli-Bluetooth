@@ -1502,6 +1502,63 @@ void bt_interface_update_pan_addr_ext(bt_notify_device_mac_t *local_addr);
 /// @}  BT_PAN_SRV
 #endif
 
+#ifdef CFG_PBAP_CLT
+/** @defgroup BT_PBAP_CLT BT PBAP client interfaces
+  * @{
+  */
+/**
+ * @brief Pull the phonebook currently selected by the PBAP client.
+ * @param[in] repos Reserved. Currently ignored; the pull uses the repository
+ *                  selected by the current PBAP path.
+ * @param[in] phone_book Reserved. Currently ignored; the pull uses the phonebook
+ *                       object selected by the current PBAP path.
+ * @param[in] max_size Maximum number of entries to retrieve.
+ * @return BT_EOK on success, otherwise an error code.
+ */
+bt_err_t bt_interface_pbap_client_pull_pb(bt_notify_pbap_phone_repository_t repos, U8 phone_book, U16 max_size);
+
+/**
+ * @brief Set the PBAP phonebook repository and object for subsequent operations.
+ * @param[in] repos Phonebook repository.
+ * @param[in] phone_book Phonebook object.
+ * @return BT_EOK on success, otherwise an error code.
+ */
+bt_err_t bt_interface_pbap_client_set_pb(bt_notify_pbap_phone_repository_t repos, U8 phone_book);
+
+/**
+ * @brief Pull a vCard listing, optionally filtered by a search keyword.
+ * @param[in] search_by Search field (name, number, or sound).
+ * @param[in] keyword Search keyword; may be NULL when no filtering is needed.
+ * @param[in] keyword_len Length of the keyword in bytes.
+ * @return BT_EOK on success, otherwise an error code.
+ */
+bt_err_t bt_interface_pbap_client_pull_vcard_list(bt_notify_pbap_search_type_t search_by,
+        const U8 *keyword, U8 keyword_len);
+
+/**
+ * @brief Pull a vCard using its handle.
+ * @param[in] vcard_handle Null-terminated vCard handle string (maximum 25 bytes).
+ * @return BT_EOK on success, otherwise an error code.
+ */
+bt_err_t bt_interface_pbap_client_pull_vcard(const char *vcard_handle);
+
+/**
+ * @brief Search for a contact by phone number.
+ * @param[in] phone_number Phone number to search for.
+ * @param[in] phone_len Length of the phone number.
+ * @return BT_EOK on success, otherwise an error code.
+ */
+bt_err_t bt_interface_pbap_client_get_name_by_number(char *phone_number, U16 phone_len);
+
+/**
+ * @brief Provide the password requested by the remote PBAP server.
+ * @param[in] password Password data.
+ * @param[in] len Password length in bytes.
+ * @return BT_EOK on success, otherwise an error code.
+ */
+bt_err_t bt_interface_pbap_client_auth(U8 *password, U8 len);
+#endif
+
 /*****************************************************notify start********************************************************************/
 
 /** @defgroup bt_notify  BT Result Callback interfaces

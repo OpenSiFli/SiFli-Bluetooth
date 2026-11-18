@@ -32,6 +32,85 @@
 
 extern bts2_app_stru *bts2g_app_p;
 
+#ifdef CFG_PBAP_CLT
+static bool bt_interface_pbap_convert_repository(bt_notify_pbap_phone_repository_t repos,
+        BTS2E_PBAP_PHONE_REPOSITORY *pbap_repos)
+{
+    switch (repos)
+    {
+    case BT_PBAP_REPOSITORY_CURRENT:
+        *pbap_repos = PBAP_CURRENT;
+        break;
+    case BT_PBAP_REPOSITORY_LOCAL:
+        *pbap_repos = PBAP_LOCAL;
+        break;
+    case BT_PBAP_REPOSITORY_SIM1:
+        *pbap_repos = PBAP_SIM1;
+        break;
+    case BT_PBAP_REPOSITORY_UNKNOWN:
+        *pbap_repos = PBAP_UNKNOWN_REPO;
+        break;
+    default:
+        return false;
+    }
+    return true;
+}
+
+bt_err_t bt_interface_pbap_client_pull_pb(bt_notify_pbap_phone_repository_t repos, U8 phone_book, U16 max_size)
+{
+    BTS2E_PBAP_PHONE_REPOSITORY pbap_repos;
+    if (!bt_interface_pbap_convert_repository(repos, &pbap_repos))
+    {
+        return BT_ERROR_INPARAM;
+    }
+    return bt_pbap_client_pull_pb(pbap_repos, phone_book, max_size);
+}
+
+bt_err_t bt_interface_pbap_client_set_pb(bt_notify_pbap_phone_repository_t repos, U8 phone_book)
+{
+    BTS2E_PBAP_PHONE_REPOSITORY pbap_repos;
+    if (!bt_interface_pbap_convert_repository(repos, &pbap_repos))
+    {
+        return BT_ERROR_INPARAM;
+    }
+    return bt_pbap_client_set_pb(pbap_repos, phone_book);
+}
+
+bt_err_t bt_interface_pbap_client_pull_vcard_list(bt_notify_pbap_search_type_t search_by,
+        const U8 *keyword, U8 keyword_len)
+{
+    return bt_pbap_client_pull_vcard_list(search_by, keyword, keyword_len);
+}
+
+bt_err_t bt_interface_pbap_client_pull_vcard(const char *vcard_handle)
+{
+    size_t handle_len;
+
+    if (vcard_handle == NULL)
+    {
+        return BT_ERROR_INPARAM;
+    }
+
+    handle_len = rt_strlen(vcard_handle);
+    if (handle_len == 0 || handle_len > 25)
+    {
+        return BT_ERROR_INPARAM;
+    }
+
+    return bt_pbap_client_pull_vcard((U8 *)vcard_handle, (U8)handle_len);
+}
+
+bt_err_t bt_interface_pbap_client_get_name_by_number(char *phone_number, U16 phone_len)
+{
+    return bt_pbap_client_get_name_by_number(phone_number, phone_len);
+}
+
+bt_err_t bt_interface_pbap_client_auth(U8 *password, U8 len)
+{
+    return bt_pbap_client_auth(password, len);
+}
+#endif
+
 /** @defgroup BT_COMMON  BT device interfaces
   * @{
   */
